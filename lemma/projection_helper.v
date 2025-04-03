@@ -1,5 +1,5 @@
 From mathcomp Require Import ssreflect.seq all_ssreflect.
-Require Import List String Coq.Arith.PeanoNat Relations ZArith Datatypes Setoid Morphisms Coq.Logic.Decidable Coq.Program.Basics Coq.Init.Datatypes Coq.Logic.Classical_Prop.
+Require Import List Nat Coq.Arith.PeanoNat Relations ZArith Datatypes Setoid Morphisms Coq.Logic.Decidable Coq.Program.Basics Coq.Init.Datatypes Coq.Logic.Classical_Prop.
 Import ListNotations. 
 Open Scope list_scope.
 From Paco Require Import paco.
@@ -41,7 +41,6 @@ Proof. unfold monotone3.
          apply LE; try easy.
 Qed.
 
-
 Lemma proj_forward : forall p q xs, 
   wfgC (gtt_send p q xs) ->
   projectableA (gtt_send p q xs) -> 
@@ -79,12 +78,12 @@ Proof.
       unfold decidable in H4. unfold not in H4.
       destruct H4.
       - assert False. apply H1.
-        - case_eq (eqb pt p); intros.
-          assert (pt = p). apply eqb_eq; try easy. subst. apply triv_pt_p; try easy.
-        - case_eq (eqb pt q); intros.
-          assert (pt = q). apply eqb_eq; try easy. subst. apply triv_pt_q; try easy.
-        - assert (pt <> p). apply eqb_neq; try easy. 
-          assert (pt <> q). apply eqb_neq; try easy.
+        - case_eq (Nat.eqb pt p); intros.
+          assert (pt = p). apply Nat.eqb_eq; try easy. subst. apply triv_pt_p; try easy.
+        - case_eq (Nat.eqb pt q); intros.
+          assert (pt = q). apply Nat.eqb_eq; try easy. subst. apply triv_pt_q; try easy.
+        - assert (pt <> p). apply Nat.eqb_neq; try easy. 
+          assert (pt <> q). apply Nat.eqb_neq; try easy.
           apply part_cont_b with (n := n) (s := st) (g := g0); try easy. easy.
       - exists ltt_end. pfold. constructor; try easy.
     - subst.
@@ -173,7 +172,7 @@ Proof. intros.
   - inversion Ha. subst.
     specialize(Forall_forall (fun u : option gtt =>
         u = None \/
-        (exists (q : string) (lsg : seq.seq (option (sort * gtt))),
+        (exists (q : part) (lsg : seq.seq (option (sort * gtt))),
            u = Some (gtt_send r q lsg) \/ u = Some (gtt_send q r lsg) \/ u = Some gtt_end)) ctxG); intros.
     destruct H1. specialize(H1 Hc). clear Hc H2. 
     specialize(some_onth_implies_In n ctxG G H3); intros.
@@ -199,14 +198,14 @@ Proof. intros.
        u = None \/
        (exists (s : sort) (g : gtth),
           u = Some (s, g) /\
-          (forall (G : gtt) (r : string) (ctxG : seq.seq (option gtt)),
+          (forall (G : gtt) (r : part) (ctxG : seq.seq (option gtt)),
            projectionC G r ltt_end ->
            wfgC G ->
            isgPartsC r G ->
            Forall
              (fun u0 : option gtt =>
               u0 = None \/
-              (exists (q : string) (lsg : seq.seq (option (sort * gtt))),
+              (exists (q : part) (lsg : seq.seq (option (sort * gtt))),
                  u0 = Some (gtt_send r q lsg) \/ u0 = Some (gtt_send q r lsg) \/ u0 = Some gtt_end))
              ctxG -> (ishParts r g -> False) -> typ_gtth ctxG g G -> False))) xs); intros.
     destruct H2. specialize(H2 H). clear H H3.
@@ -482,12 +481,12 @@ Proof.
                 split. easy.
                 specialize(guardG_more n0 x (Nat.max x0 x) g); intros. apply H; try easy.
                 apply max_r; try easy. 
-          - case_eq (eqb p s); intros.
-            assert (p = s). apply eqb_eq; try easy. subst. apply pa_sendp.
-          - case_eq (eqb p s'); intros.
-            assert (p = s'). apply eqb_eq; try easy. subst. apply pa_sendq.
-          - assert (p <> s). apply eqb_neq; try easy. 
-            assert (p <> s'). apply eqb_neq; try easy.
+          - case_eq (Nat.eqb p s); intros.
+            assert (p = s). apply Nat.eqb_eq; try easy. subst. apply pa_sendp.
+          - case_eq (Nat.eqb p s'); intros.
+            assert (p = s'). apply Nat.eqb_eq; try easy. subst. apply pa_sendq.
+          - assert (p <> s). apply Nat.eqb_neq; try easy. 
+            assert (p <> s'). apply Nat.eqb_neq; try easy.
             apply pa_sendr with (n := n) (s := st) (g := G1); try easy. 
             apply overwriteExtract; try easy.
       apply gttT_mon.
@@ -608,7 +607,7 @@ Proof.
     - inversion Ha. subst.
       specialize(Forall_forall (fun u : option gtt =>
         u = None \/
-        (exists (q : string) (lsg : seq.seq (option (sort * gtt))),
+        (exists (q : part) (lsg : seq.seq (option (sort * gtt))),
            u = Some (gtt_send p q lsg) \/ u = Some (gtt_send q p lsg) \/ u = Some gtt_end)) ctxG); intros.
       destruct H2. specialize(H2 Hc). clear Hc H3.
       specialize(some_onth_implies_In n ctxG g H4); intros.
@@ -630,11 +629,11 @@ Proof.
        u = None \/
        (exists (s : sort) (g : gtth),
           u = Some (s, g) /\
-          (forall (ctxG : seq.seq (option gtt)) (p : string) (t : ltt) (g0 : gtt),
+          (forall (ctxG : seq.seq (option gtt)) (p : part) (t : ltt) (g0 : gtt),
            Forall
              (fun u0 : option gtt =>
               u0 = None \/
-              (exists (q : string) (lsg : seq.seq (option (sort * gtt))),
+              (exists (q : part) (lsg : seq.seq (option (sort * gtt))),
                  u0 = Some (gtt_send p q lsg) \/ u0 = Some (gtt_send q p lsg) \/ u0 = Some gtt_end))
              ctxG ->
            (ishParts p g -> False) ->
@@ -688,7 +687,7 @@ Proof.
   - inversion Ha. subst.
     specialize(Forall_forall (fun u : option gtt =>
         u = None \/
-        (exists (q : string) (lsg : seq.seq (option (sort * gtt))),
+        (exists (q : part) (lsg : seq.seq (option (sort * gtt))),
            u = Some (gtt_send p q lsg) \/
            u = Some (gtt_send q p lsg) \/ u = Some gtt_end)) ctxG); intros.
     destruct H. specialize(H Hc). clear Hc H0. 
@@ -823,7 +822,7 @@ Proof.
       split. easy.
       specialize(Forall_forall (fun u : option gtt =>
          u = None \/
-         (exists (q : string) (lsg : seq.seq (option (sort * gtt))),
+         (exists (q : part) (lsg : seq.seq (option (sort * gtt))),
             u = Some (gtt_send p q lsg) \/
             u = Some (gtt_send q p lsg) \/ u = Some gtt_end)) ctxG); intros.
       destruct H. specialize(H Htc). clear Htc H1. 
@@ -934,7 +933,7 @@ Proof.
           apply proj_mon.
         }
         clear H7 Htb Htc H.
-        - case_eq (eqb p s); intros.
+        - case_eq (Nat.eqb p s); intros.
           pinversion H0; try easy. subst.
           exists (gtth_hol 0). exists [Some (gtt_send p q ys)].
           - split. constructor. easy.
@@ -946,13 +945,13 @@ Proof.
             destruct H2 as (s1,(g1,(t1,(Ha,(Hb,Hc))))). subst. exists s1. exists t1. exists g1.
             pclearbot. easy. 
           - assert(usedCtx (extendLis 0 (Some (gtt_send p q ys))) (gtth_hol 0)). constructor. simpl in H2. easy. subst.
-            assert (p = s). apply eqb_eq; try easy. subst. easy.
+            assert (p = s). apply Nat.eqb_eq; try easy. subst. easy.
             apply proj_mon.
-        - case_eq (eqb p s'); intros.
-          assert (p = s'). apply eqb_eq; try easy. subst.
+        - case_eq (Nat.eqb p s'); intros.
+          assert (p = s'). apply Nat.eqb_eq; try easy. subst.
           pinversion H0; try easy. apply proj_mon.
-        - assert (p <> s). apply eqb_neq; try easy. 
-          assert (p <> s'). apply eqb_neq; try easy.
+        - assert (p <> s). apply Nat.eqb_neq; try easy. 
+          assert (p <> s'). apply Nat.eqb_neq; try easy.
       - clear H H2.
         clear H0 Hta.
         revert H3 H4 H1 H6. revert s s' p q x ys. clear ctxG.
@@ -1047,7 +1046,7 @@ Proof.
        u = None \/
        (exists (s : sort) (g : gtth),
           u = Some (s, g) /\
-          (forall (ctxG : seq.seq (option gtt)) (G : gtt) (p q : string)
+          (forall (ctxG : seq.seq (option gtt)) (G : gtt) (p q : part)
              (x ys : seq.seq (option (sort * ltt))),
            typ_gtth ctxG g G ->
            projectionC G p (ltt_send q x) ->
@@ -1058,12 +1057,12 @@ Proof.
     destruct H6; try easy.
     destruct H. destruct H. destruct H.
     inversion H. subst. clear H.
-    case_eq (eqb p s); intros; try easy.
-    - assert (p = s). apply eqb_eq; easy. subst. apply H3. constructor.
-    case_eq (eqb p r); intros; try easy.
-    - assert (p = r). apply eqb_eq; easy. subst. apply H3. constructor.
-    assert (p <> s). apply eqb_neq; try easy.
-    assert (p <> r). apply eqb_neq; try easy.
+    case_eq (Nat.eqb p s); intros; try easy.
+    - assert (p = s). apply Nat.eqb_eq; easy. subst. apply H3. constructor.
+    case_eq (Nat.eqb p r); intros; try easy.
+    - assert (p = r). apply Nat.eqb_eq; easy. subst. apply H3. constructor.
+    assert (p <> s). apply Nat.eqb_neq; try easy.
+    assert (p <> r). apply Nat.eqb_neq; try easy.
     assert (ishParts p x1 -> False). 
     {
       intros. apply H3.
@@ -1231,7 +1230,7 @@ Proof.
        u = None \/
        (exists (s : sort) (g : gtth),
           u = Some (s, g) /\
-          (forall (ctxG : seq.seq (option gtt)) (G : gtt) (p q : string)
+          (forall (ctxG : seq.seq (option gtt)) (G : gtt) (p q : part)
              (ys x : seq.seq (option (sort * ltt))),
            projectionC G q (ltt_recv p ys) ->
            Forall
@@ -1632,12 +1631,12 @@ Proof.
       destruct H as (s1,(g1,(Ha,Hb))). subst. right. exists s1. exists g1. split. easy.
       specialize(guardG_more n x2 (Nat.max x1 x2) g1); intros. apply H; try easy.
       apply max_r.
-  - case_eq (eqb pt p); intros.
-      assert (pt = p). apply eqb_eq; try easy. subst. constructor.
-    - case_eq (eqb pt q); intros.
-      assert (pt = q). apply eqb_eq; try easy. subst. constructor.
-    - assert (pt <> p). apply eqb_neq; try easy. 
-      assert (pt <> q). apply eqb_neq; try easy.
+  - case_eq (Nat.eqb pt p); intros.
+      assert (pt = p). apply Nat.eqb_eq; try easy. subst. constructor.
+    - case_eq (Nat.eqb pt q); intros.
+      assert (pt = q). apply Nat.eqb_eq; try easy. subst. constructor.
+    - assert (pt <> p). apply Nat.eqb_neq; try easy. 
+      assert (pt <> q). apply Nat.eqb_neq; try easy.
       apply pa_sendr with (n := l) (s := s) (g := Gl); try easy.
       apply overwriteExtract; try easy.
 Qed.
@@ -1951,7 +1950,7 @@ Proof.
        u = None \/
        (exists (s : sort) (g : gtth),
           u = Some (s, g) /\
-          (forall (G G' : gtt) (p q : string) (l : fin) (LP LQ : list (option (sort * ltt))),
+          (forall (G G' : gtt) (p q : part) (l : fin) (LP LQ : list (option (sort * ltt))),
            projectionC G p (ltt_send q LP) ->
            projectionC G q (ltt_recv p LQ) ->
            gttstepC G G' p q l ->
@@ -2007,12 +2006,12 @@ Proof.
       apply H8; try easy.
       exists ctxG. split. easy. split; try easy.
       intros. apply H4.
-      - case_eq (eqb p s); intros.
-        assert (p = s). apply eqb_eq; try easy. subst. apply ha_sendp.
-      - case_eq (eqb p s0); intros.
-        assert (p = s0). apply eqb_eq; try easy. subst. apply ha_sendq.
-      - assert (p <> s). apply eqb_neq; try easy. 
-        assert (p <> s0). apply eqb_neq; try easy.
+      - case_eq (Nat.eqb p s); intros.
+        assert (p = s). apply Nat.eqb_eq; try easy. subst. apply ha_sendp.
+      - case_eq (Nat.eqb p s0); intros.
+        assert (p = s0). apply Nat.eqb_eq; try easy. subst. apply ha_sendq.
+      - assert (p <> s). apply Nat.eqb_neq; try easy. 
+        assert (p <> s0). apply Nat.eqb_neq; try easy.
         apply ha_sendr with (n := n) (s := x1) (g := G); try easy.
     }
     destruct H38. destruct H38. destruct H38. destruct H38. destruct H38. 
@@ -2377,7 +2376,7 @@ Lemma typ_after_step_3_helper_h3 : forall ys ys2 p q l,
          u = None /\ v = None \/
          (exists (s : sort) (g g' : gtt),
             u = Some (s, g) /\ v = Some (s, g') /\ upaco5 gttstep bot5 g g' p q l)) ys ys2 -> 
-    (forall t : string,
+    (forall t : part,
       t <> p ->
       t <> q ->
       Forall
@@ -2399,7 +2398,7 @@ Proof.
   - destruct ys2; try easy.
   - destruct ys2; try easy.
     inversion H. subst. clear H. inversion H1. subst. clear H1.
-    assert(forall t : string,
+    assert(forall t : part,
      t <> p ->
      t <> q ->
      Forall

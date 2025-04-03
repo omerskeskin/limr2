@@ -6,7 +6,7 @@ From Paco Require Import paco.
 Import ListNotations. 
 
 Notation fin := nat.
-Notation part := string (only parsing).
+Notation part := nat (only parsing).
 Notation label := nat (only parsing).
 
 Inductive multi {X : Type} (R : relation X) : relation X :=

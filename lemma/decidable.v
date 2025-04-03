@@ -63,12 +63,12 @@ Proof.
   - unfold decidable. right. easy.
   - revert H. induction lis; intros; try easy.
     unfold decidable.
-    - case_eq (eqb pt p); intros.
-      assert (pt = p). apply eqb_eq; try easy. subst. left. constructor.
-    - case_eq (eqb pt q); intros.
-      assert (pt = q). apply eqb_eq; try easy. subst. left. constructor.
-    - assert (pt <> p). apply eqb_neq; try easy. 
-      assert (pt <> q). apply eqb_neq; try easy.
+    - case_eq (Nat.eqb pt p); intros.
+      assert (pt = p). apply Nat.eqb_eq; try easy. subst. left. constructor.
+    - case_eq (Nat.eqb pt q); intros.
+      assert (pt = q). apply Nat.eqb_eq; try easy. subst. left. constructor.
+    - assert (pt <> p). apply Nat.eqb_neq; try easy. 
+      assert (pt <> q). apply Nat.eqb_neq; try easy.
       right. unfold not. intros. inversion H4; try easy. subst. destruct n; try easy.
     inversion H. subst. specialize(IHlis H3). clear H3 H.
     unfold decidable in *.
@@ -81,12 +81,12 @@ Proof.
       destruct n; try easy.
       apply pa_sendr with (n := n) (s := s) (g := g); try easy. 
     - destruct H0 as (s,(g,(Ha,Hb))). subst.
-    - case_eq (eqb pt p); intros.
-      assert (pt = p). apply eqb_eq; try easy. subst. left. constructor.
-    - case_eq (eqb pt q); intros.
-      assert (pt = q). apply eqb_eq; try easy. subst. left. constructor.
-    - assert (pt <> p). apply eqb_neq; try easy. 
-      assert (pt <> q). apply eqb_neq; try easy.
+    - case_eq (Nat.eqb pt p); intros.
+      assert (pt = p). apply Nat.eqb_eq; try easy. subst. left. constructor.
+    - case_eq (Nat.eqb pt q); intros.
+      assert (pt = q). apply Nat.eqb_eq; try easy. subst. left. constructor.
+    - assert (pt <> p). apply Nat.eqb_neq; try easy. 
+      assert (pt <> q). apply Nat.eqb_neq; try easy.
     - specialize(Hb pt). destruct Hb. left. 
       apply pa_sendr with (n := 0) (s := s) (g := g); try easy.
       right. intros. inversion H5; try easy. subst. 
@@ -220,7 +220,7 @@ Proof.
   assert(exists gn, gttmap G nil None gn).
   {
     destruct G. exists gnode_end. constructor.
-    exists (gnode_pq s s0). constructor.
+    exists (gnode_pq n n0). constructor.
   }
   destruct H as (gn, H). specialize(He gn H).
   assert(gttmap G w None (gnode_pq p r) \/ gttmap G w None (gnode_pq r p)).
@@ -235,12 +235,12 @@ Proof.
     assert(exists gn, gttmap G nil None gn).
     {
       destruct G. exists gnode_end. constructor.
-      exists (gnode_pq s s0). constructor.
+      exists (gnode_pq n n0). constructor.
     }
     destruct H0 as (gn, H0). inversion H0; try easy. subst.
     - assert(exists w2 w0 : seq.seq fin,
         [] = w2 ++ w0 /\
-        (exists r : string,
+        (exists r : part,
            gttmap gtt_end w2 None (gnode_pq p r) \/ gttmap gtt_end w2 None (gnode_pq r p))).
       {
         apply H. left. easy.
@@ -250,7 +250,7 @@ Proof.
       destruct Hb. inversion H. inversion H.
     - assert(exists w2 w0 : seq.seq fin,
       [] = w2 ++ w0 /\
-      (exists r : string, gttmap G w2 None (gnode_pq p r) \/ gttmap G w2 None (gnode_pq r p))).
+      (exists r : part, gttmap G w2 None (gnode_pq p r) \/ gttmap G w2 None (gnode_pq r p))).
       apply H. right. split. easy. exists gn. easy.
       destruct H2 as (w2,(w0,(Ha,Hb))). destruct w2; try easy. simpl in Ha. subst.
       clear H.
@@ -279,22 +279,22 @@ Proof.
       split. constructor; try easy. right. exists p. exists nil. right. right. easy.
       assert(usedCtx (extendLis 0 (Some (gtt_end))) (gtth_hol 0)). constructor. simpl in H0. easy.
     - specialize(balanced_cont Ht); intros.
-      - case_eq (eqb p s); intros.
-        assert (p = s). apply eqb_eq; try easy. subst.
-        exists (gtth_hol 0). exists [Some (gtt_send s s0 l)].
+      - case_eq (Nat.eqb p n); intros.
+        assert (p = n). apply Nat.eqb_eq; try easy. subst.
+        exists (gtth_hol 0). exists [Some (gtt_send n n0 l)].
         - split. constructor. easy.
         - split. intros. inversion H2.
-        - split. constructor; try easy. right. exists s0. exists l. left. easy.
-        - assert(usedCtx (extendLis 0 (Some (gtt_send s s0 l))) (gtth_hol 0)). constructor. simpl in H2. easy.
-      - case_eq (eqb p s0); intros.
-        assert (p = s0). apply eqb_eq; try easy. subst.
-        exists (gtth_hol 0). exists [Some (gtt_send s s0 l)].
+        - split. constructor; try easy. right. exists n0. exists l. left. easy.
+        - assert(usedCtx (extendLis 0 (Some (gtt_send n n0 l))) (gtth_hol 0)). constructor. simpl in H2. easy.
+      - case_eq (Nat.eqb p n0); intros.
+        assert (p = n0). apply Nat.eqb_eq; try easy. subst.
+        exists (gtth_hol 0). exists [Some (gtt_send n n0 l)].
         - split. constructor. easy.
         - split. intros. inversion H3.
-        - split. constructor; try easy. right. exists s. exists l. right. left. easy.
-        - assert(usedCtx (extendLis 0 (Some (gtt_send s s0 l))) (gtth_hol 0)). constructor. simpl in H2. easy.
-      - assert (p <> s). apply eqb_neq; try easy. 
-        assert (p <> s0). apply eqb_neq; try easy.
+        - split. constructor; try easy. right. exists n. exists l. right. left. easy.
+        - assert(usedCtx (extendLis 0 (Some (gtt_send n n0 l))) (gtth_hol 0)). constructor. simpl in H2. easy.
+      - assert (p <> n). apply Nat.eqb_neq; try easy. 
+        assert (p <> n0). apply Nat.eqb_neq; try easy.
         clear H1 H2.
       assert(Forall (fun u => u = None \/ (exists s g, u = Some(s, g) /\
         (forall w' : seq.seq fin,
@@ -302,27 +302,29 @@ Proof.
        Datatypes.length w' = k /\ (exists tc : gnode, gttmap g w' None tc) ->
        exists w2 w0 : seq.seq fin,
          w' = w2 ++ w0 /\
-         (exists r : string, gttmap g w2 None (gnode_pq p r) \/ gttmap g w2 None (gnode_pq r p)))
+         (exists r : part, gttmap g w2 None (gnode_pq p r) \/ gttmap g w2 None (gnode_pq r p)))
       )) l).
       {
         apply Forall_forall; intros.
         destruct x.
         - specialize(in_some_implies_onth p0 l H1); intros.
+          rename n into p_n.
+          rename n0 into p0_n.
           destruct H2 as (n, H2). destruct p0.
-          right. exists s1. exists g. split. easy.
+          right. exists s. exists g. split. easy.
           intros.
           specialize(H (n :: w')).
           assert(exists w2 w0 : seq.seq fin,
             (n :: w')%SEQ = w2 ++ w0 /\
-            (exists r : string,
-               gttmap (gtt_send s s0 l) w2 None (gnode_pq p r) \/
-               gttmap (gtt_send s s0 l) w2 None (gnode_pq r p))).
+            (exists r : part,
+               gttmap (gtt_send p_n p0_n l) w2 None (gnode_pq p r) \/
+               gttmap (gtt_send p_n p0_n l) w2 None (gnode_pq r p))).
           {
             apply H; try easy.
-            destruct H5. left. apply gmap_con with (st := s1) (gk := g); try easy.
+            destruct H5. left. apply gmap_con with (st := s) (gk := g); try easy.
             right. destruct H5. split. simpl. apply eq_S. easy.
             destruct H6. exists x.
-            apply gmap_con with (st := s1) (gk := g); try easy.
+            apply gmap_con with (st := s) (gk := g); try easy.
           }
           destruct H6 as (w2,(w0,(Ha,Hb))).
           destruct w2.
@@ -346,21 +348,21 @@ Proof.
         Forall
           (fun u : option gtt =>
            u = None \/
-           (exists (q : string) (lsg : seq.seq (option (sort * gtt))),
+           (exists (q : part) (lsg : seq.seq (option (sort * gtt))),
               u = Some (gtt_send p q lsg) \/ u = Some (gtt_send q p lsg) \/ u = Some gtt_end)) ctxG /\
         usedCtx ctxG G'
       )) l). 
       {
         clear H Ht.
-        assert(s <> s0).
+        assert(n <> n0).
         {
-          specialize(wfgC_triv s s0 l Htt); intros. easy.
+          specialize(wfgC_triv n n0 l Htt); intros. easy.
         }
         specialize(wfgC_after_step_all H Htt); intros. clear H Htt.
-        revert H0 IHk H1 H3 H4 H2. revert k s s0 p.
+        revert H0 IHk H1 H3 H4 H2. revert k n n0 p.
         induction l; intros; try easy.
         inversion H1. subst. clear H1. inversion H0. subst. clear H0. inversion H2. subst. clear H2.
-        specialize(IHl k s s0 p).
+        specialize(IHl k n n0 p).
         assert(Forall
         (fun u : option (sort * gtt) =>
          u = None \/
@@ -372,7 +374,7 @@ Proof.
                Forall
                  (fun u0 : option gtt =>
                   u0 = None \/
-                  (exists (q : string) (lsg : seq.seq (option (sort * gtt))),
+                  (exists (q : part) (lsg : seq.seq (option (sort * gtt))),
                      u0 = Some (gtt_send p q lsg) \/ u0 = Some (gtt_send q p lsg) \/ u0 = Some gtt_end))
                  ctxG /\ usedCtx ctxG G'))) l).
          apply IHl; try easy.
@@ -387,22 +389,22 @@ Proof.
     clear H1 H0 Ht H IHk.
     assert(SList l).
     {
-      specialize(wfgC_triv s s0 l Htt); intros. easy.
+      specialize(wfgC_triv n n0 l Htt); intros. easy.
     }
     clear Htt.
-    revert H H2 H3 H4. clear k. revert s s0 p.
+    revert H H2 H3 H4. clear k. revert n n0 p.
     induction l; intros; try easy.
     specialize(SList_f a l H); intros. clear H.
     inversion H2. subst. clear H2.
     destruct H0.
-    - specialize(IHl s s0 p).
+    - specialize(IHl n n0 p).
       assert(exists (G' : gtth) (ctxG : seq.seq (option gtt)),
-        typ_gtth ctxG G' (gtt_send s s0 l) /\
+        typ_gtth ctxG G' (gtt_send n n0 l) /\
         (ishParts p G' -> False) /\
         Forall
           (fun u : option gtt =>
            u = None \/
-           (exists (q : string) (lsg : seq.seq (option (sort * gtt))),
+           (exists (q : part) (lsg : seq.seq (option (sort * gtt))),
               u = Some (gtt_send p q lsg) \/ u = Some (gtt_send q p lsg) \/ u = Some gtt_end)) ctxG /\
         usedCtx ctxG G').
       {
@@ -414,42 +416,42 @@ Proof.
         destruct H0 as (Gl,(ctxG,(Ha,(Hb,(Hc,Hd))))).
         inversion Ha.
         - subst.
-          specialize(some_onth_implies_In n ctxG (gtt_send s s0 l) H); intros.
+          specialize(some_onth_implies_In n1 ctxG (gtt_send n n0 l) H); intros.
           specialize(Forall_forall (fun u : option gtt =>
         u = None \/
-        (exists (q : string) (lsg : seq.seq (option (sort * gtt))),
+        (exists (q : part) (lsg : seq.seq (option (sort * gtt))),
            u = Some (gtt_send p q lsg) \/ u = Some (gtt_send q p lsg) \/ u = Some gtt_end)) ctxG); intros.
           destruct H1. specialize(H1 Hc). clear H2 Hc.
-          specialize(H1 (Some (gtt_send s s0 l)) H0). destruct H1; try easy.
+          specialize(H1 (Some (gtt_send n n0 l)) H0). destruct H1; try easy.
           destruct H1 as (q1,(lsg,He)).
           - destruct He. inversion H1. subst. easy.
           - destruct H1. inversion H1. subst. easy.
           - inversion H1. 
         - subst.
-          exists (gtth_send s s0 (None :: xs)). exists ctxG.
+          exists (gtth_send n n0 (None :: xs)). exists ctxG.
           - split. constructor; try easy.
             constructor; try easy. left. easy.
           - split. 
             intros. apply Hb. inversion H. subst. easy. subst. easy. subst.
-            destruct n; try easy.
-            apply ha_sendr with (n := n) (s := s1) (g := g); try easy.
+            destruct n1; try easy.
+            apply ha_sendr with (n := n1) (s := s) (g := g); try easy.
           - split. easy.
           - inversion Hd. subst. apply used_con with (ctxGLis := (None :: ctxGLis)); try easy.
             constructor; try easy.
             constructor; try easy. left. easy.
       - destruct H as (s1,(g1,(Ha,Hb))). subst.
-        specialize(ctx_merge s s0 s1 g1 l p); intros. apply H; try easy.
+        specialize(ctx_merge n n0 s1 g1 l p); intros. apply H; try easy.
     destruct H as (H1,(a0,H2)). subst. clear H6 IHl.
     destruct H5; try easy.
     destruct H as (s1,(g1,(Ha,Hb))). inversion Ha. subst. clear Ha.
     destruct Hb as (Gl,(ctxG,(Hc,(Hd,(He,Hf))))).
-    exists (gtth_send s s0 [Some (s1, Gl)]). exists ctxG.
+    exists (gtth_send n n0 [Some (s1, Gl)]). exists ctxG.
     - split. constructor; try easy. constructor; try easy.
       right. exists s1. exists Gl. exists g1. easy.
     - split. intros. apply Hd. inversion H. subst. easy. subst. easy. 
-      subst. destruct n; try easy.
+      subst. destruct n1; try easy.
       - simpl in H8. inversion H8. subst. easy.
-      - simpl in H8. destruct n; try easy.
+      - simpl in H8. destruct n1; try easy.
     - split. easy.
     - apply used_con with (ctxGLis := [Some ctxG]); try easy.
       - constructor.

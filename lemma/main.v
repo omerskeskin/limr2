@@ -243,7 +243,7 @@ Proof.
       - inversion Hb. subst. clear Hb. destruct H0.
         - subst. left. constructor. easy.
         - destruct H as (e,(p1,(p2,(Ha,Hb)))).
-          right. exists s. exists e. exists p1. exists p2.  
+          right. exists n. exists e. exists p1. exists p2.  
           split. easy.
           right. subst. apply pc_refl.
       - inversion Hb. subst. clear Hb.
@@ -303,7 +303,7 @@ Proof.
         apply r_struct with (M1' := (p <-- p_ite e p1 p2)) (M2' := M2); try easy.
         apply pc_trans with (M' := M'); try easy. constructor.
   - right.
-    rename s into p. rename s0 into q.
+    rename n into p. rename n0 into q.
     specialize(canonical_glob_nt M p q l H); intros.
     destruct H0.
     - destruct H0 as (M',(P,(Q,Ha))).

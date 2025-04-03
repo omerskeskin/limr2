@@ -118,29 +118,29 @@ Lemma typ_after_step_3_helper_s: forall M p q G G' l L1 L2,
     projectionC G p (ltt_send q L1) -> 
     projectionC G q (ltt_recv p L2) -> 
     ForallT
-  (fun (u : string) (P : process) =>
+  (fun (u : part) (P : process) =>
    exists T : ltt,
      projectionC G u T /\ typ_proc nil nil P T /\ (forall n : fin, exists m : fin, guardP n m P)) M ->
     gttstepC G G' p q l ->
     ~ InT q M ->
     ~ InT p M ->
     ForallT
-  (fun (u : string) (P : process) =>
+  (fun (u : part) (P : process) =>
    exists T : ltt,
      projectionC G' u T /\ typ_proc nil nil P T /\ (forall n : fin, exists m : fin, guardP n m P)) M.
 Proof.
   intro M. induction M; intros; try easy.
   - unfold InT in *. simpl in H5. simpl in H6.
-    specialize(Classical_Prop.not_or_and (s = q) False H5); intros. destruct H7.
-    specialize(Classical_Prop.not_or_and (s = p0) False H6); intros. destruct H9.
+    specialize(Classical_Prop.not_or_and (n = q) False H5); intros. destruct H7.
+    specialize(Classical_Prop.not_or_and (n = p0) False H6); intros. destruct H9.
     clear H5 H6 H8 H10.
     constructor.
     inversion H3. subst. destruct H6 as [T' H6]. destruct H6.
     specialize(projection_step_label G G' p0 q l L1 L2 H H1 H2 H4); intros.
     destruct H8. destruct H8. destruct H8. destruct H8. destruct H8.
     Check projection_step_label.
-    specialize(typ_after_step_3_helper G G' p0 q s l L1 L2 x x1 x0 x2 T'); intros.
-    assert(exists T'0 : ltt, projectionC G' s T'0 /\ T' = T'0).
+    specialize(typ_after_step_3_helper G G' p0 q n l L1 L2 x x1 x0 x2 T'); intros.
+    assert(exists T'0 : ltt, projectionC G' n T'0 /\ T' = T'0).
     apply H11; try easy.
     clear H11. destruct H12. exists x3. split; try easy. destruct H11. rename x3 into Tl. subst. easy. 
   - inversion H3. subst.
@@ -217,7 +217,7 @@ Qed.
 Lemma sub_red_helper_3 : forall M G pt,
         In pt (flattenT M) -> 
         ForallT
-       (fun (u : string) (P : process) =>
+       (fun (u : part) (P : process) =>
         exists T : ltt,
           projectionC G u T /\ typ_proc nil nil P T /\ (forall n : fin, exists m : fin, guardP n m P))
        M -> 
@@ -291,7 +291,7 @@ Proof.
 Qed.
 
 Lemma move_forward_h : forall M,
-    forall p : string,
+    forall p : part,
     InT p M ->
     (exists (P : process) (M' : session), unfoldP M ((p <-- P) ||| M')) \/
     (exists P : process, unfoldP M (p <-- P)).
@@ -400,9 +400,9 @@ Proof.
   - inversion H3. subst. clear H3.
     destruct H1 as (T,(Ha,(Hb,Hc))).
     specialize(Hc 1). destruct Hc as (m, Hc).
-    revert Hc Hb Ha H0. revert s p T.
+    revert Hc Hb Ha H0. revert n p T.
     induction m; intros. pinversion Ha. subst.
-    - inversion Hc. subst. exists (s <-- p_inact). split.
+    - inversion Hc. subst. exists (n <-- p_inact). split.
       apply pc_refl.
       constructor. left. easy.
       subst.
@@ -415,7 +415,7 @@ Proof.
     apply proj_mon.
     pinversion Ha. subst.
     inversion Hc; try easy.
-    - subst. exists (s <-- p_inact). split. apply pc_refl. constructor. left. easy.
+    - subst. exists (n <-- p_inact). split. apply pc_refl. constructor. left. easy.
     - subst.
       specialize(inv_proc_send pt l e g (p_send pt l e g) nil nil ltt_end Hb (erefl (p_send pt l e g))); intros. destruct H1 as (S1,(T1,(Hd,(He,Hf)))). pinversion Hf. apply sub_mon.
     - subst.
@@ -425,15 +425,15 @@ Proof.
       specialize(inv_proc_ite (p_ite e P Q) e P Q ltt_end nil nil Hb (erefl (p_ite e P Q))); intros.
       destruct H1 as (T1,(T2,(Hd,(He,(Hf,(Hg,Hh)))))).
       pinversion Hf. subst. pinversion Hg. subst.
-      exists (s <-- p_ite e P Q). split. apply pc_refl.
+      exists (n <-- p_ite e P Q). split. apply pc_refl.
       constructor. right. exists e. exists P. exists Q. easy.
       apply sub_mon. apply sub_mon.
     - subst.
-      specialize(IHm s Q ltt_end).
+      specialize(IHm n Q ltt_end).
       assert(exists M' : session,
-        unfoldP (s <-- Q) M' /\
+        unfoldP (n <-- Q) M' /\
         ForallT
-          (fun (_ : string) (P : process) =>
+          (fun (_ : part) (P : process) =>
            P = p_inact \/
            (exists (e : expr) (p1 p2 : process),
               P = p_ite e p1 p2 /\ typ_proc nil nil (p_ite e p1 p2) ltt_end)) M').
@@ -446,7 +446,7 @@ Proof.
         - pfold. easy.
       }
       destruct H1 as (M1,(Hd,He)). exists M1. split; try easy.
-      apply pc_trans with (M' := (s <-- Q)); try easy.
+      apply pc_trans with (M' := (n <-- Q)); try easy.
       constructor. easy.
       apply proj_mon.
   - inversion H3. subst. clear H3.

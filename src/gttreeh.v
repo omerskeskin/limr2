@@ -24,7 +24,7 @@ Section gtth_ind_ref.
       induction l; intros; try easy.
       constructor; try easy.
       destruct a. 
-      - destruct p. right. exists s1. exists g. split. easy. apply gtth_ind_ref.
+      - destruct p. right. exists s. exists g. split. easy. apply gtth_ind_ref.
       - left. easy.
   Qed.
 

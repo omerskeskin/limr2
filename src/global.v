@@ -42,7 +42,7 @@ Section global_ind_ref.
     - apply P_send.
       induction l; try easy.
       constructor; try easy.
-      destruct a. right. destruct p. exists s1. exists g. split; try easy.
+      destruct a. right. destruct p. exists s. exists g. split; try easy.
       left. easy.
     - apply P_rec. easy.
   Qed.
@@ -138,7 +138,7 @@ Proof.
       - apply gg_end.
       - apply gg_send.
         inversion H. subst.
-        revert IHm IHn H H0 H4. revert m n k s.
+        revert IHm IHn H H0 H4. revert m n k n0.
         induction l; intros; try easy.
         inversion H4. subst.
         constructor.
@@ -146,7 +146,7 @@ Proof.
           destruct H1. destruct H1. destruct H1. subst. right.
           exists x. exists x0. split; try easy.
           apply IHn with (m := m.+1); try easy.
-        - apply IHl with (m := m) (s := s); try easy.
+        - apply IHl with (m := m) (n0 := n0); try easy.
         apply gg_send. easy.
       - inversion H. subst.
         destruct k; try easy.
@@ -338,7 +338,7 @@ Proof.
   assert (exists T, multiS betaG (g_rec x) T /\
   (T = g_end \/
    (exists
-      (p q : string) (lis : seq.seq (option (sort * global))),
+      (p q : nat) (lis : seq.seq (option (sort * global))),
       T = g_send p q lis))).
   {
     clear H. revert H0. revert x. induction x0; intros; try easy.
@@ -347,9 +347,9 @@ Proof.
     - exists g_end.
       split. apply multi_sing. constructor; try easy.
       left. easy.
-    - exists (g_send s s0 l).
+    - exists (g_send n n0 l).
       split. apply multi_sing. constructor; try easy.
-      right. exists s. exists s0. exists l. easy.
+      right. exists n. exists n0. exists l. easy.
     - specialize(IHx0 Q H4). 
       destruct IHx0. destruct H. exists x1. split; try easy.
       apply multi_sstep with (y := (g_rec Q)).
@@ -399,7 +399,7 @@ Lemma guard_breakG_s : forall Gl G,
       exists T : global,
         (forall n : fin, exists m : fin, guardG n m T) /\
         (T = g_end \/
-         (exists (p q : string) (lis : seq.seq (option (sort * global))), T = g_send p q lis)) /\
+         (exists (p q : part) (lis : seq.seq (option (sort * global))), T = g_send p q lis)) /\
          gttTC T G.
 Proof.
   intros. pinversion H; try easy.

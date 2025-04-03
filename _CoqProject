@@ -14,6 +14,8 @@ src/step.v
 src/merge.v
 src/projection.v
 src/session.v
+src/lcontext.v
+src/path_props.v
 lemma/inversion.v
 lemma/inversion_expr.v
 lemma/substitution_helper.v

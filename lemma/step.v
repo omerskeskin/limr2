@@ -189,7 +189,7 @@ Proof.
   - inversion Hta. subst.
     specialize(Forall_forall (fun u : option gtt =>
          u = None \/
-         (exists (q : string) (lsg : seq.seq (option (sort * gtt))),
+         (exists (q : part) (lsg : seq.seq (option (sort * gtt))),
             u = Some (gtt_send p q lsg) \/
             u = Some (gtt_send q p lsg) \/ u = Some gtt_end)) ctxG); intros.
     destruct H. specialize(H Htc). clear H1 Htc.

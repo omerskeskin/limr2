@@ -702,7 +702,7 @@ Proof.
   intros.
   destruct G.
   exists gnode_end. constructor.
-  exists (gnode_pq s s0). constructor.
+  exists (gnode_pq n n0). constructor.
 Qed.
 
 
@@ -779,7 +779,7 @@ Proof.
   induction w0; intros.
   - destruct G.
     - exists gnode_end. constructor.
-    - exists (gnode_pq s s0). constructor.
+    - exists (gnode_pq n n0). constructor.
   - inversion H. subst.
     specialize(IHw0 gk w1 tc H6). destruct IHw0 as (tc1,H1).
     exists tc1.
@@ -793,14 +793,14 @@ Lemma cut_further : forall k k' G p0,
      length w'0 = k /\ (exists tc : gnode, gttmap G w'0 None tc) ->
      exists w2 w0 : list fin,
        w'0 = w2 ++ w0 /\
-       (exists r : string,
+       (exists r : part,
           gttmap G w2 None (gnode_pq p0 r) \/ gttmap G w2 None (gnode_pq r p0))) ->
     (forall w'0 : list fin,
      gttmap G w'0 None gnode_end \/
      length w'0 = k' /\ (exists tc : gnode, gttmap G w'0 None tc) ->
      exists w2 w0 : list fin,
        w'0 = w2 ++ w0 /\
-       (exists r : string,
+       (exists r : part,
           gttmap G w2 None (gnode_pq p0 r) \/ gttmap G w2 None (gnode_pq r p0))).
 Proof.
   intros.

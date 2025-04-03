@@ -142,12 +142,13 @@ Lemma isgParts_x : forall [s s' x s0 g p],
     isgParts p (g_send s s' (Some (s0, g) :: x)).
 Proof.
     intros.
-    - case_eq (eqb p s); intros.
-      assert (p = s). apply eqb_eq; try easy. subst. apply pa_sendp.
-    - case_eq (eqb p s'); intros.
-      assert (p = s'). apply eqb_eq; try easy. subst. apply pa_sendq.
-    - assert (p <> s). apply eqb_neq; try easy. 
-      assert (p <> s'). apply eqb_neq; try easy.
+    Check Nat.eqb.
+    - case_eq (Nat.eqb p s); intros.
+      assert (p = s). apply Nat.eqb_eq; try easy. subst. apply pa_sendp.
+    - case_eq (Nat.eqb p s'); intros.
+      assert (p = s'). apply Nat.eqb_eq; try easy. subst. apply pa_sendq.
+    - assert (p <> s). apply Nat.eqb_neq; try easy. 
+      assert (p <> s'). apply Nat.eqb_neq; try easy.
       apply pa_sendr with (n := 0) (s := s0) (g := g); try easy.
 Qed.
 
@@ -186,7 +187,7 @@ Proof.
        u = None \/
        (exists (s : sort) (g : global),
           u = Some (s, g) /\
-          (forall (n : fin) (r : string),
+          (forall (n : fin) (r : part),
            isgParts_depth n r g -> isgParts r g))) lis); intros.
     destruct H2. specialize(H2 H). clear H H3.
     specialize(H2 (Some (s, g)) H1). destruct H2; try easy. destruct H. destruct H. destruct H.
@@ -211,7 +212,7 @@ Lemma subst_parts_helper : forall k0 xs s g0 r n0 lis m n g,
        u = None \/
        (exists (s : sort) (g : global),
           u = Some (s, g) /\
-          (forall (m n k : fin) (r : string) (g0 g' : global),
+          (forall (m n k : fin) (r : part) (g0 g' : global),
            isgParts_depth k r g' -> subst_global m n (g_rec g0) g' g -> isgParts_depth k r g))) lis -> 
       exists g', onth k0 lis = Some (s, g') /\ isgParts_depth n0 r g'.
 Proof.
@@ -413,7 +414,7 @@ Proof.
        u = None \/
        (exists (s : sort) (g : global),
           u = Some (s, g) /\
-          (forall (G' : global) (m n : fin) (pt : string),
+          (forall (G' : global) (m n : fin) (pt : part),
            isgParts pt G' -> incr_freeG m n g = G' -> isgParts pt g))) lis); intros.
     destruct H1. specialize(H1 H). clear H2 H.
     specialize(some_onth_implies_In n0 lis (s, g1) Ha); intros.
@@ -555,12 +556,12 @@ Lemma ishParts_x : forall [p s1 s2 o1 o2 xs0],
     (ishParts p o2 -> False).
 Proof.
   intros. apply H. 
-  - case_eq (eqb p s1); intros.
-    assert (p = s1). apply eqb_eq; try easy. subst. apply ha_sendp.
-  - case_eq (eqb p s2); intros.
-    assert (p = s2). apply eqb_eq; try easy. subst. apply ha_sendq.
-  - assert (p <> s1). apply eqb_neq; try easy. 
-    assert (p <> s2). apply eqb_neq; try easy.
+  - case_eq (Nat.eqb p s1); intros.
+    assert (p = s1). apply Nat.eqb_eq; try easy. subst. apply ha_sendp.
+  - case_eq (Nat.eqb p s2); intros.
+    assert (p = s2). apply Nat.eqb_eq; try easy. subst. apply ha_sendq.
+  - assert (p <> s1). apply Nat.eqb_neq; try easy. 
+    assert (p <> s2). apply Nat.eqb_neq; try easy.
     apply ha_sendr with (n := 0) (s := o1) (g := o2); try easy.
 Qed.
 
@@ -580,12 +581,12 @@ Lemma ishParts_n : forall [n p s s' xs s0 g],
 Proof.  
   induction n; intros; try easy.
   - apply H. destruct xs; try easy. simpl in *. subst.
-    - case_eq (eqb p s); intros.
-      assert (p = s). apply eqb_eq; try easy. subst. apply ha_sendp.
-    - case_eq (eqb p s'); intros.
-      assert (p = s'). apply eqb_eq; try easy. subst. apply ha_sendq.
-    - assert (p <> s). apply eqb_neq; try easy. 
-      assert (p <> s'). apply eqb_neq; try easy.
+    - case_eq (Nat.eqb p s); intros.
+      assert (p = s). apply Nat.eqb_eq; try easy. subst. apply ha_sendp.
+    - case_eq (Nat.eqb p s'); intros.
+      assert (p = s'). apply Nat.eqb_eq; try easy. subst. apply ha_sendq.
+    - assert (p <> s). apply Nat.eqb_neq; try easy. 
+      assert (p <> s'). apply Nat.eqb_neq; try easy.
       apply ha_sendr with (n := 0) (s := s0) (g := g); try easy.
   - destruct xs; try easy.
     specialize(ishParts_hxs H); intros.
@@ -824,7 +825,7 @@ Proof.
           subst. right. easy.
 Qed.
 
-Lemma shift_to : forall (g1 : gtt) (p : string) (Gl : gtth) (ctxG ctxJ : seq.seq (option gtt)),
+Lemma shift_to : forall (g1 : gtt) (p : part) (Gl : gtth) (ctxG ctxJ : seq.seq (option gtt)),
 typ_gtth ctxG Gl g1 ->
 (ishParts p Gl -> False) ->
 usedCtx ctxG Gl ->
@@ -1005,7 +1006,7 @@ Lemma ctx_merge : forall s s0 s1 g1 l p,
        Forall
          (fun u : option gtt =>
           u = None \/
-          (exists (q : string) (lsg : seq.seq (option (sort * gtt))),
+          (exists (q : part) (lsg : seq.seq (option (sort * gtt))),
              u = Some (gtt_send p q lsg) \/ u = Some (gtt_send q p lsg) \/ u = Some gtt_end)) ctxG /\
        usedCtx ctxG G') -> 
        (exists (G' : gtth) (ctxG : seq.seq (option gtt)),
@@ -1014,7 +1015,7 @@ Lemma ctx_merge : forall s s0 s1 g1 l p,
        Forall
          (fun u : option gtt =>
           u = None \/
-          (exists (q : string) (lsg : seq.seq (option (sort * gtt))),
+          (exists (q : part) (lsg : seq.seq (option (sort * gtt))),
              u = Some (gtt_send   p q lsg) \/ u = Some (gtt_send q p lsg) \/ u = Some gtt_end)) ctxG /\
        usedCtx ctxG G') -> 
        (exists (G' : gtth) (ctxG : seq.seq (option gtt)),
@@ -1023,7 +1024,7 @@ Lemma ctx_merge : forall s s0 s1 g1 l p,
   Forall
     (fun u : option gtt =>
      u = None \/
-     (exists (q : string) (lsg : seq.seq (option (sort * gtt))),
+     (exists (q : part) (lsg : seq.seq (option (sort * gtt))),
         u = Some (gtt_send p q lsg) \/ u = Some (gtt_send q p lsg) \/ u = Some gtt_end)) ctxG /\
   usedCtx ctxG G').
 Proof.
@@ -1034,7 +1035,7 @@ Proof.
   - specialize(some_onth_implies_In n ctxJ (gtt_send s s0 l) H1); intros.
     specialize(Forall_forall (fun u : option gtt =>
         u = None \/
-        (exists (q : string) (lsg : seq.seq (option (sort * gtt))),
+        (exists (q : part) (lsg : seq.seq (option (sort * gtt))),
            u = Some (gtt_send p q lsg) \/ u = Some (gtt_send q p lsg) \/ u = Some gtt_end)) ctxJ); intros.
     destruct H3. specialize(H3 Hg). clear H4 Hg.
     specialize(H3 (Some (gtt_send s s0 l)) H2). destruct H3; try easy.
@@ -1324,12 +1325,12 @@ Proof.
       specialize(IHw' g1 p q0).
       assert(isgPartsC p g1). apply IHw'; try easy.
       left. easy.
-      - case_eq (eqb p p0); intros.
-        assert (p = p0). apply eqb_eq; try easy. subst. apply triv_pt_p_s; try easy.
-      - case_eq (eqb p q); intros.
-        assert (p = q). apply eqb_eq; try easy. subst. apply triv_pt_q_s; try easy.
-      - assert (p <> p0). apply eqb_neq; try easy.
-        assert (p <> q). apply eqb_neq; try easy.
+      - case_eq (Nat.eqb p p0); intros.
+        assert (p = p0). apply Nat.eqb_eq; try easy. subst. apply triv_pt_p_s; try easy.
+      - case_eq (Nat.eqb p q); intros.
+        assert (p = q). apply Nat.eqb_eq; try easy. subst. apply triv_pt_q_s; try easy.
+      - assert (p <> p0). apply Nat.eqb_neq; try easy.
+        assert (p <> q). apply Nat.eqb_neq; try easy.
         apply part_cont_b_s with (n := a) (s := s1) (g := g1); try easy.
     - inversion H. subst.
       specialize(wfgCw_after_step_all); intros.
@@ -1342,11 +1343,11 @@ Proof.
       specialize(IHw' g1 p q0).
       assert(isgPartsC p g1). apply IHw'; try easy.
       right. easy.
-      - case_eq (eqb p p0); intros.
-        assert (p = p0). apply eqb_eq; try easy. subst. apply triv_pt_p_s; try easy.
-      - case_eq (eqb p q); intros.
-        assert (p = q). apply eqb_eq; try easy. subst. apply triv_pt_q_s; try easy.
-      - assert (p <> p0). apply eqb_neq; try easy.
-        assert (p <> q). apply eqb_neq; try easy.
+      - case_eq (Nat.eqb p p0); intros.
+        assert (p = p0). apply Nat.eqb_eq; try easy. subst. apply triv_pt_p_s; try easy.
+      - case_eq (Nat.eqb p q); intros.
+        assert (p = q). apply Nat.eqb_eq; try easy. subst. apply triv_pt_q_s; try easy.
+      - assert (p <> p0). apply Nat.eqb_neq; try easy.
+        assert (p <> q). apply Nat.eqb_neq; try easy.
         apply part_cont_b_s with (n := a) (s := s1) (g := g1); try easy.
 Qed.

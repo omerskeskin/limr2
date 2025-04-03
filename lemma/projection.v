@@ -132,7 +132,7 @@ Proof.
     specialize(some_onth_implies_In n ctxG G H4); intros. 
     specialize(Forall_forall (fun u : option gtt =>
         u = None \/
-        (exists (q : string) (lsg : seq.seq (option (sort * gtt))),
+        (exists (q : part) (lsg : seq.seq (option (sort * gtt))),
            u = Some (gtt_send p q lsg) \/ u = Some (gtt_send q p lsg) \/ u = Some gtt_end)) ctxG); intros. 
     destruct H3.
     specialize(H3 Hc). clear H5 Hc.
@@ -311,7 +311,7 @@ Proof.
        isgParts p Gl /\
        (forall n : fin, exists m : fin, guardG n m Gl) /\
        (Gl = g_end \/
-        (exists (p q : string) (lis : seq.seq (option (sort * global))), Gl = g_send p q lis))).
+        (exists (p q : part) (lis : seq.seq (option (sort * global))), Gl = g_send p q lis))).
       {
         apply H7; try easy.
         apply triv_pt_p; try easy.
@@ -350,7 +350,7 @@ Proof.
        u = None \/
        (exists (s : sort) (g : gtth),
           u = Some (s, g) /\
-          (forall (G G' : gtt) (p q pt : string) (l : fin) (LP LQ : seq.seq (option (sort * ltt)))
+          (forall (G G' : gtt) (p q pt : part) (l : fin) (LP LQ : seq.seq (option (sort * ltt)))
              (ctxG : seq.seq (option gtt)),
            Forall
              (fun u0 : option gtt =>
@@ -458,7 +458,7 @@ Proof.
        u = None \/
        (exists (s : sort) (g : gtth),
           u = Some (s, g) /\
-          (forall (p q : string) (l : fin) (s0 s' : string) (ys : list (option (sort * gtt)))
+          (forall (p q : part) (l : fin) (s0 s' : part) (ys : list (option (sort * gtt)))
              (LP LQ : list (option (sort * ltt))) (ctxG : list (option gtt)),
            Forall
              (fun u0 : option gtt =>
@@ -651,7 +651,7 @@ Proof.
        u = None \/
        (exists (s : sort) (g : gtth),
           u = Some (s, g) /\
-          (forall (G : gtt) (p q : string) (l : fin) (LP LQ : list (option (sort * ltt)))
+          (forall (G : gtt) (p q : part) (l : fin) (LP LQ : list (option (sort * ltt)))
              (ST : sort * ltt),
            (exists ctxJ : list (option gtt),
               typ_gtth ctxJ g G /\
@@ -955,21 +955,21 @@ Proof.
         {
           apply IHxs; try easy.
           - intros. apply H7.
-            - case_eq (eqb q s); intros.
-              assert (q = s). apply eqb_eq; try easy. subst. apply ha_sendp.
-            - case_eq (eqb q s'); intros.
-              assert (q = s'). apply eqb_eq; try easy. subst. apply ha_sendq.
-            - assert (q <> s). apply eqb_neq; try easy. 
-              assert (q <> s'). apply eqb_neq; try easy.
+            - case_eq (Nat.eqb q s); intros.
+              assert (q = s). apply Nat.eqb_eq; try easy. subst. apply ha_sendp.
+            - case_eq (Nat.eqb q s'); intros.
+              assert (q = s'). apply Nat.eqb_eq; try easy. subst. apply ha_sendq.
+            - assert (q <> s). apply Nat.eqb_neq; try easy. 
+              assert (q <> s'). apply Nat.eqb_neq; try easy.
               inversion H; try easy. subst.
               apply ha_sendr with (n := Nat.succ n) (s := s0) (g := g); try easy.
           - intros. apply H6.
-            - case_eq (eqb p s); intros.
-              assert (p = s). apply eqb_eq; try easy. subst. apply ha_sendp.
-            - case_eq (eqb p s'); intros.
-              assert (p = s'). apply eqb_eq; try easy. subst. apply ha_sendq.
-            - assert (p <> s). apply eqb_neq; try easy. 
-              assert (p <> s'). apply eqb_neq; try easy.
+            - case_eq (Nat.eqb p s); intros.
+              assert (p = s). apply Nat.eqb_eq; try easy. subst. apply ha_sendp.
+            - case_eq (Nat.eqb p s'); intros.
+              assert (p = s'). apply Nat.eqb_eq; try easy. subst. apply ha_sendq.
+            - assert (p <> s). apply Nat.eqb_neq; try easy. 
+              assert (p <> s'). apply Nat.eqb_neq; try easy.
               inversion H; try easy. subst.
               apply ha_sendr with (n := Nat.succ n) (s := s0) (g := g); try easy.
         }
@@ -986,20 +986,20 @@ Proof.
         apply Ho; try easy. destruct Hc; try easy.
         exists ctxG. exists SI. exists Sn. split. easy.
         - split. intros. apply H6. 
-          - case_eq (eqb p s); intros.
-            assert (p = s). apply eqb_eq; try easy. subst. apply ha_sendp.
-          - case_eq (eqb p s'); intros.
-            assert (p = s'). apply eqb_eq; try easy. subst. apply ha_sendq.
-          - assert (p <> s). apply eqb_neq; try easy. 
-            assert (p <> s'). apply eqb_neq; try easy.
+          - case_eq (Nat.eqb p s); intros.
+            assert (p = s). apply Nat.eqb_eq; try easy. subst. apply ha_sendp.
+          - case_eq (Nat.eqb p s'); intros.
+            assert (p = s'). apply Nat.eqb_eq; try easy. subst. apply ha_sendq.
+          - assert (p <> s). apply Nat.eqb_neq; try easy. 
+            assert (p <> s'). apply Nat.eqb_neq; try easy.
             apply ha_sendr with (n := 0) (s := s5) (g := g7); try easy.
         - split; try easy. intros. apply H7.
-          - case_eq (eqb q s); intros.
-            assert (q = s). apply eqb_eq; try easy. subst. apply ha_sendp.
-          - case_eq (eqb q s'); intros.
-            assert (q = s'). apply eqb_eq; try easy. subst. apply ha_sendq.
-          - assert (q <> s). apply eqb_neq; try easy. 
-            assert (q <> s'). apply eqb_neq; try easy.
+          - case_eq (Nat.eqb q s); intros.
+            assert (q = s). apply Nat.eqb_eq; try easy. subst. apply ha_sendp.
+          - case_eq (Nat.eqb q s'); intros.
+            assert (q = s'). apply Nat.eqb_eq; try easy. subst. apply ha_sendq.
+          - assert (q <> s). apply Nat.eqb_neq; try easy. 
+            assert (q <> s'). apply Nat.eqb_neq; try easy.
             apply ha_sendr with (n := 0) (s := s5) (g := g7); try easy.
     }
     assert(exists ys3, Forall2 (fun u v => (u = None /\ v = None) \/ (exists s g t, u = Some(s, g) /\ v = Some t /\ projectionC g p t)) ys2 ys3 /\ isMerge T ys3).
@@ -1216,7 +1216,7 @@ Proof.
     specialize(some_onth_implies_In n ctxG G H7); intros.
     specialize(Forall_forall (fun u : option gtt =>
         u = None \/
-        (exists (q : string) (lsg : list (option (sort * gtt))),
+        (exists (q : part) (lsg : list (option (sort * gtt))),
            u = Some (gtt_send p q lsg) \/ u = Some (gtt_send q p lsg) \/ u = Some gtt_end)) ctxG); intros.
     destruct H6. specialize(H6 Hc). clear H8 Hc.
     specialize(H6 (Some G) H5). destruct H6; try easy.
@@ -1251,12 +1251,12 @@ Proof.
     pinversion H3; try easy. subst. assert False. apply Hb. constructor. easy.
     subst. rename p into s. rename q into s'. rename p0 into p. rename q0 into q.
     clear H21.
-    - case_eq (eqb r s); intros.
-      assert (r = s). apply eqb_eq; try easy. subst. apply triv_pt_p; try easy.
-    - case_eq (eqb r s'); intros.
-      assert (r = s'). apply eqb_eq; try easy. subst. apply triv_pt_q; try easy.
-    - assert (r <> s). apply eqb_neq; try easy. 
-      assert (r <> s'). apply eqb_neq; try easy.
+    - case_eq (Nat.eqb r s); intros.
+      assert (r = s). apply Nat.eqb_eq; try easy. subst. apply triv_pt_p; try easy.
+    - case_eq (Nat.eqb r s'); intros.
+      assert (r = s'). apply Nat.eqb_eq; try easy. subst. apply triv_pt_q; try easy.
+    - assert (r <> s). apply Nat.eqb_neq; try easy. 
+      assert (r <> s'). apply Nat.eqb_neq; try easy.
       clear H6 H7.
     specialize(part_cont ys r s s' H2 H8 H17); intros.
     destruct H6 as (n,(s1,(g1,(Hta,Htb)))).
@@ -1277,11 +1277,11 @@ Proof.
        u = None \/
        (exists (s : sort) (g : gtth),
           u = Some (s, g) /\
-          (forall (ctxG : list (option gtt)) (T : ltt) (l : fin) (G' : gtt) (r p q : string) (G : gtt),
+          (forall (ctxG : list (option gtt)) (T : ltt) (l : fin) (G' : gtt) (r p q : part) (G : gtt),
            Forall
              (fun u0 : option gtt =>
               u0 = None \/
-              (exists (q0 : string) (lsg : list (option (sort * gtt))),
+              (exists (q0 : part) (lsg : list (option (sort * gtt))),
                  u0 = Some (gtt_send p q0 lsg) \/ u0 = Some (gtt_send q0 p lsg) \/ u0 = Some gtt_end))
              ctxG ->
            (ishParts p g -> False) ->
@@ -1403,8 +1403,8 @@ Proof.
        u = None \/
        (exists (s : sort) (g : gtth),
           u = Some (s, g) /\
-          (forall (p q : string) (l : fin) (G G' : gtt) (L1 L2 : list (option (sort * ltt)))
-             (LS LS' : sort) (LT LT' : ltt) (s0 : string) (T : ltt) (ctxG : list (option gtt)),
+          (forall (p q : part) (l : fin) (G G' : gtt) (L1 L2 : list (option (sort * ltt)))
+             (LS LS' : sort) (LT LT' : ltt) (s0 : part) (T : ltt) (ctxG : list (option gtt)),
            projectionC G p (ltt_send q L1) ->
            onth l L1 = Some (LS, LT) ->
            projectionC G q (ltt_recv p L2) ->
@@ -1516,7 +1516,7 @@ Proof.
     specialize(some_onth_implies_In n ct G H4); intros.
     specialize(Forall_forall (fun u : option gtt =>
         u = None \/
-        (exists (q : string) (lsg : list (option (sort * gtt))),
+        (exists (q : part) (lsg : list (option (sort * gtt))),
            u = Some (gtt_send p q lsg) \/ u = Some (gtt_send q p lsg) \/ u = Some gtt_end)) ct); intros.
     destruct H3. specialize(H3 Hc). clear Hc H5.
     specialize(H3 (Some G) H2). destruct H3; try easy.
@@ -1588,7 +1588,7 @@ Proof.
        u = None \/
        (exists (s : sort) (g : gtth),
           u = Some (s, g) /\
-          (forall (G G' : gtt) (p q : string) (l : fin) (ct : list (option gtt)),
+          (forall (G G' : gtt) (p q : part) (l : fin) (ct : list (option gtt)),
            wfgC G ->
            gttstepC G G' p q l ->
            projectableA G ->
@@ -1597,7 +1597,7 @@ Proof.
            Forall
              (fun u0 : option gtt =>
               u0 = None \/
-              (exists (q0 : string) (lsg : list (option (sort * gtt))),
+              (exists (q0 : part) (lsg : list (option (sort * gtt))),
                  u0 = Some (gtt_send p q0 lsg) \/ u0 = Some (gtt_send q0 p lsg) \/ u0 = Some gtt_end))
              ct ->
            exists (LP LQ : list (option (sort * ltt))) (S S' : sort) (T T' : ltt),
@@ -1702,7 +1702,7 @@ Proof.
     specialize(some_onth_implies_In n ct G H3); intros.
     specialize(Forall_forall (fun u : option gtt =>
         u = None \/
-        (exists (q : string) (lsg : list (option (sort * gtt))),
+        (exists (q : part) (lsg : list (option (sort * gtt))),
            u = Some (gtt_send p q lsg) \/ u = Some (gtt_send q p lsg) \/ u = Some gtt_end)) ct); intros.
     destruct H2. specialize(H2 Hc). clear H4 Hc.
     specialize(H2 (Some G) H). destruct H2; try easy.
@@ -1771,8 +1771,8 @@ Proof.
         assert(exists G, G = (gtt_send s s' ys)). exists (gtt_send s s' ys). easy.
         destruct H7 as (G,H7). replace (gtt_send s s' ys) with G in *.
         assert(exists G', G' = (gtt_send s s' ys0)). exists (gtt_send s s' ys0). easy.
-        - case_eq (eqb p0 p); intros.
-          assert (p0 = p). apply eqb_eq; try easy. subst. 
+        - case_eq (Nat.eqb p0 p); intros.
+          assert (p0 = p). apply Nat.eqb_eq; try easy. subst. 
           {
             clear H4 Hc Hb Ha. 
             clear H8 H7 H13.
@@ -1820,7 +1820,7 @@ Proof.
                     length w'0 = k /\ (exists tc : gnode, gttmap g w'0 None tc) ->
                     exists w2 w0 : list fin,
                       w'0 = w2 ++ w0 /\
-                      (exists r : string,
+                      (exists r : part,
                          gttmap g w2 None (gnode_pq p r) \/
                          gttmap g w2 None (gnode_pq r p))))) ys0).
             {
@@ -1829,7 +1829,7 @@ Proof.
         u = None \/
         (exists (s : sort) (g : gtt),
            u = Some (s, g) /\
-           (forall (w w' : list fin) (p q : string) (gn : gnode),
+           (forall (w w' : list fin) (p q : part) (gn : gnode),
             gttmap g w None gn ->
             gttmap g (seq.cat w w') None (gnode_pq p q) \/ gttmap g (seq.cat w w') None (gnode_pq q p) ->
             exists k : fin,
@@ -1838,7 +1838,7 @@ Proof.
               length w'0 = k /\ (exists tc : gnode, gttmap g (seq.cat w w'0) None tc) ->
               exists w2 w0 : list fin,
                 w'0 = w2 ++ w0 /\
-                (exists r : string,
+                (exists r : part,
                    gttmap g (seq.cat w w2) None (gnode_pq p r) \/
                    gttmap g (seq.cat w w2) None (gnode_pq r p))))) ys0); intros.
               destruct H14. specialize(H14 H2). clear H15 H2.
@@ -1873,7 +1873,7 @@ Proof.
                length w'0 = k /\ (exists tc : gnode, gttmap g w'0 None tc) ->
                exists w2 w0 : list fin,
                  w'0 = w2 ++ w0 /\
-                 (exists r : string, gttmap g w2 None (gnode_pq p r) \/ gttmap g w2 None (gnode_pq r p)))))
+                 (exists r : part, gttmap g w2 None (gnode_pq p r) \/ gttmap g w2 None (gnode_pq r p)))))
         ys0).
             {
               clear H0 H3 H H12 H11 H10 H9 H6 H5 H1 Ht.
@@ -1910,7 +1910,7 @@ Proof.
                      length w'0 = K /\ (exists tc : gnode, gttmap g w'0 None tc) ->
                      exists w2 w0 : list fin,
                        w'0 = w2 ++ w0 /\
-                       (exists r : string, gttmap g w2 None (gnode_pq p r) \/ gttmap g w2 None (gnode_pq r p))))) ys0).
+                       (exists r : part, gttmap g w2 None (gnode_pq p r) \/ gttmap g w2 None (gnode_pq r p))))) ys0).
             {
               revert H2. apply Forall_mono; intros.
               destruct H2. left. easy.
@@ -1931,7 +1931,7 @@ Proof.
             gttmap g w'0 None gnode_end \/ length w'0 = K /\ (exists tc : gnode, gttmap g w'0 None tc) ->
             exists w2 w0 : list fin,
               w'0 = w2 ++ w0 /\
-              (exists r : string, gttmap g w2 None (gnode_pq p r) \/ gttmap g w2 None (gnode_pq r p))))) H14 H4); intros.
+              (exists r : part, gttmap g w2 None (gnode_pq p r) \/ gttmap g w2 None (gnode_pq r p))))) H14 H4); intros.
                destruct H1; try easy. destruct H1 as (s1,(g1,(Ha,Hb))). inversion Ha. subst.
                specialize(Hb lis).
                assert(gttmap g1 lis None gnode_end \/ length lis = K /\ (exists tc : gnode, gttmap g1 lis None tc)). left. easy.
@@ -1953,7 +1953,7 @@ Proof.
             gttmap g w'0 None gnode_end \/ length w'0 = K /\ (exists tc : gnode, gttmap g w'0 None tc) ->
             exists w2 w0 : list fin,
               w'0 = w2 ++ w0 /\
-              (exists r : string, gttmap g w2 None (gnode_pq p r) \/ gttmap g w2 None (gnode_pq r p))))) H14 H4); intros.
+              (exists r : part, gttmap g w2 None (gnode_pq p r) \/ gttmap g w2 None (gnode_pq r p))))) H14 H4); intros.
               destruct H1; try easy. destruct H1 as (s1,(g1,(Hb,Hc))). inversion Hb. subst.
               specialize(Hc lis).
               assert(gttmap g1 lis None gnode_end \/ length lis = K /\ (exists tc : gnode, gttmap g1 lis None tc)). right. split. apply eq_add_S. easy. exists tc. easy.
@@ -1964,8 +1964,8 @@ Proof.
                - left. apply gmap_con with (st := s1) (gk := g1); try easy.
                - right. apply gmap_con with (st := s1) (gk := g1); try easy.
           }
-        - case_eq (eqb p0 q); intros.
-          assert (p0 = q). apply eqb_eq; try easy. subst. 
+        - case_eq (Nat.eqb p0 q); intros.
+          assert (p0 = q). apply Nat.eqb_eq; try easy. subst. 
           {
             simpl in *. 
             clear H4 Hc Hb Ha. 
@@ -2014,7 +2014,7 @@ Proof.
                     length w'0 = k /\ (exists tc : gnode, gttmap g w'0 None tc) ->
                     exists w2 w0 : list fin,
                       w'0 = w2 ++ w0 /\
-                      (exists r : string,
+                      (exists r : part,
                          gttmap g w2 None (gnode_pq q r) \/
                          gttmap g w2 None (gnode_pq r q))))) ys0).
             {
@@ -2023,7 +2023,7 @@ Proof.
         u = None \/
         (exists (s : sort) (g : gtt),
            u = Some (s, g) /\
-           (forall (w w' : list fin) (p q : string) (gn : gnode),
+           (forall (w w' : list fin) (p q : part) (gn : gnode),
             gttmap g w None gn ->
             gttmap g (seq.cat w w') None (gnode_pq p q) \/ gttmap g (seq.cat w w') None (gnode_pq q p) ->
             exists k : fin,
@@ -2032,7 +2032,7 @@ Proof.
               length w'0 = k /\ (exists tc : gnode, gttmap g (seq.cat w w'0) None tc) ->
               exists w2 w0 : list fin,
                 w'0 = w2 ++ w0 /\
-                (exists r : string,
+                (exists r : part,
                    gttmap g (seq.cat w w2) None (gnode_pq p r) \/
                    gttmap g (seq.cat w w2) None (gnode_pq r p))))) ys0); intros.
               destruct H14. specialize(H14 H2). clear H15 H2.
@@ -2067,7 +2067,7 @@ Proof.
                length w'0 = k /\ (exists tc : gnode, gttmap g w'0 None tc) ->
                exists w2 w0 : list fin,
                  w'0 = w2 ++ w0 /\
-                 (exists r : string, gttmap g w2 None (gnode_pq q r) \/ gttmap g w2 None (gnode_pq r q)))))
+                 (exists r : part, gttmap g w2 None (gnode_pq q r) \/ gttmap g w2 None (gnode_pq r q)))))
         ys0).
             {
               clear H0 H3 H H12 H11 H10 H9 H6 H5 H1 Ht.
@@ -2104,7 +2104,7 @@ Proof.
                      length w'0 = K /\ (exists tc : gnode, gttmap g w'0 None tc) ->
                      exists w2 w0 : list fin,
                        w'0 = w2 ++ w0 /\
-                       (exists r : string, gttmap g w2 None (gnode_pq q r) \/ gttmap g w2 None (gnode_pq r q))))) ys0).
+                       (exists r : part, gttmap g w2 None (gnode_pq q r) \/ gttmap g w2 None (gnode_pq r q))))) ys0).
             {
               revert H2. apply Forall_mono; intros.
               destruct H2. left. easy.
@@ -2125,7 +2125,7 @@ Proof.
             gttmap g w'0 None gnode_end \/ length w'0 = K /\ (exists tc : gnode, gttmap g w'0 None tc) ->
             exists w2 w0 : list fin,
               w'0 = w2 ++ w0 /\
-              (exists r : string, gttmap g w2 None (gnode_pq q r) \/ gttmap g w2 None (gnode_pq r q))))) H14 H4); intros.
+              (exists r : part, gttmap g w2 None (gnode_pq q r) \/ gttmap g w2 None (gnode_pq r q))))) H14 H4); intros.
                destruct H1; try easy. destruct H1 as (s1,(g1,(Ha,Hb))). inversion Ha. subst.
                specialize(Hb lis).
                assert(gttmap g1 lis None gnode_end \/ length lis = K /\ (exists tc : gnode, gttmap g1 lis None tc)). left. easy.
@@ -2147,7 +2147,7 @@ Proof.
             gttmap g w'0 None gnode_end \/ length w'0 = K /\ (exists tc : gnode, gttmap g w'0 None tc) ->
             exists w2 w0 : list fin,
               w'0 = w2 ++ w0 /\
-              (exists r : string, gttmap g w2 None (gnode_pq q r) \/ gttmap g w2 None (gnode_pq r q))))) H14 H4); intros.
+              (exists r : part, gttmap g w2 None (gnode_pq q r) \/ gttmap g w2 None (gnode_pq r q))))) H14 H4); intros.
               destruct H1; try easy. destruct H1 as (s1,(g1,(Hb,Hc))). inversion Hb. subst.
               specialize(Hc lis).
               assert(gttmap g1 lis None gnode_end \/ length lis = K /\ (exists tc : gnode, gttmap g1 lis None tc)). right. split. apply eq_add_S. easy. exists tc. easy.
@@ -2159,8 +2159,8 @@ Proof.
                - right. apply gmap_con with (st := s1) (gk := g1); try easy.
           }
         - destruct H8 as (G',H8). replace (gtt_send s s' ys0) with G' in *. clear H4 H7 H8.
-          assert (p0 <> p). apply eqb_neq; try easy. 
-          assert (p0 <> q). apply eqb_neq; try easy.
+          assert (p0 <> p). apply Nat.eqb_neq; try easy. 
+          assert (p0 <> q). apply Nat.eqb_neq; try easy.
           {
             pose proof Ht as Htt.
             unfold wfgC in Htt. destruct Htt as (G1,(Hf,(Hg,(Hd,He)))). clear Hf Hg Hd. clear G1.
@@ -2173,7 +2173,7 @@ Proof.
        gttmap G w'0 None gnode_end \/ length w'0 = k /\ (exists tc : gnode, gttmap G w'0 None tc) ->
        exists w2 w0 : list fin,
          w'0 = w2 ++ w0 /\
-         (exists r : string, gttmap G w2 None (gnode_pq p0 r) \/ gttmap G w2 None (gnode_pq r p0))).
+         (exists r : part, gttmap G w2 None (gnode_pq p0 r) \/ gttmap G w2 None (gnode_pq r p0))).
             {
               specialize(nil_word G); intros.
               destruct H0 as (tc1,H0).
@@ -2359,7 +2359,7 @@ Proof.
   - inversion Hta. subst.
     specialize(Forall_forall (fun u : option gtt =>
          u = None \/
-         (exists (q : string) (lsg : seq.seq (option (sort * gtt))),
+         (exists (q : part) (lsg : seq.seq (option (sort * gtt))),
             u = Some (gtt_send p q lsg) \/
             u = Some (gtt_send q p lsg) \/ u = Some gtt_end)) ctxG); intros.
     destruct H. specialize(H Htc). clear H1 Htc.

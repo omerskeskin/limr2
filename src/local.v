@@ -46,12 +46,12 @@ Section local_ind_ref.
     - apply P_send.
       induction l; try easy.
       constructor; try easy.
-      destruct a. right. destruct p. exists s0. exists l0. split; try easy.
+      destruct a. right. destruct p. exists s. exists l0. split; try easy.
       left. easy.
     - apply P_recv.
       induction l; try easy.
       constructor; try easy.
-      destruct a. right. destruct p. exists s0. exists l0. split; try easy.
+      destruct a. right. destruct p. exists s. exists l0. split; try easy.
       left. easy.
     - apply P_rec; easy.
   Qed.
@@ -147,7 +147,7 @@ Proof.
       - apply gl_end.
       - apply gl_send.
         inversion H. subst.
-        revert IHm IHn H H0 H4. revert m n k s.
+        revert IHm IHn H H0 H4. revert m n k n0.
         induction l; intros; try easy.
         inversion H4. subst.
         constructor.
@@ -155,11 +155,11 @@ Proof.
           destruct H1. destruct H1. destruct H1. subst. right.
           exists x. exists x0. split; try easy.
           apply IHn with (m := m.+1); try easy.
-        - apply IHl with (m := m) (s := s); try easy.
+        - apply IHl with (m := m) (n0 := n0); try easy.
         apply gl_send. easy.
       - apply gl_recv.
         inversion H. subst.
-        revert IHm IHn H H0 H4. revert m n k s.
+        revert IHm IHn H H0 H4. revert m n k n0.
         induction l; intros; try easy.
         inversion H4. subst.
         constructor.
@@ -167,7 +167,7 @@ Proof.
           destruct H1. destruct H1. destruct H1. subst. right.
           exists x. exists x0. split; try easy.
           apply IHn with (m := m.+1); try easy.
-        - apply IHl with (m := m) (s := s); try easy.
+        - apply IHl with (m := m) (n0 := n0); try easy.
         apply gl_recv. easy.
       - inversion H. subst.
         destruct k; try easy.
@@ -918,7 +918,7 @@ Proof.
   assert (exists T, multiS betaL (l_rec x) T /\
   (T = l_end \/
    (exists
-      (p : string) (lis : seq.seq (option (sort * local))),
+      (p : nat) (lis : seq.seq (option (sort * local))),
       T = l_send p lis \/ T = l_recv p lis))).
   {
     clear H. revert H0. revert x. induction x0; intros; try easy.
@@ -927,12 +927,12 @@ Proof.
     - exists l_end.
       split. apply multi_sing. constructor; try easy.
       left. easy.
-    - exists (l_send s l).
+    - exists (l_send n l).
       split. apply multi_sing. constructor; try easy.
-      right. exists s. exists l. left. easy.
-    - exists (l_recv s l).
+      right. exists n. exists l. left. easy.
+    - exists (l_recv n l).
       split. apply multi_sing. constructor; try easy.
-      right. exists s. exists l. right. easy.
+      right. exists n. exists l. right. easy.
     - specialize(IHx0 Q H4). 
       destruct IHx0. destruct H. exists x1. split; try easy.
       apply multi_sstep with (y := (l_rec Q)).

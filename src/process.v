@@ -32,7 +32,7 @@ Section process_ind_ref.
   Fixpoint process_ind_ref p : P p.
   Proof.
     destruct p.
-    - apply (P_send s n e p (process_ind_ref p)).
+    - apply (P_send n n0 e p (process_ind_ref p)).
     - apply (P_recv).
       induction l as [ | c l IH].
       clear process_ind_ref. 

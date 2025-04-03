@@ -202,7 +202,7 @@ Proof.
        (forall n : fin, exists m : fin, guardL n m T) /\
        (T = l_end \/
         (exists
-           (p : string) (lis : seq.seq (option (sort * local))),
+           (p : part) (lis : seq.seq (option (sort * local))),
            T = l_send p lis \/ T = l_recv p lis))).
     {
       apply H2; try easy.
