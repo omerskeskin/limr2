@@ -1,5 +1,5 @@
--R . SST
 
+-R . SST
 src/sim.v
 src/header.v
 src/expr.v
@@ -29,3 +29,6 @@ lemma/projection_helper.v
 lemma/projection.v
 lemma/main_helper.v
 lemma/main.v
+cpdtlib/CpdtTactics.v
+cpdtlib/DepList.v
+cpdtlib/MoreSpecif.v

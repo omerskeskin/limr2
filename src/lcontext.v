@@ -1,6 +1,6 @@
 (* From mathcomp Require Import ssreflect.seq all_ssreflect. *)
 From Paco Require Import paco pacotac.
-From SST Require Import src.expr src.header src.local.
+From SST Require Import src.expr src.header src.local CpdtTactics.
 Require Import List String Coq.Arith.PeanoNat Morphisms Relations.
 Require Import Coq.Program.Equality.
 Import ListNotations.
@@ -586,8 +586,43 @@ Qed.
 Ltac red_inv_destruct H := 
   destruct H as [H_comm  H'']; destruct H'' as [H_rec H_send].
 
+Check ltt_send.
 Ltac red_inv_use H s a :=
   let H_ueq := fresh in set (H_ueq := eq_refl a); apply (H s) in H_ueq.
+Check id.
+Check M.remove.
+Definition m_update (p:nat) (t:ltt) (g:tctx) := M.add p t (M.remove p g).
+
+Theorem map_perm_invariance : forall p g t, M.find p g = (Some t) -> 
+  M.Equal (m_update p t g) g.
+Proof.
+  unfold M.Equal; intros. unfold m_update.
+  destruct (Nat.eq_dec y p);[
+    subst;
+    rewrite M.add_spec1;crush 
+  |
+    rewrite M.add_spec2;try rewrite M.remove_spec2;crush
+  ].
+Qed.
+Check Rstruct.
+Check RvarI.
+
+Theorem simple_red_send : forall p q g ct s xs n,
+  p <> q ->
+  M.find p g = Some (ltt_send q xs) -> 
+  onth n xs= (Some (s,ct)) ->
+  tctxR g (lsend p q (Some s) n) (m_update p ct g).
+Proof.
+  intros.
+  assert (Hr_1:tctxR (M.add p (ltt_send q xs) M.empty) 
+  (lsend p q (Some s) n) (M.add p ct M.empty)).
+  {
+    apply Rsend; crush.
+  }
+  apply Rstruct with (g1:=g) (g1':=m_update p (ltt_send q xs) g) 
+  (g2:= m_update p ct g) (g2' := m_update p ct g);crush.
+  unfold m_update. apply RvarI.
+Qed.
 (*
 Fixpoint restrict_ctx (g:tctx) (prts: seq.seq nat) : tctx :=
   match prts with 
