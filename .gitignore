@@ -17,6 +17,7 @@
 *.native
 *.o
 *.v.d
+*.v:Zone.Identifier
 *.vio
 *.vo
 *.vok
