@@ -189,6 +189,7 @@ Proof.
   unfold MF.Disjoint in H; apply opt_lem2 in H_pg1; apply MF.in_find in H_pg1;
   apply opt_lem2 in H_pg2; apply MF.in_find in H_pg2; specialize (H p); crush. 
 Qed.
+
 Lemma empty_disjoint : forall (g:tctx), MF.Disjoint g M.empty.
 Proof.
   intros.
@@ -204,7 +205,6 @@ Proof.
   intros.  unfold disj_merge in H0. destruct H0. unfold disj_merge. 
   rewrite MF.merge_spec1mn;crush.
 Qed.
-
 
 
 Lemma double_find_disjoint : forall (g1 g2 :tctx) y a1 a2, MF.Disjoint g1 g2 -> 
@@ -699,6 +699,12 @@ Proof.
   try rewrite M.add_spec1;try rewrite M.add_spec2; crush.
 Qed.
 
+Declare Instance EqMEQ {A: Type} : Equivalence (@M.Equal A).
+#[global] Declare Instance RWMEQ {A: Type}: Proper ((@M.Equal A) ==> (@M.Equal A) ==> impl) (@M.Equal A).
+#[global] Declare Instance RWMRMV {A: Type}: Proper (eq ==> (@M.Equal A) ==> M.Equal) M.remove.
+#[global] Declare Instance RWMADD {A: Type} {x}: Proper (eq ==> (@M.Equal A) ==> M.Equal) (@M.add A x).
+#[global] Declare Instance RWMMRG {A: Type} {f}: Proper (eq ==> (@M.Equal A) ==> M.Equal) (@M.merge A A A f).
+
 Theorem tctxR_weakening (g1 g1' g2 : tctx) (Hdisj_1: MF.Disjoint g1 g2) 
   (Hdisj_2: MF.Disjoint g1' g2)
   :
@@ -745,7 +751,8 @@ Proof.
     {
       unfold MF.Add in H1.
       unfold disj_merge.
-      admit.
+      setoid_rewrite H1. (* works here.. *)
+      
     }
     assert (He2: M.Equal (M.add x e (disj_merge g1' g2_1 Hd')) 
     (disj_merge g1' g2_2 Hdisj_2)).
@@ -826,6 +833,7 @@ Proof.
      rewrite M.add_spec1.
      1-3:crush. 
     }
+    
     destruct (M.find y g) eqn:H_yg1;
     rewrite M.add_spec2;
     try rewrite MF.remove_neq_o;
@@ -853,7 +861,7 @@ Proof.
 
   assert(He2: M.Equal g 
   (disj_merge (M.remove p g) (M.add p (ltt_send q xs) M.empty) Hd2)).
-  {
+  { 
     admit.
   }
   
