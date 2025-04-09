@@ -1,7 +1,7 @@
 (* From mathcomp Require Import ssreflect.seq all_ssreflect. *)
 From Paco Require Import paco pacotac.
 From SST Require Import src.expr src.header src.local CpdtTactics.
-Require Import List String Coq.Arith.PeanoNat Morphisms Relations.
+Require Import List String Coq.Arith.PeanoNat Morphisms Relations Setoid.
 Require Import Coq.Program.Equality.
 Import ListNotations.
 
@@ -744,37 +744,14 @@ Proof.
     assert (He1:  M.Equal (M.add x e (disj_merge g1 g2_1 Hd)) (disj_merge g1 g2_2 Hdisj_1)).
     {
       unfold MF.Add in H1.
-      unfold M.Equal in H1.
-      specialize (H1 x).
-      unfold M.Equal.
-      intros.
-      destruct (Nat.eq_dec y x); try rewrite M.add_spec1; 
-      try rewrite M.add_spec2; crush.
-      Search M.merge.
-
+      unfold disj_merge.
       admit.
-      (*
-      unfold M.Equal. intros. 
-      destruct (Nat.eq_dec x y);subst. Search M.find M.add.
-      rewrite M.add_spec1. unfold MF.Add in H1. unfold M.Equal in H1.
-      specialize (H1 y). rewrite M.add_spec1 in H1.
-      Search "spc_".
-      apply spc_merge_find2 with (g1:= g1) (H_disj:=Hdisj_1) in H1. easy.
-
-      rewrite M.add_spec2; try easy.
-      destruct (M.find y (disj_merge g1 g2_1 Hd)) eqn:H_yg1;
-      destruct (M.find y (disj_merge g1 g2_2 Hdisj_1)) eqn:H_yg2;
-      try (apply spc_merge_find3 in H_yg1;apply spc_merge_find3 in H_yg2).
-      destruct H_yg1; destruct H_yg2; crush.
-      unfold MF.Add in H1. unfold M.Equal in H1. specialize (H1 y).
-      Search M.In M.find. apply MF.not_in_find in H0.*)
     }
     assert (He2: M.Equal (M.add x e (disj_merge g1' g2_1 Hd')) 
     (disj_merge g1' g2_2 Hdisj_2)).
     {
       admit.
     }
-    Check Rstruct.
     apply Rstruct with (g1:=disj_merge g1 g2_2 Hdisj_1) 
     (g1':=M.add x e (disj_merge g1 g2_1 Hd))
     (g2':=M.add x e (disj_merge g1' g2_1 Hd'))
@@ -788,7 +765,27 @@ Proof.
     destruct (M.find x g1) eqn:H_yg1. try tac_double_find_disjoint; crush.
     crush.
   }
+Admitted.
+
+Theorem tctxR_weakening2 (g1 g1' g2 : tctx) (Hdisj_1: MF.Disjoint g2 g1) 
+  (Hdisj_2: MF.Disjoint g2 g1')
+  :
+  forall l, tctxR g1 l g1' -> tctxR (disj_merge g2 g1 Hdisj_1) l 
+  (disj_merge g2 g1' Hdisj_2).
+Proof.
+  intros.
+  apply Rstruct with (g1:=(disj_merge g2 g1 Hdisj_1))
+  (g1':=(disj_merge g1 g2 (MF.Disjoint_sym Hdisj_1)))
+  (g2' :=(disj_merge g1' g2 (MF.Disjoint_sym Hdisj_2)))
+  (g2:=(disj_merge g2 g1' Hdisj_2)); try apply disj_merge_sym.
+  apply tctxR_weakening. easy.
 Qed.
+Lemma not_in_remove : forall k (g:tctx), ~M.In k (M.remove k g).
+Proof.
+  intros.
+  apply MF.remove_1; easy.
+Qed.
+
 Theorem simple_red_send : forall p q g ct s xs n,
   p <> q ->
   M.find p g = Some (ltt_send q xs) -> 
@@ -801,10 +798,74 @@ Proof.
   {
     apply Rsend; crush.
   }
-  apply Rstruct with (g1:=g) (g1':=m_update p (ltt_send q xs) g) 
-  (g2:= m_update p ct g) (g2' := m_update p ct g);crush.
-  unfold m_update. apply RvarI.
+  unfold m_update.
+  assert (Hd:MF.Disjoint (M.remove p g) (M.add p ct M.empty)).
+  {
+   unfold MF.Disjoint.
+   intros.
+   Search M.remove M.In.
+   destruct (Nat.eq_dec p k); crush. apply not_in_remove in H3; easy.
+   destruct (M.find k (M.add p ct M.empty)) eqn:Hy1.
+   Search M.add M.find.
+   apply MF.add_neq_o with (m:=M.empty) (e:=ct) in n0.
+   Search M.find M.empty.
+   rewrite M.empty_spec in n0. crush.
+   rewrite MF.in_find in H4. crush.
+  }
+  assert(He1: M.Equal (M.add p ct (M.remove p g)) 
+  (disj_merge (M.remove p g) (M.add p ct M.empty) Hd)).
+  {
+    unfold M.Equal. intros.
+    destruct (Nat.eq_dec p y).
+    {
+     subst.
+     unfold disj_merge.
+     rewrite MF.merge_spec1mn.
+     rewrite M.add_spec1.
+     rewrite M.remove_spec1.
+     rewrite M.add_spec1.
+     1-3:crush. 
+    }
+    destruct (M.find y g) eqn:H_yg1;
+    rewrite M.add_spec2;
+    try rewrite MF.remove_neq_o;
+    unfold disj_merge;
+    try rewrite MF.merge_spec1mn;
+    try rewrite MF.remove_neq_o;
+    try rewrite M.add_spec2;
+    try rewrite M.empty_spec;
+    crush.
+  }
+
+
+  assert (Hd2:MF.Disjoint (M.remove p g) (M.add p (ltt_send q xs) M.empty)).
+  {
+   unfold MF.Disjoint.
+   intros.
+   destruct (Nat.eq_dec p k); crush. apply not_in_remove in H3; easy.
+   destruct (M.find k (M.add p (ltt_send q xs) M.empty)) eqn:Hy1.
+   Search M.add M.find.
+   apply MF.add_neq_o with (m:=M.empty) (e:=(ltt_send q xs)) in n0.
+   Search M.find M.empty.
+   rewrite M.empty_spec in n0. crush.
+   rewrite MF.in_find in H4. crush.
+  }
+
+  assert(He2: M.Equal g 
+  (disj_merge (M.remove p g) (M.add p (ltt_send q xs) M.empty) Hd2)).
+  {
+    admit.
+  }
+  
+  unfold m_update.
+  apply Rstruct with (g1:=g) 
+  (g1':=(disj_merge (M.remove p g) (M.add p (ltt_send q xs) M.empty) Hd2)) 
+  (g2' := (disj_merge (M.remove p g) (M.add p ct M.empty) Hd)) 
+  (g2:= M.add p ct (M.remove p g));crush.
+  apply tctxR_weakening2. 
+  assumption.
 Qed.
+
 (*
 Fixpoint restrict_ctx (g:tctx) (prts: seq.seq nat) : tctx :=
   match prts with 
