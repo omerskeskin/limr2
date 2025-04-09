@@ -699,14 +699,28 @@ Proof.
   try rewrite M.add_spec1;try rewrite M.add_spec2; crush.
 Qed.
 
-Declare Instance EqMEQ {A: Type} : Equivalence (@M.Equal A).
-#[global] Declare Instance RWMEQ {A: Type}: Proper ((@M.Equal A) ==> (@M.Equal A) ==> impl) (@M.Equal A).
-#[global] Declare Instance RWMRMV {A: Type}: Proper (eq ==> (@M.Equal A) ==> M.Equal) M.remove.
+Instance EqMEQ {A: Type} : Equivalence (@M.Equal A).
+Proof. apply MF.Equal_equiv. Qed.
 
-#[global] Instance RWMADD {A: Type} {x}: Proper (eq ==> (@M.Equal A) ==> M.Equal) (@M.add A x).
+#[global] Instance RWMEQ {A: Type}: Proper ((@M.Equal A) ==> (@M.Equal A) ==> impl) (@M.Equal A).
 Proof. repeat intro.
+       unfold M.Equal in *.
+       specialize(H y1).
+       specialize(H0 y1).
+       specialize(H1 y1).
+       crush.
+Qed.
+
+#[global] Instance RWMRMV {A: Type}: Proper (eq ==> (@M.Equal A) ==> M.Equal) M.remove.
+Proof. apply MF.remove_m. Qed.
+
+#[global] Instance RWMADD {A: Type}: Proper (eq ==> eq ==> M.Equal ==> (@M.Equal A)) M.add.
+Proof. apply MF.add_m. Qed.
+
+(* #[global] Instance RWMADD {A: Type} {x}: Proper (eq ==> (@M.Equal A) ==> M.Equal) (@M.add A x).
+Proof.  Search M.Equal.
+repeat intro.
        subst.
-       Search M.Equal.
        unfold M.Equal in H0.
        specialize(H0 y1).
        case_eq(Nat.eqb x y1); intros.
@@ -717,9 +731,10 @@ Proof. repeat intro.
        + rewrite Nat.eqb_neq in H.
          rewrite !MF.add_neq_o. easy.
          easy. easy.
-Qed.
+Qed. *)
 
-#[global] Declare Instance RWMMRG {A: Type} {f}: Proper (eq ==> (@M.Equal A) ==> M.Equal) (@M.merge A A A f).
+#[global] Instance RWMMRG {A: Type}: Proper ((eq ==> eq ==> eq ==> eq) ==> (@M.Equal A) ==> (@M.Equal A) ==> (@M.Equal A)) M.merge.
+Proof. apply MF.merge_m. Qed.
 
 Theorem tctxR_weakening (g1 g1' g2 : tctx) (Hdisj_1: MF.Disjoint g1 g2) 
   (Hdisj_2: MF.Disjoint g1' g2)
