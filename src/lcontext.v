@@ -702,7 +702,23 @@ Qed.
 Declare Instance EqMEQ {A: Type} : Equivalence (@M.Equal A).
 #[global] Declare Instance RWMEQ {A: Type}: Proper ((@M.Equal A) ==> (@M.Equal A) ==> impl) (@M.Equal A).
 #[global] Declare Instance RWMRMV {A: Type}: Proper (eq ==> (@M.Equal A) ==> M.Equal) M.remove.
-#[global] Declare Instance RWMADD {A: Type} {x}: Proper (eq ==> (@M.Equal A) ==> M.Equal) (@M.add A x).
+
+#[global] Instance RWMADD {A: Type} {x}: Proper (eq ==> (@M.Equal A) ==> M.Equal) (@M.add A x).
+Proof. repeat intro.
+       subst.
+       Search M.Equal.
+       unfold M.Equal in H0.
+       specialize(H0 y1).
+       case_eq(Nat.eqb x y1); intros.
+       + rewrite Nat.eqb_eq in H. subst.
+         rewrite !MF.add_eq_o. easy.
+         easy.
+         easy.
+       + rewrite Nat.eqb_neq in H.
+         rewrite !MF.add_neq_o. easy.
+         easy. easy.
+Qed.
+
 #[global] Declare Instance RWMMRG {A: Type} {f}: Proper (eq ==> (@M.Equal A) ==> M.Equal) (@M.merge A A A f).
 
 Theorem tctxR_weakening (g1 g1' g2 : tctx) (Hdisj_1: MF.Disjoint g1 g2) 
