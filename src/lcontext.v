@@ -678,19 +678,11 @@ Check RvarI.
 
 Lemma singleton_merge x e (g1 g2 :tctx) (Hdisj_1: MF.Disjoint g1 g2) :
   M.find x g1 =None -> M.find x g2 = None 
-  -> exists Hdm, M.Equal (M.add x e (disj_merge g1 g2 Hdisj_1)) (disj_merge g1 (M.add x e (g2)) Hdm).
+  -> forall (Hdm: MF.Disjoint g1 (M.add x e g2)), 
+  M.Equal (M.add x e (disj_merge g1 g2 Hdisj_1)) (disj_merge g1 (M.add x e (g2)) Hdm).
 Proof.
   intros.
-  assert (Hd:MF.Disjoint g1 (M.add x e g2)).
-  {
-   unfold MF.Disjoint. intros; destruct (Nat.eq_dec x k); crush.
-   rewrite <- MF.not_in_find in H; crush.
-   rewrite MF.in_find in H3. apply opt_lem1 in H3; destruct H3.
-   rewrite M.add_spec2 in H1; crush.
-   rewrite MF.in_find in H2. apply opt_lem1 in H2; destruct H2; tac_double_find_disjoint.
-  }
-  Search M.find M.add.
-  exists Hd. unfold M.Equal. intros; destruct (Nat.eq_dec x y);
+  unfold M.Equal. intros; destruct (Nat.eq_dec x y);
   destruct (M.find y g1);destruct (M.find y g1);subst;
   try rewrite M.add_spec1;try rewrite M.add_spec2; crush; 
   unfold disj_merge;rewrite MF.merge_spec1mn; 
@@ -715,27 +707,34 @@ Qed.
 Proof. apply MF.remove_m. Qed.
 
 #[global] Instance RWMADD {A: Type}: Proper (eq ==> eq ==> M.Equal ==> (@M.Equal A)) M.add.
-Proof. apply MF.add_m. Qed.
+Proof.  apply MF.add_m. Qed.
 
-(* #[global] Instance RWMADD {A: Type} {x}: Proper (eq ==> (@M.Equal A) ==> M.Equal) (@M.add A x).
-Proof.  Search M.Equal.
-repeat intro.
-       subst.
-       unfold M.Equal in H0.
-       specialize(H0 y1).
-       case_eq(Nat.eqb x y1); intros.
-       + rewrite Nat.eqb_eq in H. subst.
-         rewrite !MF.add_eq_o. easy.
-         easy.
-         easy.
-       + rewrite Nat.eqb_neq in H.
-         rewrite !MF.add_neq_o. easy.
-         easy. easy.
-Qed. *)
+#[global] Instance RWDSJ {elt: Type}: Proper (M.Equal ==> M.Equal ==> iff) 
+(MF.Disjoint (elt:=elt)).
+Proof. 
+  unfold "==>". 
+  constructor;
+  apply MF.Disjoint_m;
+  apply MF.Equal_Eqdom;crush. 
+Qed.
+
+Lemma disj_weakening : forall (g1 g2:tctx) x e, MF.Disjoint g1 (M.add x e g2) ->
+  MF.Disjoint g1 g2.
+Proof.
+  intros.
+  unfold MF.Disjoint in *. intros. specialize (H k).
+  Search M.In M.add.
+  rewrite MF.add_in_iff in H. crush.
+Qed.
 
 #[global] Instance RWMMRG {A: Type}: Proper ((eq ==> eq ==> eq ==> eq) ==> (@M.Equal A) ==> (@M.Equal A) ==> (@M.Equal A)) M.merge.
-Proof. apply MF.merge_m. Qed.
+Proof. unfold "==>".  apply MF.merge_m. Qed.
 
+(*
+#[global] Instance RWMDSJMRG: 
+Proper ((@M.Equal ltt) ==> (@M.Equal ltt) ==>MF.Disjoint ==>(@M.Equal ltt)) disj_merge.
+Proof.  apply MF.merge_m. Qed.
+*)
 Theorem tctxR_weakening (g1 g1' g2 : tctx) (Hdisj_1: MF.Disjoint g1 g2) 
   (Hdisj_2: MF.Disjoint g1' g2)
   :
@@ -773,22 +772,48 @@ Proof.
   }
   {
     assert(Hd: MF.Disjoint g1 g2_1). {
-      admit.
+      unfold MF.Add in *;
+      rewrite H1 in Hdisj_1;
+      apply disj_weakening in Hdisj_1; easy.
     }
     assert(Hd': MF.Disjoint g1' g2_1). {
-      admit.
+      unfold MF.Add in *;
+      rewrite H1 in Hdisj_2;
+      apply disj_weakening in Hdisj_2; easy.
+    }
+    assert (Hd'': MF.Disjoint g1 (M.add x e (g2_1))).
+    {
+      unfold MF.Add in H1.
+      rewrite <- H1. easy.
     }
     assert (He1:  M.Equal (M.add x e (disj_merge g1 g2_1 Hd)) (disj_merge g1 g2_2 Hdisj_1)).
     {
       unfold MF.Add in H1.
       unfold disj_merge.
-      setoid_rewrite H1. (* works here.. *)
-      
+      setoid_rewrite H1.
+      fold disj_merge.
+      change (M.merge both g1 g2_1) with (disj_merge g1 g2_1 Hd).
+      change (M.merge both g1 (M.add x e g2_1)) with 
+      (disj_merge g1 (M.add x e g2_1) Hd'').
+      apply singleton_merge; try rewrite MF.not_in_find in H0; crush.
+      destruct (M.find x g1) eqn:H_yg1; try easy.
+      Search M.Equal M.find.
+      setoid_rewrite H1 in Hdisj_1.
+      unfold MF.Disjoint in Hd''. specialize (Hd'' x).
+      rewrite MF.add_in_iff in Hd''.
+      apply opt_lem2 in H_yg1.
+      rewrite <- MF.in_find in H_yg1.
+      crush.
     }
     assert (He2: M.Equal (M.add x e (disj_merge g1' g2_1 Hd')) 
     (disj_merge g1' g2_2 Hdisj_2)).
     {
-      admit.
+     unfold MF.Add in H1.
+     unfold disj_merge. 
+     setoid_rewrite H1.
+     change (M.merge both g1' g2_1) with (disj_merge g1' g2_1 Hd').
+     change (M.merge both g1' (M.add x e g2_1)) 
+     with (disj_merge g1' (M.add x e g2_1) Hd'' ).
     }
     apply Rstruct with (g1:=disj_merge g1 g2_2 Hdisj_1) 
     (g1':=M.add x e (disj_merge g1 g2_1 Hd))
@@ -875,8 +900,6 @@ Proof.
     try rewrite M.empty_spec;
     crush.
   }
-
-
   assert (Hd2:MF.Disjoint (M.remove p g) (M.add p (ltt_send q xs) M.empty)).
   {
    unfold MF.Disjoint.
