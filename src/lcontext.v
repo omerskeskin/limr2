@@ -730,6 +730,8 @@ Qed.
 #[global] Instance RWMMRG {A: Type}: Proper ((eq ==> eq ==> eq ==> eq) ==> (@M.Equal A) ==> (@M.Equal A) ==> (@M.Equal A)) M.merge.
 Proof. unfold "==>".  apply MF.merge_m. Qed.
 
+Ltac all_to_find := rewrite MF.in_find in *.
+
 (*
 #[global] Instance RWMDSJMRG: 
 Proper ((@M.Equal ltt) ==> (@M.Equal ltt) ==>MF.Disjoint ==>(@M.Equal ltt)) disj_merge.
@@ -786,6 +788,11 @@ Proof.
       unfold MF.Add in H1.
       rewrite <- H1. easy.
     }
+    assert (Hd''': MF.Disjoint g1' (M.add x e (g2_1))).
+    {
+      unfold MF.Add in H1.
+      rewrite <- H1. easy.
+    }
     assert (He1:  M.Equal (M.add x e (disj_merge g1 g2_1 Hd)) (disj_merge g1 g2_2 Hdisj_1)).
     {
       unfold MF.Add in H1.
@@ -813,7 +820,21 @@ Proof.
      setoid_rewrite H1.
      change (M.merge both g1' g2_1) with (disj_merge g1' g2_1 Hd').
      change (M.merge both g1' (M.add x e g2_1)) 
-     with (disj_merge g1' (M.add x e g2_1) Hd'' ).
+     with (disj_merge g1' (M.add x e g2_1) Hd''' ).
+     Check singleton_merge.
+     apply singleton_merge; crush.
+     rewrite H1 in Hdisj_2.
+     destruct (M.find x g1') eqn:Hxg1; crush.
+     rewrite MF.in_find in H0.
+     unfold MF.Disjoint in Hdisj_2.
+     specialize (Hdisj_2 x).
+     Search M.In M.add.
+     rewrite MF.add_in_iff in Hdisj_2.
+     Search M.find M.In.
+     Search "opt_lem".
+     apply opt_lem2 in Hxg1.
+     Check MF.in_find.
+     rewrite <- MF.in_find in Hxg1. crush. rewrite <- MF.not_in_find. easy.
     }
     apply Rstruct with (g1:=disj_merge g1 g2_2 Hdisj_1) 
     (g1':=M.add x e (disj_merge g1 g2_1 Hd))
@@ -828,7 +849,7 @@ Proof.
     destruct (M.find x g1) eqn:H_yg1. try tac_double_find_disjoint; crush.
     crush.
   }
-Admitted.
+Qed.
 
 Theorem tctxR_weakening2 (g1 g1' g2 : tctx) (Hdisj_1: MF.Disjoint g2 g1) 
   (Hdisj_2: MF.Disjoint g2 g1')
@@ -915,8 +936,16 @@ Proof.
 
   assert(He2: M.Equal g 
   (disj_merge (M.remove p g) (M.add p (ltt_send q xs) M.empty) Hd2)).
-  { 
-    admit.
+  {
+    Check singleton_merge.
+    unfold M.Equal.
+    intros.
+    unfold disj_merge.
+    destruct(Nat.eq_dec y p); rewrite MF.merge_spec1mn;crush.
+    rewrite M.remove_spec1;
+    rewrite M.add_spec1;crush.
+    rewrite M.add_spec2; try rewrite M.empty_spec; try rewrite M.remove_spec2; crush.
+    destruct (M.find y g) eqn:Hyg; crush.
   }
   
   unfold m_update.
