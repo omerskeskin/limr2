@@ -432,240 +432,112 @@ Proof.
   }
 Qed. 
 
-(*these are basically artifacts, they are only used in the proof of tctx_lcomm_inv1 
-and they can be removed once those references are removed*)
-Lemma tctx_lsend_inv_1 : forall g p q g' s n, tctxR g (lsend p q (Some s) n) g' ->
-  exists xs, (M.find p g=Some (ltt_send q xs)).
-Proof.
-  intros.
-  rename n into  nn.
-  dependent induction H.
-  {
-    subst. exists xs. apply M.add_spec1.
-  }
-  {
-    subst.
-    specialize (IHtctxR p q s nn). 
-    set (H_rf:=eq_refl (lsend p q (Some s) nn)). 
-    apply IHtctxR in H_rf.
-    destruct H_rf.
-    destruct (Nat.eq_dec p p0).
-    {
-      subst. 
-      rewrite MF.not_mem_find in H0. rewrite -> H0 in H1. discriminate H1.
-    }
-    {
-       exists x.
-       apply not_eq_sym in n.
-       apply M.add_spec2 with (m:=g) (e:=T) in n. rewrite H1 in n. assumption.
-    }
-  }
-  {
-    specialize (IHtctxR p q s nn). 
-    set (H_rf:=eq_refl (lsend p q (Some s) nn)). 
-    apply IHtctxR in H_rf.
-    destruct H_rf. exists x.
-    unfold M.Equal in H0. specialize (H0 p). 
-    rewrite <- H0 in H2. assumption.
-  }
-Qed.  
-
-Lemma tctx_lrecv_inv_1 : forall g p q g' s nn, tctxR g (lrecv p q (Some s) nn) g' ->
-  exists xs, (M.find p g=Some (ltt_recv q xs)).
-Proof.
-  intros.
-  dependent induction H.
-  {
-    subst. exists xs. apply M.add_spec1.
-  }
-  {
-    subst.
-    specialize (IHtctxR p q s nn). 
-    set (H_rf:=eq_refl (lrecv p q (Some s) nn)). 
-    apply IHtctxR in H_rf.
-    destruct H_rf.
-    destruct (Nat.eq_dec p p0).
-    {
-      subst. 
-      rewrite MF.not_mem_find in H0. rewrite -> H0 in H1. discriminate H1.
-    }
-    {
-       exists x.
-       apply not_eq_sym in n.
-       apply M.add_spec2 with (m:=g) (e:=T) in n. rewrite H1 in n. assumption.
-    }
-  }
-  {
-    specialize (IHtctxR p q s nn). 
-    set (H_rf:=eq_refl (lrecv p q (Some s) nn)). 
-    apply IHtctxR in H_rf.
-    destruct H_rf. exists x.
-    unfold M.Equal in H0. specialize (H0 p). 
-    rewrite <- H0 in H2. assumption.
-  }
-Qed.  
-
-
-
-Lemma tctx_lcomm_inv_1 : forall g p q g' lb nn, tctxR g lb g' ->
-  (lb=lcomm p q nn -> (exists xs, M.find p g=Some (ltt_send q xs))/\
-  (exists xs, (M.find q g=Some (ltt_recv p xs)))) /\
-  (forall s, lb=lrecv p q (Some s) nn ->
-  tctxR g (lrecv p q (Some s) nn) g' ->
-  exists xs, (M.find p g=Some (ltt_recv q xs)))/\
-  (forall s, lb=lsend p q (Some s) nn -> 
-  tctxR g (lsend p q (Some s) nn) g' ->
-  exists xs, (M.find p g=Some (ltt_send q xs))).
-Proof.
-  intros.
-  generalize dependent q.
-  generalize dependent p.
-  induction H.
-  {
-    split; [|split]; try (intros; easy).
-    intros.
-    inversion H1. subst.
-    apply tctx_lsend_inv_1 in H2. exact H2.
-  }
-  {
-    split; [|split]; try (intros; easy).
-    intros.
-    inversion H1. subst.
-    apply tctx_lrecv_inv_1 in H2. exact H2.
-  }
-  {
-    split; [|split]. intros. 
-    split.
-    {
-      inversion H5. subst.
-      specialize (IHtctxR1 p0 q0).
-      destruct IHtctxR1 as [IH1_comm  IH2];destruct IH2 as [IH1_recv IH1_sendv].
-      inversion H5. subst.
-      specialize (IH1_sendv s (eq_refl (lsend p0 q0 (Some s) nn))).
-      apply IH1_sendv in H0.
-      destruct H0.
-      exists x.
-      apply spc_merge_find1 with (g2:=g2) (H_disj:=H1) in H0. assumption.
-    }
-    {
-      inversion H5. subst.
-      specialize (IHtctxR2 q0 p0).
-      destruct IHtctxR2 as [IH2_comm  IH2];destruct IH2 as [IH2_recv IH2_sendv].
-      specialize (IH2_recv s' (eq_refl (lrecv q0 p0 (Some s') nn))).
-      apply IH2_recv in H3. destruct H3. exists x.
-      apply spc_merge_find2 with (g1:=g1) (H_disj:=H1) in H3. assumption.      
-    }
-    1-2:intros; discriminate H5.
-  }
-  {
-    intros.
-    split; [|split].
-    {
-      generalize dependent q.
-      generalize dependent p.
-      intros.
-      subst.
-      specialize (IHtctxR p0 q). 
-      destruct IHtctxR as [IH_comm  IH];destruct IH as [IH_recv IH_sendv].
-      specialize (IH_comm (eq_refl (lcomm p0 q nn))).
-      split.
-      {
-        destruct IH_comm.
-        destruct H1.
-        exists x.
-        rewrite MF.add_o.
-        destruct (Nat.eq_dec p p0).
-        - subst. apply MF.not_mem_find in H0. rewrite H1 in H0. discriminate H0.
-        - assumption.
-      }
-      {
-        destruct IH_comm.
-        destruct H2.
-        exists x.
-        rewrite MF.add_o.
-        destruct (Nat.eq_dec p q).
-        - subst. apply MF.not_mem_find in H0. rewrite H2 in H0. discriminate H0.
-        - assumption.
-      }
-    }
-    {
-      intros.
-      subst.
-      specialize (IHtctxR p0 q). 
-      destruct IHtctxR as [IH_comm  IH];destruct IH as [IH_recv IH_sendv].
-      specialize (IH_recv s (eq_refl (lrecv p0 q (Some s) nn)) H).
-      destruct IH_recv.
-      exists x.
-      rewrite M.add_spec2. assumption. rewrite MF.not_mem_find in H0.
-      unfold not.
-      intros.
-      subst. rewrite H0 in H1. discriminate H1. 
-    }
-    {
-      intros.
-      subst.
-      specialize (IHtctxR p0 q). 
-      destruct IHtctxR as [IH_comm  IH];destruct IH as [IH_recv IH_sendv].
-      specialize (IH_sendv s (eq_refl (lsend p0 q (Some s) nn)) H).
-      destruct IH_sendv.
-      exists x.
-      rewrite M.add_spec2. assumption. rewrite MF.not_mem_find in H0.
-      unfold not.
-      intros.
-      subst. rewrite H0 in H1. discriminate H1. 
-    }
-  }
-  {
-    intros. split; [|split]. intros. subst.   
-    specialize (IHtctxR p q). 
-    destruct IHtctxR as [IH_comm  IH];destruct IH as [IH_recv IH_sendv].
-    specialize (IH_comm (eq_refl (lcomm p q nn))).
-    destruct IH_comm.
-    {
-      split.
-      {
-        destruct H2.
-        exists x.
-        rewrite MF.find_m in H2.
-        exact H2. reflexivity. apply MF.Equal_equiv. assumption. 
-      }
-      {
-        destruct H3.
-        exists x.
-        rewrite MF.find_m in H3.
-        exact H3. reflexivity. apply MF.Equal_equiv. assumption. 
-      }
-    }
-    {
-      intros.
-      specialize (IHtctxR p q). 
-      destruct IHtctxR as [IH_comm  IH];destruct IH as [IH_recv IH_sendv].
-      subst.
-      specialize (IH_recv s (eq_refl (lrecv p q (Some s) nn)) H).
-      destruct IH_recv. exists x.
-      rewrite MF.find_m in H2. exact H2. reflexivity. apply MF.Equal_equiv. assumption.
-    }
-    {
-      
-      intros.
-      specialize (IHtctxR p q). 
-      destruct IHtctxR as [IH_comm  IH];destruct IH as [IH_recv IH_sendv].
-      subst.
-      specialize (IH_sendv s (eq_refl (lsend p q (Some s) nn)) H).
-      destruct IH_sendv. exists x.
-      rewrite MF.find_m in H2. exact H2. reflexivity. apply MF.Equal_equiv. assumption.
-    }
-  }
-Qed.  
-
 Ltac red_inv_destruct H := 
   destruct H as [H_comm  H'']; destruct H'' as [H_rec H_send].
 
-Check ltt_send.
+Lemma lem_6_11a_tctx_send_invert : forall g g' p q s ell, 
+  (tctxR g (lsend p q (Some s) ell) g' ->
+  exists xs Tp', M.find p g = Some (ltt_send q xs) /\ 
+  onth ell xs=Some (s, Tp') /\ M.find p g' = (Some Tp'))
+  .
+Proof.
+  intros.
+  dependent induction H; 
+  [exists xs; exists T; do 2 rewrite M.add_spec1; crush| |];
+  specialize (IHtctxR p q s ell (eq_refl (lsend p q (Some s) ell)));
+  destruct IHtctxR; (match goal with | [ Hex: exists _, _ |- _] => destruct Hex end);
+  exists x; exists x0.
+  destruct H1. destruct H2.
+  rewrite MF.not_mem_find in H0.
+  destruct (Nat.eq_dec p p0);subst. crush.
+  try rewrite M.add_spec2;
+  try rewrite M.add_spec2; crush.
+  destruct H2.
+  destruct H3.
+  unfold M.Equal in *. crush.
+Qed.
+
+Lemma lem_6_11a_tctx_recv_invert : forall g g' p q s ell, 
+  (tctxR g (lrecv p q (Some s) ell) g' ->
+  exists xs Tp', M.find p g = Some (ltt_recv q xs) /\ 
+  onth ell xs=Some (s, Tp') /\ M.find p g' = (Some Tp')).
+Proof.
+  intros.
+  dependent induction H; 
+  [exists xs; exists T; do 2 rewrite M.add_spec1; crush| |];
+  specialize (IHtctxR p q s ell (eq_refl (lrecv p q (Some s) ell)));
+  destruct IHtctxR; (match goal with | [ Hex: exists _, _ |- _] => destruct Hex end);
+  exists x; exists x0.
+  destruct H1. destruct H2.
+  rewrite MF.not_mem_find in H0.
+  destruct (Nat.eq_dec p p0);subst. crush.
+  try rewrite M.add_spec2;
+  try rewrite M.add_spec2; crush.
+  destruct H2.
+  destruct H3.
+  unfold M.Equal in *. crush.
+Qed.
+
+Ltac destr_hyps := repeat (match goal with 
+          | [ H: exists _,_|- _] => destruct H 
+          | [H: _ /\ _ |-_] => destruct H
+          end).
+
+Lemma lem_6_11a_tctx_comm_invert: forall g g' p q ell, 
+  tctxR g (lcomm p q ell) g' ->exists s s',
+  (exists xsp Tp', M.find p g = Some (ltt_send q xsp) /\ 
+  onth ell xsp=Some (s, Tp') /\ M.find p g' = (Some Tp')) /\
+  ( exists xsq Tq', M.find q g = Some (ltt_recv p xsq) /\ 
+  onth ell xsq=Some (s', Tq') /\ M.find q g' = (Some Tq'))
+  /\ subsort s s'.
+Proof.
+  intros.
+  dependent induction H.
+  {
+    apply lem_6_11a_tctx_send_invert in H0.
+    apply lem_6_11a_tctx_recv_invert in H3.
+    destr_hyps.
+    exists s, s'.
+    split.
+    exists x1. exists x2.
+    apply spc_merge_find1  with (g2:= g2) (H_disj:=H1) in H0.
+    apply spc_merge_find1  with (g2:= g2') (H_disj:=H2) in H8. crush.
+    split.
+    exists x, x0.
+    apply spc_merge_find2  with (g1:= g1) (H_disj:=H1) in H3.
+    apply spc_merge_find2  with (g1:= g1') (H_disj:=H2) in H6. crush.
+    easy.
+  }
+  {
+   specialize (IHtctxR p q ell (eq_refl (lcomm p q ell))).
+   destruct (Nat.eq_dec p p0);
+   destr_hyps;subst; rewrite MF.not_mem_find in H0; crush. 
+   rewrite M.add_spec2.
+   exists x,x0.
+   split. exists x1. exists x2. rewrite M.add_spec2. crush. easy.
+   
+   destruct (Nat.eq_dec q p0);subst; crush.
+   exists x3. exists x4. rewrite M.add_spec2. rewrite M.add_spec2. crush. 
+   unfold "<>". intros. crush. unfold "<>". intros. crush. unfold "<>". intros. crush. 
+  }
+  {
+    specialize (IHtctxR p q ell (eq_refl (lcomm p q ell))).
+    destr_hyps. unfold M.Equal in H0 ,H1.
+    exists x,x0. split. exists x1. exists x2.  
+    specialize (H0 p).
+    specialize (H1 p).
+    crush.
+    split.
+    exists x3. exists x4.
+    specialize (H0 q).
+    specialize (H1 q).
+    crush. easy.
+  }
+Qed.
+
 Ltac red_inv_use H s a :=
   let H_ueq := fresh in set (H_ueq := eq_refl a); apply (H s) in H_ueq.
-Check id.
-Check M.remove.
+
 Definition m_update (p:nat) (t:ltt) (g:tctx) := M.add p t (M.remove p g).
 
 Theorem map_perm_invariance : forall p g t, M.find p g = (Some t) -> 
@@ -679,8 +551,6 @@ Proof.
     rewrite M.add_spec2;try rewrite M.remove_spec2;crush
   ].
 Qed.
-Check Rstruct.
-Check RvarI.
 
 Lemma singleton_merge x e (g1 g2 :tctx) (Hdisj_1: MF.Disjoint g1 g2) :
   M.find x g1 =None -> M.find x g2 = None 

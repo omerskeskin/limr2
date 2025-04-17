@@ -137,81 +137,52 @@ Proof.
         destruct (Nat.eq_dec p prt_p). assumption.
         simpl in H.
         inversion H. subst. 
-        specialize (tctx_lcomm_inv_1 gamma p q x (lcomm p q n)).
-        intros.
-        specialize (H1 n).
-        apply H1 in H0.
-        destruct H0 as [H_comm  Hh];destruct Hh as [H_recv  Hsend].
-        assert(H_eq: lcomm p q n =lcomm p q n). reflexivity.
-        apply  H_comm in H_eq.
-        destruct H_eq.
-        destruct H0.
-        destruct (Nat.eq_dec p prt_p);
+        apply lem_6_11a_tctx_comm_invert in H0.
+        destr_hyps.
         destruct (Nat.eq_dec p prt_q);
-        destruct (Nat.eq_dec p prt_r); try (subst; easy).
-        {
-            pose proof H0 as H_t.
-            unfold gamma in H0.
-            clear H2.
-            rewrite M.add_spec2 in H0; try easy.
-            rewrite M.add_spec2 in H0.
-            rewrite M.add_spec2 in H0.
-            rewrite M.empty_spec in H0. discriminate H0. easy.
-            unfold gamma in H_t. subst. 
-            rewrite M.add_spec2 in H_t.
-            rewrite M.add_spec1 in H_t.
-            rewrite (ltt_eq T_q) in H_t.
-            simpl in H_t.
-            discriminate H_t. try easy.
-        }
-        {
-            unfold gamma in H0.
-            rewrite M.add_spec2 in H0.
-            rewrite M.add_spec2 in H0.
-            rewrite M.add_spec2 in H0.
-            rewrite M.empty_spec in H0. discriminate H0. 
-            easy. easy. easy. 
-        }
+        destruct (Nat.eq_dec p prt_r); crush. 
+        unfold prt_r,prt_p,prt_q in *;crush.
+
+        intros.
+        unfold gamma in H0.
+        rewrite M.add_spec2 in H0.
+        rewrite M.add_spec1 in H0. rewrite (ltt_eq T_q) in H0. simpl in H0.
+        discriminate H0. crush.
+        
+        unfold gamma in H0.
+        rewrite M.add_spec2 in H0.
+        rewrite M.add_spec2 in H0.
+        rewrite M.add_spec1 in H0. rewrite (ltt_eq T_r) in H0. simpl in H0. discriminate. crush.
+        crush.
+        rewrite M.add_spec2 in H0; try rewrite M.add_spec2 in H0; try rewrite M.add_spec2 in H0;
+        try rewrite M.empty_spec in H0;crush.
     }
     assert(H_q:q=prt_q).
     {
         destruct (Nat.eq_dec q prt_q). assumption.
         simpl in H.
-        inversion H.
-        subst.
-        specialize (tctx_lcomm_inv_1 gamma prt_p q x (lcomm prt_p q n)).
-        intros.
-        specialize (H1 n).
-        apply H1 in H0.
-        destruct H0 as [H_comm  Hh];destruct Hh as [H_recv  Hsend].
-        assert(H_eq: lcomm prt_p q n=lcomm prt_p q n). reflexivity.
-        apply  H_comm in H_eq.
-        destruct H_eq.
-        destruct H2.
+        inversion H. subst. 
+        apply lem_6_11a_tctx_comm_invert in H0.
+        destr_hyps.
         destruct (Nat.eq_dec q prt_p);
-        destruct (Nat.eq_dec q prt_q);
-        destruct (Nat.eq_dec q prt_r); try (subst; easy).
-        {
-            pose proof H2 as H_t.
-            unfold gamma in H2.
-            rewrite M.add_spec2 in H2; try easy.
-            rewrite M.add_spec2 in H2.
-            rewrite M.add_spec2 in H2.
-            rewrite M.empty_spec in H2. discriminate H2. easy. easy.
-            subst.
-            unfold gamma in H_t. 
-            rewrite M.add_spec1 in H_t.
-            rewrite (ltt_eq T_p) in H_t.
-            simpl in H_t. discriminate H_t.
-        }
-        {
-            unfold gamma in H2.
-            rewrite M.add_spec2 in H2.
-            rewrite M.add_spec2 in H2.
-            rewrite M.add_spec2 in H2.
-            rewrite M.empty_spec in H2. discriminate H2. 
-            easy. easy. easy. 
-        }
+        destruct (Nat.eq_dec q prt_r); crush.
+
+        unfold gamma in H0;
+        first rewrite M.add_spec2 in H0;
+        first rewrite M.add_spec2 in H0;
+        first rewrite M.add_spec2 in H0;
+        first rewrite M.empty_spec in H0;
+        first discriminate H0; crush.
+        
+        discriminate H0.
+        
+        unfold gamma in H1.
+        rewrite M.add_spec2 in H1.
+        rewrite M.add_spec2 in H1.
+        rewrite M.add_spec1 in H1. rewrite (ltt_eq T_r) in H1. simpl in H1. discriminate. crush.
+        crush.
+        rewrite M.add_spec2 in H1; try rewrite M.add_spec2 in H1; try rewrite M.add_spec2 in H1;
+        try rewrite M.empty_spec in H1;crush.
     }
     apply evh. subst. simpl. easy.
     right. assumption.
