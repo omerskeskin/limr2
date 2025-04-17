@@ -11,6 +11,12 @@ Inductive label: Type :=
   | lsend: part -> part -> option sort -> opt_lbl -> label
   | lcomm: part -> part -> opt_lbl -> label.
 
+Definition ispSubjl r l :=
+  match l with 
+  | lsend p q _ _ => p=r
+  | lrecv p q _ _=> p=r
+  | lcomm p q _ => p=r \/ q=r 
+  end. 
 
 From MMaps Require Import MMaps.
 
@@ -730,6 +736,14 @@ Qed.
 #[global] Instance RWMMRG {A: Type}: Proper ((eq ==> eq ==> eq ==> eq) ==> (@M.Equal A) ==> (@M.Equal A) ==> (@M.Equal A)) M.merge.
 Proof. unfold "==>".  apply MF.merge_m. Qed.
 
+#[global] Instance RWMIN {A: Type}: Proper (eq ==> (@M.Equal A) ==> iff) M.In.
+Proof. unfold "==>".  constructor; unfold M.Equal in H0; intros;
+subst;specialize (H0 y); try rewrite MF.in_find in *.
+rewrite H0 in H1. easy.
+rewrite <- H0 in H1. easy.
+Qed.
+
+
 Ltac all_to_find := rewrite MF.in_find in *.
 
 #[global] Instance RWMTCTXR: Proper ((@M.Equal ltt) ==> (eq) ==> (@M.Equal ltt) ==> (iff)) tctxR.
@@ -834,26 +848,29 @@ Proof.
      rewrite MF.in_find in H0.
      unfold MF.Disjoint in Hdisj_2.
      specialize (Hdisj_2 x).
-     Search M.In M.add.
      rewrite MF.add_in_iff in Hdisj_2.
-     Search M.find M.In.
-     Search "opt_lem".
      apply opt_lem2 in Hxg1.
-     Check MF.in_find.
      rewrite <- MF.in_find in Hxg1. crush. rewrite <- MF.not_in_find. easy.
     }
     apply Rstruct with (g1:=disj_merge g1 g2_2 Hdisj_1) 
     (g1':=M.add x e (disj_merge g1 g2_1 Hd))
     (g2':=M.add x e (disj_merge g1' g2_1 Hd'))
     (g2:=disj_merge g1' g2_2 Hdisj_2); crush.
-    apply RvarI; crush.
+    unfold disj_merge in *.
+    setoid_rewrite <- He1.
+    setoid_rewrite <- He2.
+    apply RvarI;crush.
     rewrite MF.not_mem_find.
-    apply spc_merge_nfind2.
-    apply MF.not_in_find in H0.
-    unfold MF.Add in H1. unfold M.Equal in H1. specialize (H1 x).
-    rewrite M.add_spec1 in H1.
-    destruct (M.find x g1) eqn:H_yg1. try tac_double_find_disjoint; crush.
-    crush.
+    rewrite MF.merge_spec1mn; destruct (M.find x g1) eqn:Hyg1;
+    destruct (M.find x g2_1) eqn:Hyg2; crush;
+    change (M.In x g2_1 -> False) with (~ M.In x g2_1) in H0; try rewrite MF.not_in_find in H0; crush.
+    unfold MF.Disjoint in Hdisj_2.
+    specialize (Hdisj_1 x).
+    unfold MF.Add in H1.
+    rewrite MF.in_find in Hdisj_1.
+    apply opt_lem2 in Hyg1.
+    setoid_rewrite H1 in Hdisj_1.
+    rewrite MF.add_in_iff in Hdisj_1. crush.
   }
 Qed.
 
@@ -973,83 +990,29 @@ Fixpoint restrict_ctx (g:tctx) (prts: seq.seq nat) : tctx :=
       | _ =>(restrict_ctx (M.remove x g) xs) end
   end.
 Check M.In.
-Lemma lem_6_10 : forall g l g' p q s n, tctxR g l g' -> forall r, 
-    M.In r g -> 
-    (
-      (l=lsend p q s n) \/
-      (l=lrecv p q s n) \/
-      (l=lcomm p q n)
-    ) ->
-    p <> r ->
-    q <> r ->
+*)
+ 
+Lemma lem_6_10 : forall r g l g' , tctxR g l g' ->
+     ~ ispSubjl r l ->
      M.find r g = M.find r g'.
 Proof.
   intros.
   induction H.
-  { 
-    destruct H1 as [Hsend | [Hrec | Hcomm]];try (inversion Hrec); try (inversion Hcomm).
-    {
-      inversion Hsend. subst.
-      apply MF.add_in_iff in H0. 
-      destruct H0.
-        + apply H2 in H0. easy.
-        + apply MF.not_in_empty in H0. easy. 
-    }
-  }
-  {
-    destruct H1 as [Hsend | [Hrec | Hcomm]];try (inversion Hsend); try (inversion Hcomm).
-    {
-      inversion Hrec. subst.
-      apply MF.add_in_iff in H0. 
-      destruct H0.
-        + apply H2 in H0. easy.
-        + apply MF.not_in_empty in H0. easy. 
-    }
-  }
-  {
-    intros.
-    Search disj_merge.
-    Search M.merge M.find.
-    unfold disj_merge in H0.
-    pose proof H1 as H1'.
-    destruct H1 as [Hh|[Hhh|Hcomm]];try (inversion Hh);try (inversion Hhh).
-    apply M.merge_spec2 in H0.
-    destruct H0.
-    {
-      inversion Hcomm. subst.
-      pose proof H0 as H_r_in_g1.
-      apply IHtctxR1 in H0.
-      unfold disj_merge.
-      repeat (rewrite MF.merge_spec1mn).
-      rewrite <- H0.
-      Search MF.Disjoint.
-      destruct (M.find r g2) eqn:Hfind_r.
-      {
-        unfold MF.Disjoint in H4.
-        apply opt_lem2 in Hfind_r.
-        apply MF.in_find in Hfind_r.
-        specialize (H4 r (conj H_r_in_g1 Hfind_r)). 
-        easy.                
-      }
-      {
-        unfold both. 
-        rewrite MF.in_find in H_r_in_g1.
-        apply opt_lem1 in H_r_in_g1. 
-        destruct H_r_in_g1. rewrite H1.
-        apply dom_preservation_6_9 in H7.
-        unfold M.Eqdom in H7. 
-        Search M.find M.In.
-        rewrite <- MF.not_in_find in Hfind_r.
-        specialize (H7 r).
-        rewrite H7 in Hfind_r.
-        rewrite MF.not_in_find in Hfind_r.
-        rewrite Hfind_r. reflexivity.
-      }
-      1-4: (try easy).
-      left. 
-    }
-  }
-Qed. *)
+  1-2:(
+    destruct (Nat.eq_dec p r) eqn:Hpr;simpl in H0;
+    do 2 rewrite MF.add_o;crush
+  ).
+  unfold disj_merge; rewrite MF.merge_spec1mn.  
+  destruct (Nat.eq_dec p r); destruct (Nat.eq_dec q r);simpl in H0;subst;crush;
+  unfold disj_merge; rewrite MF.merge_spec1mn;
+  crush.
+  1-3:crush.
+  destruct (Nat.eq_dec p r);subst;[do 2 rewrite M.add_spec1 | ]. easy.
+  rewrite M.add_spec2. rewrite M.add_spec2.
+  1-3:crush.
+  apply  IHtctxR in H0.
+  unfold M.Equal in *; crush.
+Qed. 
 
 (*
 CoInductive coseq (A: Type): Type :=
