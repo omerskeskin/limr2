@@ -732,6 +732,12 @@ Proof. unfold "==>".  apply MF.merge_m. Qed.
 
 Ltac all_to_find := rewrite MF.in_find in *.
 
+#[global] Instance RWMTCTXR: Proper ((@M.Equal ltt) ==> (eq) ==> (@M.Equal ltt) ==> (iff)) tctxR.
+Proof. unfold "==>". constructor; intros; subst. 
+apply Rstruct with (g1:=y) (g2:=y1) (g1':=x) (g2':=x1);crush. 
+apply Rstruct with (g1:=x) (g2:=x1) (g1':=y) (g2':=y1);crush.
+Qed.
+
 (*
 #[global] Instance RWMDSJMRG: 
 Proper ((@M.Equal ltt) ==> (@M.Equal ltt) ==>MF.Disjoint ==>(@M.Equal ltt)) disj_merge.

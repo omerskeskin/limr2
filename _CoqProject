@@ -28,6 +28,7 @@ lemma/step.v
 lemma/projection_helper.v
 lemma/projection.v
 lemma/main_helper.v
+lemma/example_3.v
 lemma/main.v
 cpdtlib/CpdtTactics.v
 cpdtlib/DepList.v

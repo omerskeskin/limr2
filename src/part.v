@@ -11,7 +11,7 @@ Inductive isgParts : part -> global -> Prop :=
   | pa_sendq : forall p q l, isgParts q (g_send p q l)
   | pa_mu    : forall p g,   isgParts p g -> isgParts p (g_rec g)
   | pa_sendr : forall p q r n s g lis, p <> r -> q <> r -> onth n lis = Some (s, g) -> isgParts r g -> isgParts r (g_send p q lis).
-  
+
 Definition isgPartsC (pt : part) (G : gtt) : Prop := 
     exists G', gttTC G' G /\ (forall n, exists m, guardG n m G') /\ isgParts pt G'.
 

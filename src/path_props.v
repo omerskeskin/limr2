@@ -90,6 +90,11 @@ Definition fairPath (pt: Path): Prop :=
   forall p q n, enabled (tctxRE (lcomm p q n)) pt ->  eventually (headComm p q) pt.
 
 Definition fairness := alwaysC fairPath.
+
+Definition livePath (pt: Path) : Prop := forall p q s n, 
+enabled (tctxRE (lsend p q (Some s) n)) pt -> eventually (headSend p q) pt /\
+enabled (tctxRE (lrecv p q (Some s) n)) pt -> eventually (headRecv p q) pt.
+Definition liveness := alwaysC livePath.
 (*
 Inductive livePath (pt: Path): Prop :=
   | L1: forall p q s, enabled (tctxRE (lsend p q (Some s) n)) pt -> eventually (headComm p q) pt -> livePath pt
