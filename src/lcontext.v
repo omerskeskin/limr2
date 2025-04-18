@@ -457,7 +457,7 @@ Proof.
   unfold M.Equal in *. crush.
 Qed.
 
-Lemma lem_6_11a_tctx_recv_invert : forall g g' p q s ell, 
+Lemma lem_6_11b_tctx_recv_invert : forall g g' p q s ell, 
   (tctxR g (lrecv p q (Some s) ell) g' ->
   exists xs Tp', M.find p g = Some (ltt_recv q xs) /\ 
   onth ell xs=Some (s, Tp') /\ M.find p g' = (Some Tp')).
@@ -483,7 +483,7 @@ Ltac destr_hyps := repeat (match goal with
           | [H: _ /\ _ |-_] => destruct H
           end).
 
-Lemma lem_6_11a_tctx_comm_invert: forall g g' p q ell, 
+Lemma lem_6_11c_tctx_comm_invert: forall g g' p q ell, 
   tctxR g (lcomm p q ell) g' ->exists s s',
   (exists xsp Tp', M.find p g = Some (ltt_send q xsp) /\ 
   onth ell xsp=Some (s, Tp') /\ M.find p g' = (Some Tp')) /\
@@ -495,7 +495,7 @@ Proof.
   dependent induction H.
   {
     apply lem_6_11a_tctx_send_invert in H0.
-    apply lem_6_11a_tctx_recv_invert in H3.
+    apply lem_6_11b_tctx_recv_invert in H3.
     destr_hyps.
     exists s, s'.
     split.
@@ -850,18 +850,94 @@ Proof.
   assumption.
 Qed.
 
-(*
-Fixpoint restrict_ctx (g:tctx) (prts: seq.seq nat) : tctx :=
-  match prts with 
-    | [] => M.empty
-    | (x::xs) => 
-      match M.find x g with
-      | (Some t) => M.add x t (restrict_ctx (M.remove x g) xs)
-      | _ =>(restrict_ctx (M.remove x g) xs) end
-  end.
-Check M.In.
-*)
- 
+
+Theorem simple_red_recv : forall p q g ct s xs n,
+  p <> q ->
+  M.find p g = Some (ltt_recv q xs) -> 
+  onth n xs= (Some (s,ct)) ->
+  tctxR g (lrecv p q (Some s) n) (m_update p ct g).
+Proof.
+  intros.
+  assert (Hr_1:tctxR (M.add p (ltt_recv q xs) M.empty) 
+  (lrecv p q (Some s) n) (M.add p ct M.empty)).
+  {
+    apply Rrecv; crush.
+  }
+  unfold m_update.
+  assert (Hd:MF.Disjoint (M.remove p g) (M.add p ct M.empty)).
+  {
+   unfold MF.Disjoint.
+   intros.
+   Search M.remove M.In.
+   destruct (Nat.eq_dec p k); crush. apply not_in_remove in H3; easy.
+   destruct (M.find k (M.add p ct M.empty)) eqn:Hy1.
+   Search M.add M.find.
+   apply MF.add_neq_o with (m:=M.empty) (e:=ct) in n0.
+   Search M.find M.empty.
+   rewrite M.empty_spec in n0. crush.
+   rewrite MF.in_find in H4. crush.
+  }
+  assert(He1: M.Equal (M.add p ct (M.remove p g)) 
+  (disj_merge (M.remove p g) (M.add p ct M.empty) Hd)).
+  {
+    unfold M.Equal. intros.
+    destruct (Nat.eq_dec p y).
+    {
+     subst.
+     unfold disj_merge.
+     rewrite MF.merge_spec1mn.
+     rewrite M.add_spec1.
+     rewrite M.remove_spec1.
+     rewrite M.add_spec1.
+     1-3:crush. 
+    }
+    
+    destruct (M.find y g) eqn:H_yg1;
+    rewrite M.add_spec2;
+    try rewrite MF.remove_neq_o;
+    unfold disj_merge;
+    try rewrite MF.merge_spec1mn;
+    try rewrite MF.remove_neq_o;
+    try rewrite M.add_spec2;
+    try rewrite M.empty_spec;
+    crush.
+  }
+  assert (Hd2:MF.Disjoint (M.remove p g) (M.add p (ltt_recv q xs) M.empty)).
+  {
+   unfold MF.Disjoint.
+   intros.
+   destruct (Nat.eq_dec p k); crush. apply not_in_remove in H3; easy.
+   destruct (M.find k (M.add p (ltt_recv q xs) M.empty)) eqn:Hy1.
+   Search M.add M.find.
+   apply MF.add_neq_o with (m:=M.empty) (e:=(ltt_recv q xs)) in n0.
+   Search M.find M.empty.
+   rewrite M.empty_spec in n0. crush.
+   rewrite MF.in_find in H4. crush.
+  }
+
+  assert(He2: M.Equal g 
+  (disj_merge (M.remove p g) (M.add p (ltt_recv q xs) M.empty) Hd2)).
+  {
+    Check singleton_merge.
+    unfold M.Equal.
+    intros.
+    unfold disj_merge.
+    destruct(Nat.eq_dec y p); rewrite MF.merge_spec1mn;crush.
+    rewrite M.remove_spec1;
+    rewrite M.add_spec1;crush.
+    rewrite M.add_spec2; try rewrite M.empty_spec; try rewrite M.remove_spec2; crush.
+    destruct (M.find y g) eqn:Hyg; crush.
+  }
+  
+  unfold m_update.
+  apply Rstruct with (g1:=g) 
+  (g1':=(disj_merge (M.remove p g) (M.add p (ltt_recv q xs) M.empty) Hd2)) 
+  (g2' := (disj_merge (M.remove p g) (M.add p ct M.empty) Hd)) 
+  (g2:= M.add p ct (M.remove p g));crush.
+  apply tctxR_weakening2. 
+  assumption.
+Qed.
+
 Lemma lem_6_10 : forall r g l g' , tctxR g l g' ->
      ~ ispSubjl r l ->
      M.find r g = M.find r g'.
@@ -883,61 +959,3 @@ Proof.
   apply  IHtctxR in H0.
   unfold M.Equal in *; crush.
 Qed. 
-
-(*
-CoInductive coseq (A: Type): Type :=
-  | conil : coseq A
-  | cocons: A -> coseq A -> coseq A.
-
-Arguments conil {_}.
-Arguments cocons {_} _ _.
-
-Definition coseq_id {A: Type} (c: coseq A): coseq A :=
-  match c with
-    | conil       => conil
-    | cocons x xs => cocons x xs
-  end.
-
-Lemma coseq_eq: forall {A: Type} (c: coseq A), c = coseq_id c.
-Proof. destruct c; easy. Defined.
-
-Notation Path := (coseq (tctx*label)) (only parsing).
-
-Inductive eventually {A: Type} (F: coseq A -> Prop): coseq A -> Prop :=
-  | evh: forall xs, F xs -> eventually F xs
-  | evc: forall x xs, eventually F xs -> eventually F (cocons x xs).
-
-Definition eventualyP := @eventually (tctx*label).
-
-Inductive alwaysG {A: Type} (F: coseq A -> Prop) (R: coseq A -> Prop): coseq A -> Prop :=
-  | alwn: F conil -> alwaysG F R conil
-  | alwc: forall x xs, F (cocons x xs) -> R xs -> alwaysG F R (cocons x xs).
-
-Definition alwaysP := @alwaysG (tctx*label).
-
-Definition alwaysC F p := paco1 (alwaysP F) bot1 p.
-
-Inductive CextP (F: tctx -> Prop): Path -> Prop :=
-  | holdc: forall c l p, F c -> CextP F (cocons (c,l) p).
-
-Inductive immTrans: part -> part -> Path -> Prop :=
-  | immTc: forall p q c pt, immTrans p q (cocons (c,(lcomm p q)) pt).
-
-Definition fairness_inner (pt: Path): Prop :=
-  forall p q, CextP (tctxRE (lcomm p q)) pt -> eventually (immTrans p q) pt.
-
-Definition fair_gfp := alwaysC (fairness_inner).
-
-Definition liveness_inner (pt: Path): Prop :=
-  (forall p q s, CextP (tctxRE (lsend p q (Some s))) pt -> eventually (immTrans p q) pt) /\
-  (forall p q s, CextP (tctxRE (lrecv q p (Some s))) pt -> eventually (immTrans p q) pt).
-
-Definition live_gfp := alwaysC (liveness_inner).
-
-Inductive safe (R: tctx -> Prop): tctx -> Prop :=
-  | sasr  : forall p q s s' c, tctxRE (lsend p q (Some s)) c -> tctxRE (lrecv q p (Some s')) c ->
-                               tctxRE (lcomm p q) c -> safe R c
-  | saimpl:  forall p q c c', R c -> tctxRF (lcomm p q) c c' -> safe R c'.
-
-Definition safeC c := paco1 safe bot1 c.
-*)

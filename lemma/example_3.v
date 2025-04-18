@@ -137,7 +137,7 @@ Proof.
         destruct (Nat.eq_dec p prt_p). assumption.
         simpl in H.
         inversion H. subst. 
-        apply lem_6_11a_tctx_comm_invert in H0.
+        apply lem_6_11c_tctx_comm_invert in H0.
         destr_hyps.
         destruct (Nat.eq_dec p prt_q);
         destruct (Nat.eq_dec p prt_r); crush. 
@@ -162,7 +162,7 @@ Proof.
         destruct (Nat.eq_dec q prt_q). assumption.
         simpl in H.
         inversion H. subst. 
-        apply lem_6_11a_tctx_comm_invert in H0.
+        apply lem_6_11c_tctx_comm_invert in H0.
         destr_hyps.
         destruct (Nat.eq_dec q prt_p);
         destruct (Nat.eq_dec q prt_r); crush.
