@@ -483,6 +483,7 @@ Ltac destr_hyps := repeat (match goal with
           | [H: _ /\ _ |-_] => destruct H
           end).
 
+
 Lemma lem_6_11c_tctx_comm_invert: forall g g' p q ell, 
   tctxR g (lcomm p q ell) g' ->exists s s',
   (exists xsp Tp', M.find p g = Some (ltt_send q xsp) /\ 
@@ -628,8 +629,7 @@ Proper ((@M.Equal ltt) ==> (@M.Equal ltt) ==>MF.Disjoint ==>(@M.Equal ltt)) disj
 Proof.  apply MF.merge_m. Qed.
 *)
 Theorem tctxR_weakening (g1 g1' g2 : tctx) (Hdisj_1: MF.Disjoint g1 g2) 
-  (Hdisj_2: MF.Disjoint g1' g2)
-  :
+  (Hdisj_2: MF.Disjoint g1' g2):
   forall l, tctxR g1 l g1' -> tctxR (disj_merge g1 g2 Hdisj_1) l 
   (disj_merge g1' g2 Hdisj_2).
 Proof.
@@ -959,3 +959,46 @@ Proof.
   apply  IHtctxR in H0.
   unfold M.Equal in *; crush.
 Qed. 
+
+Lemma transition_sort_some_send: forall g g' p q o n, tctxR g (lsend p q o n) g' ->
+exists s, o=Some s.
+Proof.
+  intros.
+  dependent induction H; try exists s;
+  try eapply IHtctxR with (p:=p) (q:=q) (n:=n); crush.
+Qed.
+
+Lemma transition_sort_some_recv: 
+forall g g' p q o n, tctxR g (lrecv p q o n) g' ->
+exists s, o=Some s.
+Proof.
+  intros.
+  dependent induction H; try exists s;
+  try eapply IHtctxR with (p:=p) (q:=q) (n:=n); crush.
+Qed.
+
+Lemma lem_6_12_reduction_determinism: forall g l g' g'', tctxR g l g' -> tctxR g l g'' -> M.Equal g' g''.
+Proof.
+  intros.
+  
+  Ltac send_rec_solve H H0 p y invert :=
+  destruct (Nat.eq_dec p y);[
+  subst;
+  apply invert in H0;
+  apply invert in H; destr_hyps; 
+  try rewrite M.add_spec1 in *; crush |
+
+  apply lem_6_10 with (r:=y) in H0,H; try rewrite M.add_spec2 in H0; 
+  try rewrite M.empty_spec in H;
+  try rewrite M.add_spec2; try rewrite M.empty_spec; crush].
+  
+  destruct l;rename n into p, n0 into q, n1 into n;
+  unfold M.Equal;subst;intros; try (destruct o).  
+  send_rec_solve H H0 p y lem_6_11b_tctx_recv_invert.
+  apply transition_sort_some_recv in H;crush.
+  send_rec_solve H H0 p y lem_6_11a_tctx_send_invert.
+  apply transition_sort_some_send in H;crush.
+  destruct (Nat.eq_dec p y);destruct (Nat.eq_dec q y);subst.
+  1-3: apply lem_6_11c_tctx_comm_invert in H,H0; crush.
+  apply lem_6_10 with (r:=y) in H0,H;crush. 
+Qed.

@@ -11,6 +11,7 @@ Inductive isMerge : ltt -> list (option ltt) -> Prop :=
   | mconsn : forall t xs, isMerge t xs -> isMerge t (None :: xs) 
   | mconss : forall t xs, isMerge t xs -> isMerge t (Some t :: xs). 
 
+
 Lemma merge_end_back : forall n ys0 t,
     onth n ys0 = Some ltt_end -> 
     isMerge t ys0 -> 
