@@ -370,4 +370,84 @@ Proof.
         eapply subproj_helper_2_recv with (x0:=x0) (ys:=o::ys);crush.
     }
 Qed.
+
+Lemma subtype_end_inv2: forall t:ltt, subtypeC ltt_end t -> t= ltt_end.
+Proof.
+    intros. pinversion H;crush. apply sub_mon.
+Qed.
+Search projectionC ltt_end.
+Lemma subproj_inv_end: forall g p, wfgC g -> 
+    issubProj ltt_end g p -> isgPartsC p g -> False.
+Proof.
+    intros. unfold issubProj in H0. destr_hyps. 
+    apply subtype_end_inv2 in H2. subst.
+    apply pmergeCR with (G:=g) (r:=p);crush.
+Qed. 
 End subproj_inversion.
+Print issubProj.
+
+Lemma simul_subproj_helper:  forall p q xp xq x0,
+Forall2R
+(fun (y : option (sort * gtt)) (x : option (sort * ltt)) =>
+y = None \/
+(exists (s : sort) (elx : ltt) (s' : sort) (ely : gtt),
+y = Some (s', ely) /\ x = Some (s, elx) /\
+subsort s' s /\ issubProj elx ely q)) x0 xq ->
+Forall2R
+(fun (x : option (sort * ltt)) (y : option (sort * gtt)) =>
+x = None \/
+(exists (s : sort) (elx : ltt) (s' : sort) (ely : gtt),
+y = Some (s', ely) /\ x = Some (s, elx) /\
+subsort s s' /\ issubProj elx ely p)) xp x0
+-> Forall2R
+(fun u v : option (sort * ltt) =>
+u = None \/
+(exists (s : sort) (elx : ltt) (s' : sort) (ely : ltt),
+u = Some (s, elx) /\ v = Some (s', ely) /\ subsort s s')) xp xq.
+Proof.
+    induction xp. constructor. 
+    intros. destruct xq;destruct x0;crush. inversion H0. inversion H. inversion H0.   
+    constructor.
+    {
+        destruct a;crush. right. inversion H;inversion H0;crush.
+        exists x, x1, x4, x5. crush. 
+        inversion H0;subst. destruct H8;crush. eapply sstrans with (s2:=x8);crush.
+    }
+    {
+        eapply IHxp with (x0:=x0);crush. inversion H. crush. inversion H0. crush.
+    }
+Qed.
+
+Lemma lem_6_23_simul_subproj_inv : forall p q xp xq G,
+    wfgC G -> (SList xp \/ xp=[]) -> (SList xq \/ xq=[]) ->
+    issubProj (ltt_send q xp) G p ->
+    issubProj (ltt_recv p xq) G q ->
+    Forall2R (fun u v => u=None \/ 
+    exists s elx s' ely, u=Some (s,elx) /\ 
+    v=Some (s',ely)
+    /\ subsort s s' 
+    ) xp xq.
+Proof.
+    induction xp. intros. constructor.
+    intros.
+    pose proof H2 as Hsubp. 
+    pose proof H3 as Hsubq.
+    destruct xq.
+    destruct H0;destruct H1;crush.
+    apply subproj_inv_send in H2;try easy.
+    apply subproj_inv_recv in H3;try easy.
+    destruct H2;destruct H3;crush.
+    {
+        unfold recv_cond,send_cond in *.
+        eapply simul_subproj_helper with (p:=p) (x0:=x0) (q:=q);crush.
+    }
+    {
+        
+        inversion H4;subst.
+        rename x2 into s, x3 into t, x4 into gs.
+        eapply IHxp.
+        destruct xq. inversion H1. constructor.
+        admit.
+        eapply IHxp.
+    }
+Qed.
