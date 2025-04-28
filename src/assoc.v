@@ -17,7 +17,7 @@ Search subtypeC.
 Definition assoc (g: tctx) (gt:gtt) := 
     forall p, (isgPartsC p gt -> exists Tp, M.find p g=Some Tp /\  
         issubProj Tp gt p) /\
-         ~ isgPartsC p gt -> forall Tpx, M.find p g = Some Tpx -> Tpx=ltt_end.
+         (~ isgPartsC p gt -> forall Tpx, M.find p g = Some Tpx -> Tpx=ltt_end).
 
 Lemma subtype_end_inv : forall t, subtypeC t ltt_end -> t=ltt_end.
 Proof.
@@ -586,7 +586,7 @@ Admitted.
 Lemma same_rec_send_not_wfg: forall p xs, ~ wfgC (gtt_send p p xs).
 Proof.
 Admitted.
-Lemma lem_6_23_via_wfg_proof: forall G p, wfgC G -> isgPartsC p G ->
+Lemma lem_6_16_simul_subproj: forall G p, wfgC G -> isgPartsC p G ->
   forall q xp xq,
     wfgC G -> 
     issubProj (ltt_send q xp) G p ->
@@ -660,3 +660,83 @@ Proof.
     }
     all:easy.
 Qed.
+
+Check subproj_inv_recv.
+Check assoc.
+Lemma assoc_inv_recv: forall p q xs gamma G,
+wfgC G ->
+SList xs ->
+assoc gamma G ->
+M.find p gamma =Some  (ltt_recv q xs)  ->
+(exists ys : list (option (sort * gtt)),
+G = gtt_send q p ys /\ recv_cond xs ys p) \/
+(exists (s t : opt_lbl) (ys : list (option (sort * gtt))),
+G = gtt_send s t ys /\
+p <> s /\ p <> t /\ subproj_cont_cond (ltt_recv q xs) ys p).
+Proof.
+    intros.
+    unfold assoc in *.
+    pose proof H as Hwfg.
+    apply decidable_isgPartsC with (pt:= p) in H.
+    specialize (H1 p).
+    
+    destr_hyps.
+    destruct H.
+    eapply H1 in H.
+    destr_hyps.
+    rewrite H2 in H. inversion H. subst. apply subproj_inv_recv in H4;crush.
+
+    eapply H3 with (Tpx:= (ltt_recv q xs)) in H;crush.
+Qed.
+
+
+Lemma assoc_inv_send: forall p q xs gamma G,
+wfgC G ->
+SList xs ->
+assoc gamma G ->
+M.find p gamma =Some  (ltt_send q xs)  ->
+(exists ys : list (option (sort * gtt)), G = gtt_send p q ys /\ send_cond xs ys p) \/
+(exists (s t : opt_lbl) (ys : list (option (sort * gtt))),
+G = gtt_send s t ys /\ p <> s /\ p <> t /\ subproj_cont_cond (ltt_send q xs) ys p).
+Proof.
+    intros.
+    unfold assoc in *.
+    pose proof H as Hwfg.
+    apply decidable_isgPartsC with (pt:= p) in H.
+    specialize (H1 p).
+    
+    destr_hyps.
+    destruct H.
+    eapply H1 in H.
+    destr_hyps.
+    rewrite H2 in H. inversion H. subst. apply subproj_inv_send in H4;crush.
+
+    eapply H3 with (Tpx:= (ltt_send q xs)) in H;crush.
+Qed.
+
+Check subproj_inv_send.
+
+Lemma lem_6_18_simul_assoc: forall gamma p q G xp xq, assoc gamma G ->
+wfgC G ->
+SList xp ->
+SList xq ->
+M.find p gamma =Some  (ltt_send q xp) ->
+M.find q gamma =Some  (ltt_recv p xq) ->
+(Forall2R (fun u v => u=None \/ 
+    exists s elx s' ely, u=Some (s,elx) /\ 
+    v=Some (s',ely)
+    /\ subsort s s' 
+    ) xp xq) \/ 
+(exists (s t : opt_lbl) (ys : list (option (sort * gtt))),
+G = gtt_send s t ys /\ p <> s /\ p <> t /\ subproj_cont_cond (ltt_send q xp) ys p
+/\ subproj_cont_cond (ltt_recv p xq) ys q).
+Proof.
+    intros.
+    eapply assoc_inv_send with (G:=G) in H3; apply assoc_inv_recv with (G:=G) in H4;crush.
+    left.
+    unfold send_cond, recv_cond in *.
+    eapply simul_subproj_helper with (x0:=x0) (p:=p) (q:=q); crush.
+
+    right. inversion H5;subst. exists x2, x3, x4. crush. 
+Qed.
+
