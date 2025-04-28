@@ -109,12 +109,18 @@ Qed.
 Search wfG.
 Lemma empty_not_wfg : forall p q, ~ wfgC (gtt_send p q []).
 Proof.
-    unfold not;intros. unfold wfgC in H. destr_hyps.
+    unfold not;intros.  unfold wfgC in H. destr_hyps.
     induction x;(try (pinversion H;apply gttT_mon)).
     pinversion H;subst. destruct l.
     inversion H0;subst. inversion H7.
     inversion H4. apply gttT_mon.
 
+    inversion H0;subst.
+    
+    
+    pinversion H;subst.
+    Search gttTC.
+    apply IHx. 
 Admitted.
 Ltac invalid_forall_wfg :=
     try ((match goal with | 
@@ -138,11 +144,18 @@ Qed.
 Lemma onth_nil {A:Type}: forall n, onth  n ([]:list (option A))= None.
 Proof. intros;destruct n;unfold onth in *;crush. Qed.
 
-Lemma projection_implies_part :forall g p q xs, 
+Lemma projection_implies_part_send :forall g p q xs, 
 projectionC g p (ltt_send q xs) -> isgPartsC p g.
 Proof.
     intros. pinversion H;subst;crush. apply proj_mon.
 Qed.
+
+Lemma projection_implies_part_recv :forall g p q xs, 
+projectionC g p (ltt_recv q xs) -> isgPartsC p g.
+Proof.
+    intros. pinversion H;subst;crush. apply proj_mon.
+Qed.
+
 Section subproj_inversion.
 Definition send_cond (xs:list (option (sort*ltt))) (ys:list (option (sort*gtt))) (p:part) := 
     Forall2R (fun x y => x=None 
@@ -418,36 +431,232 @@ Proof.
     }
 Qed.
 
-Lemma lem_6_23_simul_subproj_inv : forall p q xp xq G,
-    wfgC G -> (SList xp \/ xp=[]) -> (SList xq \/ xq=[]) ->
+Definition typ_p_gtth  (gs:list (option gtt)) (ctx:gtth) p G:=
+    typ_gtth gs ctx G /\
+    (ishParts p ctx -> False) /\
+    Forall
+    (fun u : option gtt =>
+    u = None \/
+    (exists (q : opt_lbl) (lsg : list (option (sort * gtt))),
+    u = Some (gtt_send p q lsg) \/
+    u = Some (gtt_send q p lsg) \/ u = Some gtt_end)) gs.
+
+(*
+Lemma wfg_proof_princip: forall (P:gtth -> list (option gtt) -> Prop) (Q:gtt->Prop), 
+(forall ctx gs g, 
+    P ctx gs ->
+    typ_gtth gs ctx g -> Q g) ->
+    (forall p ctx gs, good_grafting ctx gs p  -> P ctx gs) -> forall g p,
+    wfgC g -> isgPartsC p g -> Q g.
+Proof.
+    intros.
+    apply balanced_to_tree with (p:=p) in H1;crush.
+    assert (good_grafting x x0 p). unfold good_grafting. exists g. crush.
+    eapply H0 in H5.
+    eapply H  with (g:=g) in H5;crush.
+Qed.*)
+
+Lemma wfg_proof_princip2: forall (Q:gtt->Prop) p,
+    (forall ctx gs g, typ_p_gtth gs ctx p g -> Q g) -> 
+    (forall g, wfgC g -> isgPartsC p g -> Q g).
+Proof.
+    intros.
+    apply balanced_to_tree with (p:=p) in H0 .
+    destr_hyps.
+    specialize H with (ctx:=x) (gs:=x0) (g:=g).
+    unfold typ_p_gtth in *. all:crush.
+Qed.
+Lemma typ_gtth_cont1: forall gs p q xs gcs s gc n, 
+typ_gtth gs (gtth_send p q gcs) (gtt_send p q xs) ->
+    onth n xs=Some (s,gc) -> exists gch, onth n gcs = Some (s,gch) /\
+    typ_gtth gs gch gc.
+Proof.
+    intros.
+    inversion H;subst.
+    
+     eapply Forall2_prop_l with (l:=n) (p:=(s,gc))  in H7;
+     try assumption.
+     destr_hyps. subst. destruct H2;crush. exists x0. crush. 
+Qed.
+
+
+Lemma typ_gtth_cont2: forall gs p q xs gcs s gch n, 
+typ_gtth gs (gtth_send p q gcs) (gtt_send p q xs) ->
+    onth n gcs = Some (s,gch) -> exists gc, onth n xs=Some (s,gc)   /\
+    typ_gtth gs gch gc.
+Proof.
+    intros.
+    inversion H;subst.
+     eapply Forall2_prop_r with (l:=n) (p:=(s,gch))  in H7;
+     try assumption.
+     destr_hyps. subst. destruct H2;crush. exists x1. crush. 
+Qed.
+ 
+(*
+
+Lemma usedCtx_continuation : forall gs p q n gcs s gch, usedCtx gs (gtth_send p q gcs) -> onth n gcs =Some (s,gch) ->
+    usedCtx gs gch.
+Proof.
+    intros.
+    inversion H;subst.
+    inversion H4;subst.
+    destruct gch.
+    eapply Forall2_prop_l with (l:=n) (p:=(s,gtth_hol n0)) in H6.
+    destr_hyps.
+    destruct H2;try easy. destr_hyps.
+    subst. destruct n. simpl in H2. inversion H2. subst. inversion H3;subst. easy.
+    simpl in H2. rewrite onth_nil in H2. easy. easy.
+    {
+        
+       assert(Haux: onth 0 [Some gs] = Some gs). crush.
+        eapply Forall2_prop_l with (l:=n) (p:=(s, gtth_send n0 n1 l)) in H6; try easy.
+        destr_hyps.
+        destruct H2;crush.
+        destruct n. simpl in H2. inversion H2. subst. easy.
+        simpl in H2; rewrite onth_nil in H2;crush.
+    }
+    {
+     Search onth (list (option (list (option gtt)))).   
+     eapply Forall2_prop_l with (l:=n) (p:=(s, gch)) in H6; try easy. destr_hyps.
+     destruct H3;try easy. destr_hyps.
+     destruct n. simpl in H2. subst;easy. subst.
+     eapply decidable_helper.mergeCtx_sl with (n:=n) (ctxGi := x0) in H1;crush.
+
+        
+    }
+Qed.
+*)
+Lemma typ_p_gtth_cont2:forall gs p q r xs gcs s gch n, 
+typ_p_gtth gs (gtth_send p q gcs) r (gtt_send p q xs) ->
+    onth n gcs = Some (s,gch) -> exists gc, onth n xs=Some (s,gc)   /\
+    typ_p_gtth gs gch r gc.
+Proof.
+    intros. inversion H. inversion H1. destr_hyps. subst.
+    pose proof H0 as H_gcs_gch.
+    eapply typ_gtth_cont2 with (xs:=xs) (gs:=gs) (p:=p) (q:=q) in H0;
+    try assumption;subst.
+    destr_hyps.
+    exists x. crush. unfold typ_p_gtth;crush.
+    eapply decidable_helper.ishParts_n with (n:=n) (s0:=s) (g:=gch) in H2;try crush.
+    
+Qed.
+
+Lemma typ_gtth_inv: forall p q gs gcs g, typ_gtth gs (gtth_send p q gcs) g -> exists xs, g= gtt_send p q xs.
+Proof.
+    intros.
+    inversion H;subst. exists ys. reflexivity.
+Qed.
+Lemma typ_p_gtth_inv: forall p p' q gs gcs g, typ_p_gtth gs (gtth_send p q gcs)  p' g -> exists xs, g= gtt_send p q xs.
+Proof.
+    intros. inversion H. apply typ_gtth_inv in H0. easy.
+Qed.
+
+Lemma multigrafting_lemma1: forall p q xp xq G gs s t ghs, wfgC G -> 
+SList xp -> SList xq ->
+issubProj (ltt_send q xp) G p ->
+issubProj (ltt_recv p xq) G q ->
+typ_p_gtth gs (gtth_send s t ghs) p G ->
+s <> p /\ t <> q.
+Proof.
+    intros.
+    inversion H4.
+    destr_hyps.
+    assert (Hleft:s <> p).
+    {
+        
+        destruct (Nat.eq_dec s p). subst. exfalso. apply H6.
+        constructor. easy.
+    }
+    split. easy.
+    {
+        destruct (Nat.eq_dec t q);try easy.
+        subst.
+        apply subproj_inv_recv in H3;
+        apply subproj_inv_send in H2;try easy.
+        destruct H2;destruct H3;crush;
+        apply typ_p_gtth_inv in H4; destr_hyps; 
+        [inversion H2 |
+         inversion H4];crush.
+    }
+Qed.
+
+Lemma continuation_wfgC : forall p q xs s gc n , wfgC (gtt_send p q xs) -> onth n xs=Some (s,gc) -> wfgC gc.
+Proof.
+Admitted.
+Lemma same_rec_send_not_wfg: forall p xs, ~ wfgC (gtt_send p p xs).
+Proof.
+Admitted.
+Lemma lem_6_23_via_wfg_proof: forall G p, wfgC G -> isgPartsC p G ->
+  forall q xp xq,
+    wfgC G -> 
     issubProj (ltt_send q xp) G p ->
     issubProj (ltt_recv p xq) G q ->
+    SList xp -> SList xq ->
     Forall2R (fun u v => u=None \/ 
     exists s elx s' ely, u=Some (s,elx) /\ 
     v=Some (s',ely)
     /\ subsort s s' 
     ) xp xq.
 Proof.
-    induction xp. intros. constructor.
-    intros.
-    pose proof H2 as Hsubp. 
-    pose proof H3 as Hsubq.
-    destruct xq.
-    destruct H0;destruct H1;crush.
-    apply subproj_inv_send in H2;try easy.
-    apply subproj_inv_recv in H3;try easy.
-    destruct H2;destruct H3;crush.
+    intros G p Hwfog Hispart.
+    eapply wfg_proof_princip2 with (g:=G) (p:=p).
     {
-        unfold recv_cond,send_cond in *.
-        eapply simul_subproj_helper with (p:=p) (x0:=x0) (q:=q);crush.
-    }
-    {
+        generalize dependent p.
+     induction ctx using gtth_ind_ref.
+     {
+      clear Hwfog.
+      clear Hispart.
+      clear G.
+      intros.
+      inversion H;subst.
+      inversion H5;subst.
+      destr_hyps.
+      eapply Forall_prop with (p:=g) (l:=n) in H7; try assumption.
+      
+      destruct H7. try easy.
+      destruct H7. destruct H7.
+      destruct H7; [ | destruct H7]; inversion H7;subst;
+      apply subproj_inv_send in H1;apply subproj_inv_recv in H2;
+      destruct H1;destruct H2; crush;
+      [
+      eapply simul_subproj_helper with (p:=p) (q:=q) (x0:=x1) |
+
+      inversion H10;inversion H2;subst;
+      apply same_rec_send_not_wfg in H0] ;crush.
+     }
+     {
+      intros.
+      assert(exists n ss gg, onth n xs=Some (ss,gg)). 
+      {
+       inversion H0. inversion H6. apply slist_implies_some in H13. subst.
+       destr_hyps.
+       destruct x0. exists x,s, g. easy.  
+      }
         
-        inversion H4;subst.
-        rename x2 into s, x3 into t, x4 into gs.
-        eapply IHxp.
-        destruct xq. inversion H1. constructor.
-        admit.
-        eapply IHxp.
+      destr_hyps. 
+      rename x0 into s, x1 into gch.
+      pose proof H0 as Hgraft.
+      apply multigrafting_lemma1 with (xp:=xp) (xq:=xq) (q:=q0) in H0;try easy.
+      pose proof Hgraft as Hgraft'.
+      apply typ_p_gtth_inv in Hgraft. destr_hyps. subst.
+      eapply Forall_prop with (l:=x) (p:= (s,gch)) in H;try easy.
+      destruct H; try easy.
+      destr_hyps. 
+      inversion H;subst. rename x1 into s, x2 into gch.
+      rename x0 into gcs.
+      eapply typ_p_gtth_cont2 with (n:=x) (s:=s) (gch:=gch) in Hgraft';try assumption.
+      destruct Hgraft' as [gc']. destr_hyps.
+      eapply H7 with (q:=q0) (g:=gc') (gs:=gs);try easy.
+      eapply continuation_wfgC with (gc:=gc') (n:=x) (s:=s)  in H1;try easy.
+      all:apply subproj_inv_send in H2;apply subproj_inv_recv in H3;try easy;
+      destruct H2;destruct H3;crush; unfold issubProj; destr_hyps;
+      inversion H11;inversion H13;subst;
+      rename H14 into Hsubprojsend, H17 into Hsubprojrecv,x5 into gcs;
+      unfold subproj_cont_cond in *.
+      1: eapply Forall_prop with (l:=x) (p:=(s,gc')) in Hsubprojsend.
+      3: eapply Forall_prop with (l:=x) (p:=(s,gc')) in Hsubprojrecv. 
+      all:(crush;try easy).
+     }
     }
+    all:easy.
 Qed.
