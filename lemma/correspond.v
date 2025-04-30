@@ -217,7 +217,7 @@ end.
 
 Check Forall2_prop_r.
 
-Lemma Forall2R_prop {A:Type}: forall l (xs ys :list (option A)) P p, Forall2R P xs ys -> onth l xs= Some p ->  
+Lemma Forall2R_prop {A:Type} {B:Type}: forall l (xs :list (option A)) (ys :list (option B)) P p, Forall2R P xs ys -> onth l xs= Some p ->  
     exists p', onth l ys= p' /\ P (Some p) p'.
 Proof.
     intros.
@@ -228,7 +228,7 @@ Proof.
 Qed.
 
 
-Definition assoc_wf (g:tctx):= forall p q xs, (M.find p g =Some (ltt_send q xs) -> SList xs)
+Definition tctx_wf (g:tctx):= forall p q xs, (M.find p g =Some (ltt_send q xs) -> SList xs)
 /\ (M.find p g =Some (ltt_recv q xs) -> SList xs).
 
 Lemma subproj_onth1: forall p q xp gcs s T_k k, 
@@ -249,21 +249,132 @@ Proof.
     eapply Forall2_prop_l with (l:=k) (p:=(x1,x3)) in H10; try easy.
     destr_hyps. destruct H10; try easy. destr_hyps. subst;exists x4, x5;easy.
 Qed.
+#[global] Instance RWMTCTXR: Proper ((@M.Equal ltt) ==> (eq) ==> (@M.Equal ltt) ==> (iff)) tctxR.
+Proof. unfold "==>". constructor; intros; subst. 
+apply Rstruct with (g1:=y) (g2:=y1) (g1':=x) (g2':=x1);crush. 
+apply Rstruct with (g1:=x) (g2:=x1) (g1':=y) (g2':=y1);crush.
+Qed.
+Lemma context_red_simple_comm: forall k xq xp p q gamma' s s'' Tp_k Tq_k, 
+    p <> q ->
+    onth k xq = Some (s'', Tq_k) ->
+    onth k xp = Some (s, Tp_k) ->
+    M.find p gamma'= None ->
+    M.find q gamma'=None ->
+    subsort s s'' ->
+    tctxR (M.add p (ltt_send q xp) (M.add q (ltt_recv p xq) gamma'))
+    (lcomm p q k) (M.add p Tp_k (M.add q Tq_k gamma')).
+Proof.
+    intros.
+    assert(Hd1: forall Ttp Ttq,
+    MF.Disjoint (M.add p Ttp (M.add q Ttq M.empty) )
+    gamma').
+    {
+     unfold MF.Disjoint in *. unfold not. intros.
+     destruct(Nat.eq_dec p k0);destruct (Nat.eq_dec q k0);crush.
+     rewrite  <- MF.not_in_find in H2; try easy.
+     rewrite  <- MF.not_in_find in H3; try easy.
+     rewrite MF.in_find in H6. apply opt_lem1 in H6. destr_hyps.
+     Check M.add_spec2.
+     rewrite M.add_spec2 in H5;try easy.
+     rewrite M.add_spec2 in H5;try easy.
+    }
+    assert(H_eq: forall Ttp Ttq Hdd, M.Equal ((M.add p Ttp (M.add q Ttq
+    gamma'))) (disj_merge (M.add p Ttp (M.add q Ttq
+    M.empty)) gamma' Hdd)).
+    {
+     unfold M.Equal. intros.
+     unfold disj_merge. rewrite MF.merge_spec1mn;crush.
+     destruct (Nat.eq_dec p y); destruct (Nat.eq_dec q y);crush.
+     + rewrite M.add_spec1. rewrite M.add_spec1. easy.
+     + rewrite M.add_spec2. rewrite M.add_spec1. rewrite M.add_spec2.
+     rewrite M.add_spec1. 1-3: try easy.
+     + repeat rewrite M.add_spec2;try easy. rewrite M.empty_spec. 
+     destruct (M.find y gamma') eqn:Hyg;crush.   
+    }
+    Ltac Hdeq t1 t2 H_eq Hd1:= setoid_rewrite (H_eq t1 t2 (Hd1 t1 t2)).
+    Hdeq (ltt_send q xp) (ltt_recv p xq) H_eq Hd1.
+    Hdeq Tp_k Tq_k H_eq Hd1.
+    apply tctxR_weakening.
+    assert(Heq1: forall Ttp Ttq Hdd, M.Equal (M.add p Ttp
+    (M.add q Ttq M.empty)) (disj_merge (M.add p Ttp M.empty) (M.add q Ttq M.empty) Hdd)).
+    {
+     intros.
+     unfold M.Equal; intros. unfold disj_merge. rewrite MF.merge_spec1mn;
+     destruct (Nat.eq_dec p y);destruct (Nat.eq_dec q y);crush.
+     + rewrite M.add_spec1. rewrite M.add_spec1. rewrite M.add_spec2. rewrite M.empty_spec.
+     crush. easy.     
+     + rewrite M.add_spec2. rewrite M.add_spec1. rewrite M.add_spec2. rewrite M.empty_spec.
+     crush. easy. easy.
+     + repeat rewrite M.add_spec2; try repeat rewrite M.empty_spec;try easy.     
+    }
+    assert(Hd2: forall (Ttp Ttq:ltt), MF.Disjoint (M.add p Ttp M.empty) (M.add q Ttq M.empty)).
+    {
+     unfold MF.Disjoint. unfold not. intros. destruct (Nat.eq_dec p k0);
+     destruct (Nat.eq_dec q k0);try repeat rewrite MF.in_find in *;
+     crush.
+     + rewrite M.add_spec2 in H7;try easy.
+     + rewrite M.add_spec2 in H6;try easy.
+     + rewrite M.add_spec2 in H6;try easy.    
+    }
+    intros.
+    Hdeq (ltt_send q xp) (ltt_recv p xq) Heq1 Hd2.
+    Hdeq Tp_k Tq_k Heq1 Hd2.
+    eapply Rcomm with (s:=s) (s':=s''); try easy.
+    apply Rsend;try easy.
+    apply Rrecv;try easy.
+Qed.
 
-Lemma assoc_soundness: forall G G' gamma  p q ell, wfgC G -> isgPartsC p G ->
-assoc_wf gamma ->
+Lemma subproj_after_cont_send: forall x p q r gcs s gk ls k,
+    SList ls ->
+    wfgC (gtt_send p q gcs) ->
+    issubProj (ltt_send x ls) (gtt_send p q gcs) r -> 
+    r <> p -> r<> q ->
+    isgPartsC r (gtt_send p q gcs) ->
+    onth k gcs=Some (s,gk) -> issubProj (ltt_send x ls) gk r.
+Proof.
+    intros.
+    apply subproj_inv_send in H1;try easy.
+    destruct H1;crush.
+    inversion H6;subst. rename x0 into p, x1 into q, x2 into gcs.
+    unfold subproj_cont_cond in H9.
+    eapply Forall_prop with (l:=k) (p:=(s,gk)) in H9; try easy.
+    destruct H9;try easy. destr_hyps. inversion H8;subst. easy.
+Qed.
+    
+Lemma subproj_after_cont_recv: forall x p q r gcs s gk ls k,
+    SList ls ->
+    wfgC (gtt_send p q gcs) ->
+    issubProj (ltt_recv x ls) (gtt_send p q gcs) r -> 
+    r <> p -> r<> q ->
+    isgPartsC r (gtt_send p q gcs) ->
+    onth k gcs=Some (s,gk) -> issubProj (ltt_recv x ls) gk r.
+Proof.
+    intros.
+    apply subproj_inv_recv in H1;try easy.
+    destruct H1;crush.
+    inversion H6;subst. rename x0 into p, x1 into q, x2 into gcs.
+    unfold subproj_cont_cond in H9.
+    eapply Forall_prop with (l:=k) (p:=(s,gk)) in H9; try easy.
+    destruct H9;try easy. destr_hyps. inversion H8;subst. easy.
+Qed.
+
+
+Lemma assoc_soundness: forall G G' gamma  p q ell, p <> q -> wfgC G -> isgPartsC p G ->
+tctx_wf gamma ->
 assoc gamma G -> 
 gttstepC G G' p q ell -> exists ell' gamma' G'',
 gttstepC G G'' p q ell' /\ assoc gamma' G'' /\ tctxR gamma (lcomm p q ell') gamma'.
 Proof.
     intros.
     generalize dependent G'.
-    revert H1 H2.
+    revert H2 H3.
     revert gamma.
+    rename H into Hpq_neq, H0 into H, H1 into H0.
     eapply wfg_proof_princip3 with (g:=G) (p:=p); try easy.
     induction ctx.
     {
      intros.
+     pose proof H4 as Hassoc.
      pose proof H2 as Htyp.
      eapply typ_p_gtth_step_inv with (g':=G') (q:=q) (ell:=ell) in H2; try easy.
      destruct H2.
@@ -284,11 +395,12 @@ Proof.
      apply subproj_simple_recv_inv in H8;try easy.
      destruct H9 as [xp].
      destruct H8 as [xq].
-     subst.
-     unfold assoc_wf in H3.  eapply H3 in H7. eapply H3 in H6.
+     subst. pose proof H7 as Hpgamma. pose proof H6 as Hqgamma.
+     unfold tctx_wf in H3.  eapply H3 in H7. eapply H3 in H6.
      pose proof Hsubp as Hsims.
      eapply lem_6_16_simul_subproj with (xq:=xq) in Hsims; try apply decidable_helper.triv_pt_p; try easy.
-    apply slist_implies_some in H7.
+        pose proof H7 as xpSlist. pose proof H6 as xqSlist.
+     apply slist_implies_some in H7.
     destr_hyps. rename x into k, x0 into T_k. destruct T_k as [s T_k].
     assert(exists s' gct, onth k gcs=Some (s',gct) /\ gttstepC (gtt_send p q gcs) gct p q k).
     {
@@ -303,17 +415,128 @@ Proof.
     destr_hyps. destruct H9;try easy. destr_hyps;subst. 
     apply eq_sym in H9. inversion H9. subst.  clear H9. 
     rename x2 into s'', x3 into Tq_k, T_k into Tp_k.
-    Check m_update.
+    assert(Hwfgk:wfgC G_k). admit.
     set (gamma':=M.add p Tp_k (M.add q Tq_k (M.remove p (M.remove q gamma)))).
     exists k , gamma', G_k. crush.
     {
-     admit.   
+        unfold assoc.
+        intros.
+        pose proof Hwfgk as Hgkdec. 
+        apply decidable_isgPartsC with (pt:= p0) in Hgkdec.
+        destruct (Hgkdec) as [Hgpart | Hgpart].
+        {
+            destruct (Nat.eq_dec p0 p);
+            destruct (Nat.eq_dec p0 q);
+            crush.
+            {
+                exists Tp_k. split. unfold gamma'. rewrite M.add_spec1. easy.
+                apply subproj_inv_send in Hsubp;try easy.
+                destruct (Hsubp).
+                {
+                    destr_hyps.
+                    inversion H9;subst. rename x into gcs.
+                    unfold send_cond in H14.
+                    eapply Forall2R_prop with (l:=k) (p:=(s,Tp_k)) in H14; try easy.
+                    destr_hyps.
+                    destruct H15;try easy.
+                    destr_hyps.
+                    inversion H16;subst.
+                    rewrite H15 in H10. inversion H10;subst. easy.
+                }
+                {
+                    destr_hyps. inversion H9;crush.
+                }
+            }
+            {
+                exists Tq_k. split. unfold gamma'. 
+                rewrite M.add_spec2; try rewrite M.add_spec1; easy.   
+                apply subproj_inv_recv in Hsubq;try easy.
+                destruct (Hsubq).
+                {
+                    destr_hyps.
+                    inversion H9;subst. rename x into gcs.
+                    unfold recv_cond in H14.
+                    eapply Forall2R_prop with (l:=k) (p:=(s',G_k)) in H14; try easy.
+                    destr_hyps.
+                    destruct H15;try easy.
+                    destr_hyps.
+                    inversion H16;subst.
+                    rewrite H16 in H12. inversion H12;subst. 
+                    inversion H15;subst.  easy.
+                }
+                {
+                    destr_hyps. inversion H9;crush.
+                }
+            }
+            {
+                assert(Hpart_parent:isgPartsC p0 (gtt_send p q gcs)).
+                {
+                    admit.
+                }
+                assert(Hrg: forall r, r<> p -> r <> q -> M.find r gamma' =M.find r gamma).
+                {
+                    intros.
+                    unfold gamma'. try rewrite M.add_spec2;
+                    try rewrite M.add_spec2;
+                    try rewrite M.remove_spec2;
+                    try rewrite M.remove_spec2;easy.   
+                }
+                {
+                    unfold assoc in Hassoc.
+                    specialize (Hassoc p0).
+                    destr_hyps.
+                    pose proof Hpart_parent as Hpp.
+                    apply H9 in Hpart_parent.
+                    destr_hyps.
+                    pose proof n0 as Hp0p.
+                    apply Hrg in Hp0p; try easy.
+                    exists x.
+                    rewrite Hp0p. split. easy.
+                    destruct x.
+                    {
+                        apply subproj_inv_end in H16; try easy.   
+                    }
+                    {
+                     apply subproj_inv_recv in H16;try easy.
+                     destruct H16.
+                     {
+                        destruct H16.
+                     }   
+                    }
+                    
+                }
+            }
+        }
+        split.
+        {
+            intros.
+
+        }
+        {
+
+        }
+        Search gttstepC isgPartsC.
     }
     {
-     Search "simple_red".
-     Check Rcomm.
-     Search "weaken".
-     eapply Rcomm.
+     set (gamma_justpq := M.add p (ltt_send q xp) (M.add q (ltt_send p xq) M.empty)).
+     set (gamma_nopq := M.remove p (M.remove q gamma)).
+     set (gamma'_justpq:=M.add p Tp_k (M.add q Tq_k M.empty)).
+     fold gamma_nopq in gamma'.
+     assert(Heq_gamma: M.Equal gamma (M.add p (ltt_send q xp)
+     (M.add q (ltt_recv p xq) gamma_nopq))).
+     {
+        unfold M.Equal. intros. unfold gamma_nopq.
+        destruct (Nat.eq_dec p y);destruct (Nat.eq_dec q y);crush.
+        + rewrite M.add_spec1. easy.
+        + rewrite M.add_spec2;try easy. rewrite M.add_spec1. easy.
+        +   rewrite M.add_spec2. rewrite M.add_spec2.
+        rewrite M.remove_spec2. rewrite M.remove_spec2. all:easy.
+     }
+     unfold gamma'.
+     setoid_rewrite Heq_gamma.
+     eapply context_red_simple_comm with (s:=s) (s'':=s'');try easy;unfold gamma_nopq.
+     apply M.remove_spec1. rewrite M.remove_spec2. rewrite M.remove_spec1.
+     easy. easy.
     }
    }
 Qed. 
