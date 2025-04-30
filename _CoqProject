@@ -16,6 +16,7 @@ src/projection.v
 src/session.v
 src/lcontext.v
 src/path_props.v
+src/assoc.v
 lemma/inversion.v
 lemma/inversion_expr.v
 lemma/substitution_helper.v

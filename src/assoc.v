@@ -492,40 +492,6 @@ Proof.
      destr_hyps. subst. destruct H2;crush. exists x1. crush. 
 Qed.
  
-(*
-
-Lemma usedCtx_continuation : forall gs p q n gcs s gch, usedCtx gs (gtth_send p q gcs) -> onth n gcs =Some (s,gch) ->
-    usedCtx gs gch.
-Proof.
-    intros.
-    inversion H;subst.
-    inversion H4;subst.
-    destruct gch.
-    eapply Forall2_prop_l with (l:=n) (p:=(s,gtth_hol n0)) in H6.
-    destr_hyps.
-    destruct H2;try easy. destr_hyps.
-    subst. destruct n. simpl in H2. inversion H2. subst. inversion H3;subst. easy.
-    simpl in H2. rewrite onth_nil in H2. easy. easy.
-    {
-        
-       assert(Haux: onth 0 [Some gs] = Some gs). crush.
-        eapply Forall2_prop_l with (l:=n) (p:=(s, gtth_send n0 n1 l)) in H6; try easy.
-        destr_hyps.
-        destruct H2;crush.
-        destruct n. simpl in H2. inversion H2. subst. easy.
-        simpl in H2; rewrite onth_nil in H2;crush.
-    }
-    {
-     Search onth (list (option (list (option gtt)))).   
-     eapply Forall2_prop_l with (l:=n) (p:=(s, gch)) in H6; try easy. destr_hyps.
-     destruct H3;try easy. destr_hyps.
-     destruct n. simpl in H2. subst;easy. subst.
-     eapply decidable_helper.mergeCtx_sl with (n:=n) (ctxGi := x0) in H1;crush.
-
-        
-    }
-Qed.
-*)
 Lemma typ_p_gtth_cont2:forall gs p q r xs gcs s gch n, 
 typ_p_gtth gs (gtth_send p q gcs) r (gtt_send p q xs) ->
     onth n gcs = Some (s,gch) -> exists gc, onth n xs=Some (s,gc)   /\
