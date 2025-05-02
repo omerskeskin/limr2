@@ -358,185 +358,402 @@ Proof.
     destruct H9;try easy. destr_hyps. inversion H8;subst. easy.
 Qed.
 
+Lemma part_parent: forall p q gcs G_k k r s, wfgC (gtt_send p q gcs) ->
+    onth k gcs=Some (s,G_k) -> isgPartsC r G_k -> isgPartsC r (gtt_send p q gcs).
+Proof.
+    intros.
+    destruct(Nat.eq_dec p r);destruct (Nat.eq_dec q r);subst;
+    [
+    apply same_rec_send_not_wfg in H| 
+    apply decidable_helper.triv_pt_p|
+    apply decidable_helper.triv_pt_q|
+    eapply decidable_helper.part_cont_b with (n:=k) (s:=s) (g:=G_k)];easy.
+Qed.
+
+Lemma assoc_implies_projectable: forall gamma g, wfgC g -> assoc gamma g -> projectableA g.
+Proof.
+    unfold projectableA. intros.
+    destruct(decidable_isgPartsC g pt); try easy;
+    unfold assoc in H0;
+    specialize (H0 pt); destr_hyps.
+    { 
+        apply H0 in H1. destr_hyps. 
+        unfold issubProj in *. destr_hyps. exists x0. easy.
+    }
+    {
+        exists ltt_end.
+        pfold. constructor. easy.      
+    }
+Qed.
+
+Search SList.
+Locate wfgC_triv.
+Lemma wfg_implies_slis: forall p q gcs, wfgC (gtt_send p q gcs) -> SList gcs.
+Proof.
+    intros.
+    apply wfgC_triv in H. easy.
+Qed.
+
+Lemma not_part_proj: forall p G, ~ isgPartsC p G -> projectionC G p ltt_end.
+Proof.
+    intros.
+    pfold. constructor. easy.
+Qed.
+
+Lemma assoc_cont_not_part_send : forall p q gcs k g_k s xs, wfgC (gtt_send p q gcs) -> SList xs ->
+issubProj  (ltt_send q xs) (gtt_send p q gcs) p  ->
+onth k gcs= Some (s,g_k) -> ( ~ isgPartsC p g_k) -> onth k xs=None \/ exists s', onth k xs =Some (s',ltt_end).
+Proof.
+    intros.
+    apply subproj_inv_send in H1;try easy.
+    destruct H1;crush.
+    destruct (onth k xs) eqn:Hkxs. right. unfold send_cond in *.
+    eapply Forall2R_prop with (l:=k) (p:=p0) in H5;try easy. destr_hyps.
+    destruct H4;try easy; destr_hyps.
+    rewrite H2 in H1. subst.
+    inversion H5;subst. apply eq_sym in H4;inversion H4;subst.
+    exists x1. 
+    destruct x2;[easy | |];
+    (
+        unfold issubProj in H7; destr_hyps;
+        apply not_part_proj in H3;
+        eapply continuation_wfgC with (p:=p) (q:=q) in H2; try easy;
+        eapply proj_inj with (t:=ltt_end) in H1; subst;
+        pinversion H7;try apply sub_mon;crush
+    ).
+    left. easy.
+Qed.
+
+Lemma assoc_cont_not_part_recv : forall p q gcs k g_k s xs, wfgC (gtt_send p q gcs) -> SList xs ->
+issubProj  (ltt_recv p xs) (gtt_send p q gcs) q  ->
+onth k gcs= Some (s,g_k) -> ( ~ isgPartsC q g_k) ->  exists s', onth k xs =Some (s',ltt_end).
+Proof.
+    intros.
+    apply subproj_inv_recv in H1;try easy.
+    destruct H1;crush.
+    destruct (onth k xs) eqn:Hkxs.  unfold recv_cond in *.
+    eapply Forall2R_prop with (l:=k) (p:=(s,g_k)) in H5; try easy.
+    destr_hyps. destruct H4;try easy. destr_hyps. subst. rewrite H5 in Hkxs.
+    inversion Hkxs;subst. exists x1.
+    destruct x2;[easy | |];
+     (   unfold issubProj in H7; destr_hyps;
+     apply not_part_proj in H3;
+     inversion H4;subst;
+     eapply continuation_wfgC with (p:=p) (q:=q) in H2; try easy;
+        eapply proj_inj with (t:=ltt_end) in H1; subst;
+        pinversion H7;try apply sub_mon;crush).
+
+    unfold recv_cond in H5.
+    eapply Forall2R_prop with (l:=k) (p:=(s,g_k)) in H5; try easy.
+    destr_hyps. crush.
+Qed.
+
+
+Search isgPartsC.
 
 Lemma assoc_soundness: forall G G' gamma  p q ell, p <> q -> wfgC G -> isgPartsC p G ->
-tctx_wf gamma ->
+tctx_wf gamma -> projectableA G ->
 assoc gamma G -> 
 gttstepC G G' p q ell -> exists ell' gamma' G'',
 gttstepC G G'' p q ell' /\ assoc gamma' G'' /\ tctxR gamma (lcomm p q ell') gamma'.
 Proof.
     intros.
+    rename H3 into Hprojectable, H4 into H3, H5 into H4.
     generalize dependent G'.
     revert H2 H3.
     revert gamma.
     rename H into Hpq_neq, H0 into H, H1 into H0.
+    revert Hprojectable.
     eapply wfg_proof_princip3 with (g:=G) (p:=p); try easy.
-    induction ctx.
+    induction ctx using gtth_ind_ref.
     {
-     intros.
-     pose proof H4 as Hassoc.
-     pose proof H2 as Htyp.
-     eapply typ_p_gtth_step_inv with (g':=G') (q:=q) (ell:=ell) in H2; try easy.
-     destruct H2.
-     eapply typ_p_gtth_hole_inv2 with (g':= (gtt_send p q x)) in Htyp;try easy;subst.
-     rename x into gcs.
-     unfold assoc in H4. specialize (H4 p) as Hsocp. specialize (H4 q) as Hsocq.
-     destr_hyps.
-     clear H9 H7.
-     Search isgPartsC.
-     set (trivp:=decidable_helper.triv_pt_p p q gcs H1).
-     
-     set (trivq:=decidable_helper.triv_pt_q p q gcs H1).
-     apply  H8 in trivp. apply H6 in trivq. clear H6 H8.
-     destr_hyps.  rename x0 into Tp, x into Tq.
-     pose proof H8 as Hsubq.
-     pose proof H9 as Hsubp.
-     apply subproj_simple_send_inv in H9;try easy.
-     apply subproj_simple_recv_inv in H8;try easy.
-     destruct H9 as [xp].
-     destruct H8 as [xq].
-     subst. pose proof H7 as Hpgamma. pose proof H6 as Hqgamma.
-     unfold tctx_wf in H3.  eapply H3 in H7. eapply H3 in H6.
-     pose proof Hsubp as Hsims.
-     eapply lem_6_16_simul_subproj with (xq:=xq) in Hsims; try apply decidable_helper.triv_pt_p; try easy.
-        pose proof H7 as xpSlist. pose proof H6 as xqSlist.
-     apply slist_implies_some in H7.
-    destr_hyps. rename x into k, x0 into T_k. destruct T_k as [s T_k].
-    assert(exists s' gct, onth k gcs=Some (s',gct) /\ gttstepC (gtt_send p q gcs) gct p q k).
-    {
-     unfold issubProj in Hsubq. destr_hyps. pinversion H8;subst; try tac_isParts;try easy.
-     eapply subproj_onth1 with (k:=k) (s:=s) (T_k:=T_k) in Hsubp;try easy;try apply proj_mon.
-     destr_hyps. exists x, x0. crush.
-     pfold. Print gttstep. eapply steq with (s:=x);crush. try apply proj_mon.
-    }
-    destruct H8 as [s' [G_k Hprog]].
-    pose proof Hsims as Honthq.
-    eapply Forall2R_prop with (l:=k) (p:=(s,T_k)) in Honthq;try easy. 
-    destr_hyps. destruct H9;try easy. destr_hyps;subst. 
-    apply eq_sym in H9. inversion H9. subst.  clear H9. 
-    rename x2 into s'', x3 into Tq_k, T_k into Tp_k.
-    assert(Hwfgk:wfgC G_k). admit.
-    set (gamma':=M.add p Tp_k (M.add q Tq_k (M.remove p (M.remove q gamma)))).
-    exists k , gamma', G_k. crush.
-    {
-        unfold assoc.
         intros.
-        pose proof Hwfgk as Hgkdec. 
-        apply decidable_isgPartsC with (pt:= p0) in Hgkdec.
-        destruct (Hgkdec) as [Hgpart | Hgpart].
+        pose proof H4 as Hassoc.
+        pose proof H2 as Htyp.
+        eapply typ_p_gtth_step_inv with (g':=G') (q:=q) (ell:=ell) in H2; try easy.
+        destruct H2.
+        eapply typ_p_gtth_hole_inv2 with (g':= (gtt_send p q x)) in Htyp;try easy;subst.
+        rename x into gcs.
+        unfold assoc in H4. specialize (H4 p) as Hsocp. specialize (H4 q) as Hsocq.
+        destr_hyps.
+        clear H9 H7.
+        set (trivp:=decidable_helper.triv_pt_p p q gcs H1).
+        set (trivq:=decidable_helper.triv_pt_q p q gcs H1).
+        apply  H8 in trivp. apply H6 in trivq. clear H6 H8.
+        destr_hyps.  rename x0 into Tp, x into Tq.
+        pose proof H8 as Hsubq.
+        pose proof H9 as Hsubp.
+        apply subproj_simple_send_inv in H9;try easy.
+        apply subproj_simple_recv_inv in H8;try easy.
+        destruct H9 as [xp].
+        destruct H8 as [xq].
+        subst. pose proof H7 as Hpgamma. pose proof H6 as Hqgamma.
+        pose proof H3 as Htctx_wf.
+        unfold tctx_wf in H3.  eapply H3 in H7. eapply H3 in H6.
+        pose proof Hsubp as Hsims.
+        eapply lem_6_16_simul_subproj with (xq:=xq) in Hsims; try apply decidable_helper.triv_pt_p; try easy.
+            pose proof H7 as xpSlist. pose proof H6 as xqSlist.
+        apply slist_implies_some in H7.
+        destr_hyps. rename x into k, x0 into T_k. destruct T_k as [s T_k].
+        assert(exists s' gct, onth k gcs=Some (s',gct) /\ gttstepC (gtt_send p q gcs) gct p q k).
         {
-            destruct (Nat.eq_dec p0 p);
-            destruct (Nat.eq_dec p0 q);
-            crush.
+        unfold issubProj in Hsubq. destr_hyps. pinversion H8;subst; try tac_isParts;try easy.
+        eapply subproj_onth1 with (k:=k) (s:=s) (T_k:=T_k) in Hsubp;try easy;try apply proj_mon.
+        destr_hyps. exists x, x0. crush.
+        pfold. eapply steq with (s:=x);crush. try apply proj_mon.
+        }
+        destruct H8 as [s' [G_k Hprog]].
+        pose proof Hsims as Honthq.
+        eapply Forall2R_prop with (l:=k) (p:=(s,T_k)) in Honthq;try easy. 
+        destr_hyps. destruct H9;try easy. destr_hyps;subst. 
+        apply eq_sym in H9. inversion H9. subst.  clear H9. 
+        rename x2 into s'', x3 into Tq_k, T_k into Tp_k.
+        assert(Hwfgk:wfgC G_k).
+        {
+            eapply continuation_wfgC with (p:=p) (q:=q) in H10; try easy.
+        } 
+        set (gamma':=M.add p Tp_k (M.add q Tq_k (M.remove p (M.remove q gamma)))).
+        assert (Heqdom: M.Eqdom gamma gamma').
+        {
+            unfold M.Eqdom.
+            intros.
+            unfold gamma'.
+            split.
+            {    
+                intros.   
+                rewrite MF.in_find in *.
+                destruct (Nat.eq_dec p y);
+                destruct (Nat.eq_dec q y);crush.
+                rewrite M.add_spec1 in H9. easy.
+                rewrite M.add_spec2 in H9;try easy;rewrite M.add_spec1 in H9; try easy.
+                rewrite M.add_spec2 in H9;rewrite M.add_spec2 in H9;try easy.
+                rewrite M.remove_spec2 in H9;rewrite M.remove_spec2 in H9; try easy.
+            }
             {
-                exists Tp_k. split. unfold gamma'. rewrite M.add_spec1. easy.
-                apply subproj_inv_send in Hsubp;try easy.
-                destruct (Hsubp).
+             intros. 
+             rewrite MF.in_find in *. apply opt_lem1 in H8. destr_hyps.
+             destruct(Nat.eq_dec p y);destruct(Nat.eq_dec q y);crush.
+             rewrite M.add_spec2 in H8;try  rewrite M.add_spec2 in H8;
+             try rewrite M.remove_spec2 in H8; try rewrite M.remove_spec2 in H8; crush.
+            }
+        }
+
+        exists k , gamma', G_k. crush.
+        {
+            unfold assoc.
+            intros.
+            pose proof Hwfgk as Hgkdec. 
+            apply decidable_isgPartsC with (pt:= p0) in Hgkdec.
+            destruct (Hgkdec) as [Hgpart | Hgpart].
+            {
+                destruct (Nat.eq_dec p0 p);
+                destruct (Nat.eq_dec p0 q);
+                crush.
                 {
-                    destr_hyps.
-                    inversion H9;subst. rename x into gcs.
-                    unfold send_cond in H14.
-                    eapply Forall2R_prop with (l:=k) (p:=(s,Tp_k)) in H14; try easy.
-                    destr_hyps.
-                    destruct H15;try easy.
-                    destr_hyps.
-                    inversion H16;subst.
-                    rewrite H15 in H10. inversion H10;subst. easy.
+                    exists Tp_k. split. unfold gamma'. rewrite M.add_spec1. easy.
+                    apply subproj_inv_send in Hsubp;try easy.
+                    destruct (Hsubp).
+                    {
+                        destr_hyps.
+                        inversion H9;subst. rename x into gcs.
+                        unfold send_cond in H14.
+                        eapply Forall2R_prop with (l:=k) (p:=(s,Tp_k)) in H14; try easy.
+                        destr_hyps.
+                        destruct H15;try easy.
+                        destr_hyps.
+                        inversion H16;subst.
+                        rewrite H15 in H10. inversion H10;subst. easy.
+                    }
+                    {
+                        destr_hyps. inversion H9;crush.
+                    }
                 }
                 {
-                    destr_hyps. inversion H9;crush.
+                    exists Tq_k. split. unfold gamma'. 
+                    rewrite M.add_spec2; try rewrite M.add_spec1; easy.   
+                    apply subproj_inv_recv in Hsubq;try easy.
+                    destruct (Hsubq).
+                    {
+                        destr_hyps.
+                        inversion H9;subst. rename x into gcs.
+                        unfold recv_cond in H14.
+                        eapply Forall2R_prop with (l:=k) (p:=(s',G_k)) in H14; try easy.
+                        destr_hyps.
+                        destruct H15;try easy.
+                        destr_hyps.
+                        inversion H16;subst.
+                        rewrite H16 in H12. inversion H12;subst. 
+                        inversion H15;subst.  easy.
+                    }
+                    {
+                        destr_hyps. inversion H9;crush.
+                    }
+                }
+                {
+                    assert(Hpart_parent:isgPartsC p0 (gtt_send p q gcs)).
+                    {
+                        eapply part_parent with (p:=p) (q:=q) (gcs:=gcs) (k:=k) (s:=s') in H8;easy.
+                    }
+                    assert(Hrg: forall r, r<> p -> r <> q -> M.find r gamma' =M.find r gamma).
+                    {
+                        intros.
+                        unfold gamma'. try rewrite M.add_spec2;
+                        try rewrite M.add_spec2;
+                        try rewrite M.remove_spec2;
+                        try rewrite M.remove_spec2;easy.   
+                    }
+                    {
+                        unfold assoc in Hassoc.
+                        specialize (Hassoc p0).
+                        destr_hyps.
+                        pose proof Hpart_parent as Hpp.
+                        apply H9 in Hpart_parent.
+                        destr_hyps.
+                        pose proof n0 as Hp0p.
+                        apply Hrg in Hp0p; try easy.
+                        exists x.
+                        rewrite Hp0p. split. easy.
+                        destruct x;
+                        [apply subproj_inv_end in H16|
+                        eapply subproj_after_cont_recv with (k:=k) (s:=s') (gk:=G_k) in H16|
+                        eapply subproj_after_cont_send with (k:=k) (s:=s') (gk:=G_k) in H16];
+                        try easy;
+                        unfold tctx_wf in Htctx_wf;
+                        specialize (Htctx_wf p0 n2 l);
+                        crush.
+                    }
                 }
             }
             {
-                exists Tq_k. split. unfold gamma'. 
-                rewrite M.add_spec2; try rewrite M.add_spec1; easy.   
-                apply subproj_inv_recv in Hsubq;try easy.
-                destruct (Hsubq).
+                crush.
+                destruct (Nat.eq_dec p0 p);
+                destruct (Nat.eq_dec p0 q);subst.
                 {
-                    destr_hyps.
-                    inversion H9;subst. rename x into gcs.
-                    unfold recv_cond in H14.
-                    eapply Forall2R_prop with (l:=k) (p:=(s',G_k)) in H14; try easy.
-                    destr_hyps.
-                    destruct H15;try easy.
-                    destr_hyps.
-                    inversion H16;subst.
-                    rewrite H16 in H12. inversion H12;subst. 
-                    inversion H15;subst.  easy.
+                    crush.
                 }
                 {
-                    destr_hyps. inversion H9;crush.
-                }
-            }
-            {
-                assert(Hpart_parent:isgPartsC p0 (gtt_send p q gcs)).
-                {
-                    admit.
-                }
-                assert(Hrg: forall r, r<> p -> r <> q -> M.find r gamma' =M.find r gamma).
-                {
-                    intros.
-                    unfold gamma'. try rewrite M.add_spec2;
-                    try rewrite M.add_spec2;
-                    try rewrite M.remove_spec2;
-                    try rewrite M.remove_spec2;easy.   
+                     eapply assoc_cont_not_part_send with (q:=q) (xs:=xp) (gcs:=gcs) (k:=k) (s:=s') 
+                     in Hgpart; try easy.
+                     destruct Hgpart;crush.
+                     rewrite H14 in H7.
+                     inversion H7;subst.
+                     unfold gamma' in H9.
+                     rewrite M.add_spec1 in H9. inversion H9;easy.
                 }
                 {
+                    eapply assoc_cont_not_part_recv with (p:=p) (xs:=xq) (gcs:=gcs) (k:=k) (s:=s') 
+                     in Hgpart; try easy.
+                     destruct Hgpart;crush.
+                     rewrite H14 in H12.
+                     inversion H12;subst.
+                     unfold gamma' in H9.
+                     rewrite M.add_spec2 in H9;try easy; rewrite M.add_spec1 in H9. inversion H9;easy.
+                }
+                {
+                    Search isgPartsC.
+                    assert(Hnotpart: ~ isgPartsC p0 (gtt_send p q gcs)).
+                    {
+                        unfold not.
+                        intros.
+                        specialize (Hprojectable p0). destr_hyps.
+                        eapply part_after_step_r with (T:=x) (p:=p) (q:=q) (l:=k) (G':=G_k) in H14; 
+                        try easy.
+                    }
                     unfold assoc in Hassoc.
-                    specialize (Hassoc p0).
-                    destr_hyps.
-                    pose proof Hpart_parent as Hpp.
-                    apply H9 in Hpart_parent.
-                    destr_hyps.
-                    pose proof n0 as Hp0p.
-                    apply Hrg in Hp0p; try easy.
-                    exists x.
-                    rewrite Hp0p. split. easy.
-                    destruct x.
-                    {
-                        apply subproj_inv_end in H16; try easy.   
-                    }
-                    {
-                     apply subproj_inv_recv in H16;try easy.
-                     destruct H16.
-                     {
-                        destruct H16.
-                     }   
-                    }
-                    
+                    Check conj.
+                    destruct (M.find p0 gamma) eqn:Hyg1;
+                    [eapply (proj2 (Hassoc p0)) with (Tpx:=l) in Hnotpart;try easy | ];
+                        unfold gamma' in H9;
+                        try rewrite M.add_spec2 in H9;
+                        try rewrite M.add_spec2 in H9;
+                        try rewrite M.remove_spec2 in H9;
+                        try rewrite M.remove_spec2 in H9; crush.
                 }
             }
         }
-        split.
+        {
+            set (gamma_justpq := M.add p (ltt_send q xp) (M.add q (ltt_send p xq) M.empty)).
+            set (gamma_nopq := M.remove p (M.remove q gamma)).
+            set (gamma'_justpq:=M.add p Tp_k (M.add q Tq_k M.empty)).
+            fold gamma_nopq in gamma'.
+            assert(Heq_gamma: M.Equal gamma (M.add p (ltt_send q xp)
+            (M.add q (ltt_recv p xq) gamma_nopq))).
+            {
+                unfold M.Equal. intros. unfold gamma_nopq.
+                destruct (Nat.eq_dec p y);destruct (Nat.eq_dec q y);crush.
+                + rewrite M.add_spec1. easy.
+                + rewrite M.add_spec2;try easy. rewrite M.add_spec1. easy.
+                +   rewrite M.add_spec2. rewrite M.add_spec2.
+                rewrite M.remove_spec2. rewrite M.remove_spec2. all:easy.
+            }
+            unfold gamma'.
+            setoid_rewrite Heq_gamma.
+            eapply context_red_simple_comm with (s:=s) (s'':=s'');try easy;unfold gamma_nopq.
+            apply M.remove_spec1. rewrite M.remove_spec2. rewrite M.remove_spec1.
+            easy. easy. 
+        }
+    }
+    {
+        intros. rename p0 into s, q0 into t, H1 into Ih.
+        pose proof H3 as Htyp. eapply typ_p_gtth_inv in Htyp. destr_hyps;subst.
+        inversion H3.
+        assert (Hneq: p <>s /\ q <> t).
+        {
+         split.
+         {
+            destruct (Nat.eq_dec p s); try easy. destr_hyps. subst.
+            assert(ishParts s (gtth_send s t xs)). constructor.
+            easy.   
+         }
+         {
+          destruct (Nat.eq_dec q t); try easy.
+          pinversion H6;crush. apply H18. constructor. apply step_mon.  
+         }
+        }
+        destr_hyps.
+        pose proof H6 as Hstep.
+        pinversion H6;try apply step_mon;crush.
+        rename xs into ghs.
+        rename ys into gcs'.
+        rename x into gcs.
+        assert(forall s4 k g_k gamma_k, onth k gcs = Some (s4,g_k) -> assoc gamma_k g_k -> tctx_wf gamma_k -> 
+        exists (ell' : opt_lbl) (gamma' : tctx) (G'' : gtt),
+        gttstepC g_k G'' p q ell' /\
+        assoc gamma' G'' /\ tctxR gamma_k (lcomm p q ell') gamma').
         {
             intros.
-
+            rename H13 into Htcwf.
+            pose proof H11 as Hc2.
+            eapply typ_gtth_cont1 with (gs:=gs) (p:=s) (q:=t) (gcs:=ghs) in H11; try easy.
+            destr_hyps.
+            eapply Forall_prop with (l:=k) (p:=(s4,x)) in Ih; try easy.
+            destruct Ih;try easy.
+            destr_hyps.
+            inversion H20;subst.
+            rename H21 into Ih.
+            eapply Forall2_prop_r with (l:=k) (p:=(x0,g_k)) in H25;try easy.
+            destr_hyps.
+            destruct H22;try easy. destr_hyps. inversion H22; subst. clear H22.
+            Search gcs'.
+            destruct H25;crush.
+            rename x3 into g_k, x4 into gk', H21 into Hstepk.
+            eapply Ih with (gs:=gs) (G':=gk'); try easy.
+            {
+                eapply continuation_wfgC with (p:=s) (q:=t) in Hc2; try easy.
+            }
+            {
+                unfold typ_p_gtth. crush. Search ishParts. rename x1 into ghco.
+                assert(ishParts p (gtth_send s t ghs)).
+                {
+                    eapply ha_sendr with (g:=ghco) (n:=k) (s:=x2);try easy.   
+                }
+                apply H7 in H22. easy.
+            }
+            {
+                apply proj_forward in Hprojectable;try easy.
+                eapply Forall_prop with (l:=k) (p:=(x2,g_k)) in Hprojectable;try easy.
+                destruct Hprojectable;try easy. destr_hyps. inversion H21. subst. easy.
+            }
         }
-        {
-
-        }
-        Search gttstepC isgPartsC.
     }
-    {
-     set (gamma_justpq := M.add p (ltt_send q xp) (M.add q (ltt_send p xq) M.empty)).
-     set (gamma_nopq := M.remove p (M.remove q gamma)).
-     set (gamma'_justpq:=M.add p Tp_k (M.add q Tq_k M.empty)).
-     fold gamma_nopq in gamma'.
-     assert(Heq_gamma: M.Equal gamma (M.add p (ltt_send q xp)
-     (M.add q (ltt_recv p xq) gamma_nopq))).
-     {
-        unfold M.Equal. intros. unfold gamma_nopq.
-        destruct (Nat.eq_dec p y);destruct (Nat.eq_dec q y);crush.
-        + rewrite M.add_spec1. easy.
-        + rewrite M.add_spec2;try easy. rewrite M.add_spec1. easy.
-        +   rewrite M.add_spec2. rewrite M.add_spec2.
-        rewrite M.remove_spec2. rewrite M.remove_spec2. all:easy.
-     }
-     unfold gamma'.
-     setoid_rewrite Heq_gamma.
-     eapply context_red_simple_comm with (s:=s) (s'':=s'');try easy;unfold gamma_nopq.
-     apply M.remove_spec1. rewrite M.remove_spec2. rewrite M.remove_spec1.
-     easy. easy.
-    }
-   }
 Qed. 

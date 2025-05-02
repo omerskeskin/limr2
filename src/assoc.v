@@ -109,19 +109,8 @@ Qed.
 Search wfG.
 Lemma empty_not_wfg : forall p q, ~ wfgC (gtt_send p q []).
 Proof.
-    unfold not;intros.  unfold wfgC in H. destr_hyps.
-    induction x;(try (pinversion H;apply gttT_mon)).
-    pinversion H;subst. destruct l.
-    inversion H0;subst. inversion H7.
-    inversion H4. apply gttT_mon.
-
-    inversion H0;subst.
-    
-    
-    pinversion H;subst.
-    Search gttTC.
-    apply IHx. 
-Admitted.
+    unfold not;intros. apply wfgC_triv in H. destr_hyps. inversion H0.
+Qed.
 Ltac invalid_forall_wfg :=
     try ((match goal with | 
     [H:Forall2 _  (?a::?b) [] |- _] => inversion H 
@@ -548,10 +537,18 @@ Qed.
 
 Lemma continuation_wfgC : forall p q xs s gc n , wfgC (gtt_send p q xs) -> onth n xs=Some (s,gc) -> wfgC gc.
 Proof.
-Admitted.
+    Search wfgC.
+    intros.
+    pose proof H as Hwfg.
+    apply wfgC_triv in Hwfg.
+    apply wfgC_after_step_all in H;try easy.
+    eapply Forall_prop with (l:=n) (p:=(s,gc)) in H;try easy.
+    destr_hyps. destruct H;try easy. destr_hyps. inversion H;subst;easy.
+Qed.
 Lemma same_rec_send_not_wfg: forall p xs, ~ wfgC (gtt_send p p xs).
 Proof.
-Admitted.
+    unfold not. intros. apply wfgC_triv in H. easy.
+Qed.
 Lemma lem_6_16_simul_subproj: forall G p, wfgC G -> isgPartsC p G ->
   forall q xp xq,
     wfgC G -> 
