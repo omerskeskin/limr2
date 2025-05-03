@@ -6,6 +6,7 @@ From SST Require Import lemma.projection lemma.projection_helper lemma.decidable
 From SST Require Import src.step lemma.step src.assoc.
 Require Import List String Coq.Arith.PeanoNat Morphisms Relations Setoid.
 Require Import Coq.Program.Equality.
+Require Import Coq.Init.Logic.
 Import ListNotations.
 
 Check balanced_to_tree.
@@ -587,6 +588,11 @@ Proof.
     }
 Qed.
 
+Definition soundness_pred p q G gamma ell':= fun u => match u with 
+    | (gamma', G'') => gttstepC G G'' p q ell' /\ assoc gamma' G'' /\ 
+    tctxR gamma (lcomm p q ell') gamma'
+    end.
+
 Lemma assoc_soundness: forall G G' gamma  p q ell xs, p <> q -> wfgC G -> isgPartsC p G ->
 tctx_wf gamma -> M.find p gamma =Some (ltt_send q xs) ->
 assoc gamma G -> 
@@ -858,14 +864,20 @@ Proof.
         pose proof H7 as Hstep.
         pinversion H7;try apply step_mon;crush.
         rename xs into ghs, ys into gcs', x into gcs.
-
-        assert(forall s4 k g_k gamma_k k' xs, onth k gcs = Some (s4,g_k) -> assoc gamma_k g_k -> tctx_wf gamma_k -> 
-        M.find p gamma_k=Some (ltt_send q xs) -> onth k' xs <> None ->
+        Check sig.
+        assert(gamma_k_props_2:forall s4 k g_k k' xs Gks Gkt, onth k gcs = Some (s4,g_k) -> 
+        projectionC g_k s Gks ->
+        projectionC g_k t Gkt ->
+        M.find p (create_gamma_k s t Gks Gkt gamma)=Some (ltt_send q xs) -> onth k' xs <> None ->
         exists (gamma' : tctx) (G'' : gtt),
         gttstepC g_k G'' p q k' /\
-        assoc gamma' G'' /\ tctxR gamma_k (lcomm p q k') gamma').
+        assoc gamma' G'' /\ tctxR (create_gamma_k s t Gks Gkt gamma) (lcomm p q k') gamma').
         {
             intros.
+            assert(Hwfgk: wfgC g_k). eapply continuation_wfgC with (p:=s) (q:=t) in H12;try easy.
+            eapply gamma_k_props with (k:=k) (gcs:=gcs) (s':=s4) (s:=s) (Gks:=Gks) (gamma:= gamma) in H14;
+            try easy.
+            destr_hyps.
             rename H14 into Htcwf.
             pose proof H12 as Hc2.
             eapply typ_gtth_cont1 with (gs:=gs) (p:=s) (q:=t) (gcs:=ghs) in H12; try easy.
@@ -873,35 +885,83 @@ Proof.
             eapply Forall_prop with (l:=k) (p:=(s4,x)) in Ih; try easy.
             destruct Ih;try easy.
             destr_hyps.
-            inversion H23;subst.
-            rename H24 into Ih.
+            inversion H24;subst.
+            rename H27 into Ih.
             eapply Forall2_prop_r with (l:=k) (p:=(x0,g_k)) in H26;try easy.
             destr_hyps.
-            destruct H26;try easy. destr_hyps. inversion H26; subst. clear H26.
+            destruct H27;try easy. destr_hyps. inversion H27; subst. clear H27.
             
-            destruct H28;crush.
+            destruct H29;crush.
             rename x3 into g_k, x4 into gk', H24 into Hstepk.
             eapply Ih with (gs:=gs) (G':=gk') (xs:=xs); try easy.
-            {
-                eapply continuation_wfgC with (p:=s) (q:=t) in Hc2; try easy.
-            }
             {
                 unfold typ_p_gtth. crush. Search ishParts. rename x1 into ghco.
                 assert(ishParts p (gtth_send s t ghs)).
                 {
                     eapply ha_sendr with (g:=ghco) (n:=k) (s:=x2);try easy.   
                 }
-                apply H8 in H26. easy.
+                apply H8 in H27. easy.
             }
             {
                 apply proj_forward in Hprojectable;try easy.
                 eapply Forall_prop with (l:=k) (p:=(x2,g_k)) in Hprojectable;try easy.
                 destruct Hprojectable;try easy. destr_hyps. inversion H21. subst.
-                apply assoc_implies_projectable in H13;
+                apply assoc_implies_projectable in H23;
                 try easy.
-                
-                eapply continuation_wfgC with (p:=s) (q:=t) in Hc2; try easy.
             }
         }
+        assert(Hpsame:forall Gks Gkt, M.find p (create_gamma_k s t Gks Gkt gamma) = M.find p gamma).
+        {
+            intros.
+            unfold create_gamma_k.
+            try rewrite M.add_spec2;try rewrite M.add_spec2;try rewrite M.remove_spec2;
+            try rewrite M.remove_spec2;try easy.   
+        }
+        Check gamma_k_props_2.
+        assert(Hchild_proj_1: forall k s4 g_k, onth k gcs=Some (s4,g_k) -> 
+        projectableA g_k).
+        {
+            intros.
+            apply assoc_implies_projectable in H5;try easy.
+            eapply proj_forward in H5;try easy.
+            eapply Forall_prop with (l:=k) (p:=(s4,g_k)) in H5;destruct H5; try easy. destr_hyps.
+            inversion H5;easy.  
+        }
+        assert(gamma_props_simple: forall k  s4 g_k k', onth k gcs=Some (s4,g_k) -> 
+        onth k' xs0 <> None ->
+        exists (gamma' : tctx) (G'' : gtt),
+        gttstepC g_k G'' p q k' /\
+        assoc gamma' G'').
+        {
+            intros.
+            Search assoc.
+            pose proof H12 as H70. 
+            specialize (Hchild_proj_1 k s4 g_k). apply Hchild_proj_1 in H12.
+            unfold projectableA in H12. specialize (H12 s) as Hchilds.
+            specialize (H12 t) as Hchildt. destr_hyps.
+            eapply gamma_k_props_2 with (k:=k) (s4:=s4) (g_k:=g_k) (Gks:= x0) (Gkt:=x) in H13;try easy.
+            destr_hyps. exists x1, x2. easy.
+            rewrite Hpsame. easy.
+        }
+        assert(exists k s4 g_k, onth k gcs=Some (s4, g_k)). admit.
+        unfold exists in H12.
+        Compute ex_proj1 H12.
+        (*
+        set (map_fun := fun u => match u with 
+            | None => None
+            | Some (s4,g_k) => gamma_props_simple k)*)
+        assert (exists gcs'', forall k' (Hk':onth k' xs0 <> None),
+            forall k, 
+                (forall (Hknone:onth k gcs=None), onth k gcs'' =None) /\
+                (forall s4 g_k (Hksome:onth k gcs=Some (s4, g_k)),
+                    onth k gcs'' =ex_proj2 (gamma_props_simple k s4 g_k k' Hksome Hk')
+                )
+        ).
+        set (G'':= (gtt_send s t (map_fun gcs))).
+        assert(Hg'':exists g'', gttstepC (gtt_send s t gcs) g'' p q ell').
+        {
+
+        }
+
     }
 Qed. 
