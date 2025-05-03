@@ -465,15 +465,18 @@ Proof.
     admit. 
 Admitted.
 
-Lemma gamma_k_constructor: forall k s' gamma s t g_k gcs Gks Gkt,
+Definition create_gamma_k s t Gks Gkt (gamma:tctx) := 
+M.add s Gks (M.add t Gkt (M.remove s (M.remove t gamma))).
+
+Lemma gamma_k_props: forall k s' gamma s t g_k gcs Gks Gkt,
     tctx_wf gamma ->
     wfgC (gtt_send s t gcs) ->
     wfgC (g_k) ->
     assoc gamma (gtt_send s t gcs) ->
     projectionC g_k s Gks ->
     projectionC g_k t Gkt ->
-    onth k gcs = Some (s',g_k) -> exists gamma_k, 
-    tctx_wf gamma_k /\ assoc gamma_k g_k.
+    onth k gcs = Some (s',g_k) -> 
+    tctx_wf (create_gamma_k s t Gks Gkt gamma) /\ assoc (create_gamma_k s t Gks Gkt gamma) g_k.
 Proof.
     intros.
     Ltac rewr1 H6:=rewrite M.add_spec1 in H6.
@@ -483,7 +486,7 @@ Proof.
         try rewrite M.remove_spec2 in H6; try rewrite M.remove_spec2 in H6;
         try easy.
     set (gamma_k:= M.add s Gks (M.add t Gkt (M.remove s (M.remove t gamma)))).
-    exists gamma_k.
+    unfold create_gamma_k in *. fold gamma_k.
     split.
     {
         unfold tctx_wf; intros;
@@ -584,23 +587,29 @@ Proof.
     }
 Qed.
 
-Lemma assoc_soundness: forall G G' gamma  p q ell, p <> q -> wfgC G -> isgPartsC p G ->
-tctx_wf gamma -> projectableA G ->
+Lemma assoc_soundness: forall G G' gamma  p q ell xs, p <> q -> wfgC G -> isgPartsC p G ->
+tctx_wf gamma -> M.find p gamma =Some (ltt_send q xs) ->
 assoc gamma G -> 
-gttstepC G G' p q ell -> exists ell' gamma' G'',
+gttstepC G G' p q ell -> 
+forall ell', onth ell' xs <> None ->
+exists gamma' G'',
 gttstepC G G'' p q ell' /\ assoc gamma' G'' /\ tctxR gamma (lcomm p q ell') gamma'.
 Proof.
     intros.
-    rename H3 into Hprojectable, H4 into H3, H5 into H4.
+    pose proof H4 as Hprojectable. apply assoc_implies_projectable in Hprojectable.
+    rename H3 into Hmfindp, H4 into H3, H5 into H4.
     generalize dependent G'.
-    revert H2 H3.
+    revert H2 H3 Hmfindp.
+    generalize dependent xs.
     revert gamma.
+    revert ell'.
     rename H into Hpq_neq, H0 into H, H1 into H0.
     revert Hprojectable.
     eapply wfg_proof_princip3 with (g:=G) (p:=p); try easy.
     induction ctx using gtth_ind_ref.
     {
         intros.
+        rename H6 into Hellsome.
         pose proof H4 as Hassoc.
         pose proof H2 as Htyp.
         eapply typ_p_gtth_step_inv with (g':=G') (q:=q) (ell:=ell) in H2; try easy.
@@ -625,9 +634,11 @@ Proof.
         unfold tctx_wf in H3.  eapply H3 in H7. eapply H3 in H6.
         pose proof Hsubp as Hsims.
         eapply lem_6_16_simul_subproj with (xq:=xq) in Hsims; try apply decidable_helper.triv_pt_p; try easy.
-            pose proof H7 as xpSlist. pose proof H6 as xqSlist.
-        apply slist_implies_some in H7.
-        destr_hyps. rename x into k, x0 into T_k. destruct T_k as [s T_k].
+        pose proof H7 as xpSlist. pose proof H6 as xqSlist.
+        rewrite Hpgamma in Hmfindp. apply eq_sym in Hmfindp;inversion Hmfindp. subst.
+        apply opt_lem1 in Hellsome.
+        destruct Hellsome as [T_k Hellsome]. 
+        rename ell' into k. destruct T_k as [s T_k].
         assert(exists s' gct, onth k gcs=Some (s',gct) /\ gttstepC (gtt_send p q gcs) gct p q k).
         {
         unfold issubProj in Hsubq. destr_hyps. pinversion H8;subst; try tac_isParts;try easy.
@@ -671,7 +682,7 @@ Proof.
             }
         }
 
-        exists k , gamma', G_k. crush.
+        exists gamma', G_k. crush.
         {
             unfold assoc.
             intros.
@@ -768,8 +779,8 @@ Proof.
                      eapply assoc_cont_not_part_send with (q:=q) (xs:=xp) (gcs:=gcs) (k:=k) (s:=s') 
                      in Hgpart; try easy.
                      destruct Hgpart;crush.
-                     rewrite H14 in H7.
-                     inversion H7;subst.
+                     rewrite H14 in Hellsome.
+                     inversion Hellsome;subst.
                      unfold gamma' in H9.
                      rewrite M.add_spec1 in H9. inversion H9;easy.
                 }
@@ -840,66 +851,37 @@ Proof.
          }
          {
           destruct (Nat.eq_dec q t); try easy.
-          pinversion H6;crush. apply H18. constructor. apply step_mon.  
+          pinversion H7;crush. apply H19. constructor. apply step_mon.  
          }
         }
         destr_hyps.
-        pose proof H6 as Hstep.
-        pinversion H6;try apply step_mon;crush.
-        rename xs into ghs.
-        rename ys into gcs'.
-        rename x into gcs.
-        assert (create_gamma_k: 
-        forall k s' g_k, onth k gcs = Some (s',g_k) -> exists gamma_k, 
-            tctx_wf gamma_k /\ assoc gamma_k g_k).
-        {
-            intros.   
-            eapply proj_forward in Hprojectable; try easy.
-            eapply Forall_prop with (l:=k) (p:=(s',g_k)) in Hprojectable;try easy.
-            destruct Hprojectable;try easy.
-            destr_hyps. apply eq_sym in H12;inversion H12;subst.
-            rename H13 into Hprojectable.
-            assert(Gks: exists projs, projectionC g_k s projs).
-            {
-                 eapply Hprojectable.
-            } 
-            assert(Gkt: exists projs, projectionC g_k t projs).
-            {
-                 eapply Hprojectable.
-            } 
-            destr_hyps.
-            rename x0 into Gks, x into Gkt.
-            set (gamma_k:= M.add s Gks (M.add t Gkt (M.remove s (M.remove t gamma)))).
-            exists gamma_k.
-            split.
-            {
-                unfold tctx_wf.
-            }
-            admit.
-        }
+        pose proof H7 as Hstep.
+        pinversion H7;try apply step_mon;crush.
+        rename xs into ghs, ys into gcs', x into gcs.
 
-        assert(forall s4 k g_k gamma_k, onth k gcs = Some (s4,g_k) -> assoc gamma_k g_k -> tctx_wf gamma_k -> 
-        exists (ell' : opt_lbl) (gamma' : tctx) (G'' : gtt),
-        gttstepC g_k G'' p q ell' /\
-        assoc gamma' G'' /\ tctxR gamma_k (lcomm p q ell') gamma').
+        assert(forall s4 k g_k gamma_k k' xs, onth k gcs = Some (s4,g_k) -> assoc gamma_k g_k -> tctx_wf gamma_k -> 
+        M.find p gamma_k=Some (ltt_send q xs) -> onth k' xs <> None ->
+        exists (gamma' : tctx) (G'' : gtt),
+        gttstepC g_k G'' p q k' /\
+        assoc gamma' G'' /\ tctxR gamma_k (lcomm p q k') gamma').
         {
             intros.
-            rename H13 into Htcwf.
-            pose proof H11 as Hc2.
-            eapply typ_gtth_cont1 with (gs:=gs) (p:=s) (q:=t) (gcs:=ghs) in H11; try easy.
+            rename H14 into Htcwf.
+            pose proof H12 as Hc2.
+            eapply typ_gtth_cont1 with (gs:=gs) (p:=s) (q:=t) (gcs:=ghs) in H12; try easy.
             destr_hyps.
             eapply Forall_prop with (l:=k) (p:=(s4,x)) in Ih; try easy.
             destruct Ih;try easy.
             destr_hyps.
-            inversion H20;subst.
-            rename H21 into Ih.
-            eapply Forall2_prop_r with (l:=k) (p:=(x0,g_k)) in H25;try easy.
+            inversion H23;subst.
+            rename H24 into Ih.
+            eapply Forall2_prop_r with (l:=k) (p:=(x0,g_k)) in H26;try easy.
             destr_hyps.
-            destruct H22;try easy. destr_hyps. inversion H22; subst. clear H22.
-            Search gcs'.
-            destruct H25;crush.
-            rename x3 into g_k, x4 into gk', H21 into Hstepk.
-            eapply Ih with (gs:=gs) (G':=gk'); try easy.
+            destruct H26;try easy. destr_hyps. inversion H26; subst. clear H26.
+            
+            destruct H28;crush.
+            rename x3 into g_k, x4 into gk', H24 into Hstepk.
+            eapply Ih with (gs:=gs) (G':=gk') (xs:=xs); try easy.
             {
                 eapply continuation_wfgC with (p:=s) (q:=t) in Hc2; try easy.
             }
@@ -909,12 +891,16 @@ Proof.
                 {
                     eapply ha_sendr with (g:=ghco) (n:=k) (s:=x2);try easy.   
                 }
-                apply H7 in H22. easy.
+                apply H8 in H26. easy.
             }
             {
                 apply proj_forward in Hprojectable;try easy.
                 eapply Forall_prop with (l:=k) (p:=(x2,g_k)) in Hprojectable;try easy.
-                destruct Hprojectable;try easy. destr_hyps. inversion H21. subst. easy.
+                destruct Hprojectable;try easy. destr_hyps. inversion H21. subst.
+                apply assoc_implies_projectable in H13;
+                try easy.
+                
+                eapply continuation_wfgC with (p:=s) (q:=t) in Hc2; try easy.
             }
         }
     }
