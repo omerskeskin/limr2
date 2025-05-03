@@ -7,6 +7,8 @@ From SST Require Import src.step lemma.step src.assoc.
 Require Import List String Coq.Arith.PeanoNat Morphisms Relations Setoid.
 Require Import Coq.Program.Equality.
 Require Import Coq.Init.Logic.
+From Coq Require Import IndefiniteDescription.
+
 Import ListNotations.
 
 Check balanced_to_tree.
@@ -591,7 +593,10 @@ Qed.
 Definition soundness_pred p q G gamma ell':= fun u => match u with 
     | (gamma', G'') => gttstepC G G'' p q ell' /\ assoc gamma' G'' /\ 
     tctxR gamma (lcomm p q ell') gamma'
-    end.
+     end.
+
+Definition trivial_proof {A:Type} : forall (xs:list (option (A))) k, 
+    onth k xs = onth k xs. Proof. intros. reflexivity. Defined.
 
 Lemma assoc_soundness: forall G G' gamma  p q ell xs, p <> q -> wfgC G -> isgPartsC p G ->
 tctx_wf gamma -> M.find p gamma =Some (ltt_send q xs) ->
@@ -864,7 +869,7 @@ Proof.
         pose proof H7 as Hstep.
         pinversion H7;try apply step_mon;crush.
         rename xs into ghs, ys into gcs', x into gcs.
-        Check sig.
+        
         assert(gamma_k_props_2:forall s4 k g_k k' xs Gks Gkt, onth k gcs = Some (s4,g_k) -> 
         projectionC g_k s Gks ->
         projectionC g_k t Gkt ->
@@ -927,7 +932,8 @@ Proof.
             eapply Forall_prop with (l:=k) (p:=(s4,g_k)) in H5;destruct H5; try easy. destr_hyps.
             inversion H5;easy.  
         }
-        assert(gamma_props_simple: forall k  s4 g_k k', onth k gcs=Some (s4,g_k) -> 
+        assert(gamma_props_simple: forall k  s4 g_k k', 
+        onth k gcs=Some (s4,g_k) -> 
         onth k' xs0 <> None ->
         exists (gamma' : tctx) (G'' : gtt),
         gttstepC g_k G'' p q k' /\
@@ -943,20 +949,57 @@ Proof.
             destr_hyps. exists x1, x2. easy.
             rewrite Hpsame. easy.
         }
-        assert(exists k s4 g_k, onth k gcs=Some (s4, g_k)). admit.
-        unfold exists in H12.
-        Compute ex_proj1 H12.
+        assert(extract_gamma_k_props_2:forall s4 k g_k k' xs Gks Gkt, onth k gcs = Some (s4,g_k) -> 
+        exists g_k 
+        projectionC g_k s Gks ->
+        projectionC g_k t Gkt ->
+        M.find p (create_gamma_k s t Gks Gkt gamma)=Some (ltt_send q xs) -> 
+        onth k' xs <> None ->
+        {u:  (tctx* gtt) |
+        (fun u=> match u with 
+        | (gamma',G'')=>gttstepC g_k G'' p q k' /\
+        assoc gamma' G'' /\ tctxR (create_gamma_k s t Gks Gkt gamma) (lcomm p q k') gamma'
+        end) u}).
+        {
+            intros.
+            eapply gamma_k_props_2 with (k':=k') (xs:=xs) 
+            
+            (Gks:=Gks) (Gkt:=Gkt) in 
+            
+            H12;try easy.
+            destruct (constructive_indefinite_description _ H12).
+            destruct (constructive_indefinite_description _ (e)).
+            apply exist with (x:= (x,x0)). unfold soundness_pred. easy. 
+        }
+
         (*
         set (map_fun := fun u => match u with 
             | None => None
             | Some (s4,g_k) => gamma_props_simple k)*)
-        assert (exists gcs'', forall k' (Hk':onth k' xs0 <> None),
+        assert (forall k' (Hk':onth k' xs0 <> None),exists gcs'',
             forall k, 
                 (forall (Hknone:onth k gcs=None), onth k gcs'' =None) /\
                 (forall s4 g_k (Hksome:onth k gcs=Some (s4, g_k)),
-                    onth k gcs'' =ex_proj2 (gamma_props_simple k s4 g_k k' Hksome Hk')
+                    exists G'', onth k gcs'' =Some (s4,G'') /\
+                    gttstepC g_k G'' p q k'
                 )
         ).
+        {
+            intros.
+            exists gcs''.
+            intros.
+            split.
+            {
+                admit.   
+            }
+            {
+                intros.
+                Compute  
+                eapply gamma_props_simple with (k':=k') in Hksome; try easy.
+                destr_hyps.
+                exists x0. split;try easy.
+            }   
+        }
         set (G'':= (gtt_send s t (map_fun gcs))).
         assert(Hg'':exists g'', gttstepC (gtt_send s t gcs) g'' p q ell').
         {
