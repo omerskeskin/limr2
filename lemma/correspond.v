@@ -985,69 +985,10 @@ Proof.
             destruct (constructive_indefinite_description _ (e1)).
             exists (x,x0,x1,x2). easy. 
         }
-        Search SList.
-        Definition verified_indexing_helper (gcs_og:list (option (sort*gtt))) 
-        (gcs:list (option (sort*gtt))) (k_now:nat): list(
-            {u : (nat*option (sort*gtt)) |
-            match u with | (k,None) =>True
-                         | (k, Some (s,g)) => onth k gcs_og=Some (s,g) end
-            } 
-        ).
-        Proof.
-            induction gcs.
-            {
-             exact [].   
-            }
-            {
-                destruct (onth k_now gcs_og) eqn:Heq.
-                {
-                    destruct p.
-                    assert(Hr: {u : (nat*option (sort*gtt)) |
-                    match u with | (k,None) =>True
-                                 | (k, Some (s,g)) => onth k gcs_og=Some (s,g) end
-                    }).
-                    {
-                        exists (k_now, Some (s,g)). assumption.   
-                    }
-                    exact (Hr :: IHgcs).   
-                }
-                {
-                    assert(Hr: {u : (nat*option (sort*gtt)) |
-                    match u with | (k,None) =>True
-                                 | (k, Some (s,g)) => onth k gcs_og=Some (s,g) end
-                    }). exists (k_now,None). easy.
-                    exact(Hr::IHgcs).
-                }
-            }
-        Defined.
+        (*construct gcs'', together with the proof, inductively*)
 
-        Definition populate_indices (gcs:list(option(sort*gtt))) :=verified_indexing_helper gcs gcs 0.
-        
-        Print sig.
-
-        Definition create_gcs'' (gcs:list (option (sort*gtt))) p q ell' s t
-        (Hps : p<>s ) (Hqt: q <>t) 
-        (Hwfg:wfgC (gtt_send s t gcs))
-        (P: forall s4 k g_k,
-        onth k gcs =Some (s4,g_k) -> {u:gtt| gttstepC g_k u p q ell'})
-        :{gcs'':list (option (sort*gtt)) | gttstepC (gtt_send s t gcs) (gtt_send s t gcs'') p q ell' }.
-        Proof.
-            set (indexed_gcs:=populate_indices gcs).
-            set (indexed_gcs_mapped:= map (fun u=> 
-                match u with 
-                    | exist (k,None) _ => None
-                    | exist (k,Some (s,g)) H => match (P s k g H) with 
-                                | exist v _ => Some (s,v) end
-                    end
-            ) indexed_gcs).
-            Check indexed_gcs_mapped.
-            exists indexed_gcs_mapped.
-            pfold. constructor;try easy.
-            Check indexed_gcs.
-        Defined.
-        
         assert(extract_just_gtt: forall s4 k g_k, onth k gcs = Some (s4,g_k) -> 
-        {u:gtt| gttstepC g_k u p q ell'}).
+            {u:gtt| gttstepC g_k u p q ell'}).
         {
             intros.
             apply extract_gamma_props_simple in H12.
@@ -1055,67 +996,70 @@ Proof.
             destruct x as [[[d1 d2] d3] d4].
             exists d4. easy.
         }
-        set(gcs'':=create_gcs'' gcs (eqlenSeq gcs) 
-        extract_just_gtt).
+        Print gttstep.
 
-        assert(gttstepC (gtt_send s t gcs) 
-        (gtt_send s t gcs'') p q ell').
+        assert(aux_Forall_inv_1: forall xss P (aa:option(sort*gtt)), Forall P (aa::xss) -> Forall P xss).
         {
-            generalize dependent gcs.
-            induction gcs;intros.
-            {
-                apply empty_not_wfg in H2. easy.
-            }
-            {
-                destruct a.
-                {
-                    simpl in gcs''.
-                    admit.
-                }  
-                {
-                    unfold gcs''.
-                    simpl in gcs''. simpl.
-                    pfold. constructor;try easy. constructor;try easy. left. easy.
-
-                }
-            }
-            intros.
-            pfold. constructor;try easy. 
-            
-        }
-        assert ({gcs'' : (list (option (sort*gtt))) | 
-            forall k, ((onth k gcs=None -> onth k gcs'' =None) /\ 
-            (exists s4 g_k, onth k gcs=Some (s4,g_k) -> exists G'', 
-            onth k gcs'' =Some (s4,G'') /\ gttstepC g_k G'' p q ell'))}).
-        assert (exists gcs'',
-            forall k, 
-                (forall (Hknone:onth k gcs=None), onth k gcs'' =None) /\
-                (forall s4 g_k (Hksome:onth k gcs=Some (s4, g_k)),
-                    exists G'', onth k gcs'' =Some (s4,G'') /\
-                    gttstepC g_k G'' p q ell'
-                )
-        ).
-        {
-            intros.
-            exists gcs''.
-            intros.
-            split.
-            {
-                admit.   
-            }
-            {
-                intros.
-                Compute  
-                eapply gamma_props_simple with (k':=k') in Hksome; try easy.
-                destr_hyps.
-                exists x0. split;try easy.
-            }   
-        }
-        set (G'':= (gtt_send s t (map_fun gcs))).
-        assert(Hg'':exists g'', gttstepC (gtt_send s t gcs) g'' p q ell').
-        {
-
+            intros. inversion H12. easy.   
         }
 
+        assert (aux_Forall_inv2: forall xss P (aa:option(sort*gtt)), Forall P (aa::xss) -> P aa). 
+        {intros. inversion H12. easy. }
+        assert (aux3:forall (p0:sort*gtt) H, (Some p0 =None \/ H )-> H).
+        {
+         intros;destruct H13;easy.   
+        }
+        assert(create_gcs'' : forall gcs1 
+        (Hsubset: Forall (fun u=> u=None \/ exists k, onth k gcs=u) gcs1), {gcs'' : list(option(sort*gtt)) |
+        Forall2
+        (fun u v : option (sort * gtt) =>
+        u = None /\ v = None \/
+        (exists (s0 : sort) (g g' : gtt),
+        u = Some (s0, g) /\
+        v = Some (s0, g') /\
+        upaco5 gttstep bot5 g g' p q ell')) gcs1
+        gcs''
+        }).
+        {
+            intros.
+            induction gcs1. exists []. constructor.
+            Print Forall.
+            pose proof Hsubset as Hsubset'.
+            apply aux_Forall_inv_1 in Hsubset.
+            apply IHgcs1 in Hsubset.
+            apply aux_Forall_inv2 in Hsubset'.
+            destruct a.
+            {
+                apply aux3 in Hsubset'.
+                destruct (constructive_indefinite_description _ Hsubset').
+                rename x into k.
+                destruct p0 as [s4 g_k].
+                eapply extract_just_gtt in e.
+                destruct e.
+                destruct Hsubset as [grest gforall].
+                exists (Some (s4,x)::grest).
+                constructor.
+                right. exists s4,g_k, x.
+                split; split;try easy.
+                unfold upaco5.
+                left. exact g.
+                exact gforall.
+            }
+            {
+                destruct Hsubset as [grest gforall].
+                exists (None::grest).
+                constructor. left. easy.
+                exact gforall.
+            }
+        }
+        assert(Hforall_onth: forall (gcs1:list (option(sort*gtt))), 
+        Forall (fun u=> u=None \/ exists k, onth k gcs1=u) gcs1). admit.
+        set (gcs'':= create_gcs'' gcs (Hforall_onth gcs)).
+        destruct gcs'' as [gcs'' Hgcs''].
+        assert(gttstepC (gtt_send s t gcs) (gtt_send s t gcs'') p q ell').
+        {
+            pfold.
+            constructor;try easy.
+        }
     }
 Qed. 
