@@ -595,8 +595,20 @@ Definition soundness_pred p q G gamma ell':= fun u => match u with
     tctxR gamma (lcomm p q ell') gamma'
      end.
 
-Definition trivial_proof {A:Type} : forall (xs:list (option (A))) k, 
-    onth k xs = onth k xs. Proof. intros. reflexivity. Defined.
+
+Definition decorate_proof {A:Type} (k:nat) (xs:list (option A)) : 
+    {exists a, onth k xs =Some a} + {onth k xs =None}.
+Proof.
+    destruct (onth k xs). left. exists a. reflexivity.
+    right. reflexivity.
+Defined.
+
+Definition eqlenSeq {A:Type} (x:list A) := seq 0 (List.length x).
+
+Definition extract_some_ind k gcs_og (H:exists a: sort*gtth, onth k gcs_og =Some a): sort*gtth.
+Proof.
+    destruct (constructive_indefinite_description _ H). exact x. Defined.
+
 
 Lemma assoc_soundness: forall G G' gamma  p q ell xs, p <> q -> wfgC G -> isgPartsC p G ->
 tctx_wf gamma -> M.find p gamma =Some (ltt_send q xs) ->
@@ -932,56 +944,155 @@ Proof.
             eapply Forall_prop with (l:=k) (p:=(s4,g_k)) in H5;destruct H5; try easy. destr_hyps.
             inversion H5;easy.  
         }
-        assert(gamma_props_simple: forall k  s4 g_k k', 
+        assert(gamma_props_simple: forall k  s4 g_k, 
         onth k gcs=Some (s4,g_k) -> 
-        onth k' xs0 <> None ->
-        exists (gamma' : tctx) (G'' : gtt),
-        gttstepC g_k G'' p q k' /\
-        assoc gamma' G'').
+        exists (Gks:ltt) (Gkt:ltt) (gamma' : tctx) (G'' : gtt),
+        projectionC g_k s Gks /\
+        projectionC g_k t Gkt /\
+        M.find p (create_gamma_k s t Gks Gkt gamma)=Some (ltt_send q xs0) /\
+        gttstepC g_k G'' p q ell' /\
+        assoc gamma' G'' /\ tctxR (create_gamma_k s t Gks Gkt gamma) (lcomm p q ell') gamma').
         {
             intros.
-            Search assoc.
-            pose proof H12 as H70. 
+            pose proof H12 as Honthk. 
             specialize (Hchild_proj_1 k s4 g_k). apply Hchild_proj_1 in H12.
             unfold projectableA in H12. specialize (H12 s) as Hchilds.
             specialize (H12 t) as Hchildt. destr_hyps.
-            eapply gamma_k_props_2 with (k:=k) (s4:=s4) (g_k:=g_k) (Gks:= x0) (Gkt:=x) in H13;try easy.
-            destr_hyps. exists x1, x2. easy.
+            rename x0 into Gks, x into Gkt.
+            exists Gks, Gkt.
+            eapply gamma_k_props_2 with (k:=k) (s4:=s4) (g_k:=g_k) (Gks:= Gks)
+             (Gkt:=Gkt) (k':=ell') (xs:=xs0) in Honthk;
+            try easy.
+            destr_hyps. exists x, x0. crush.
             rewrite Hpsame. easy.
         }
-        assert(extract_gamma_k_props_2:forall s4 k g_k k' xs Gks Gkt, onth k gcs = Some (s4,g_k) -> 
-        exists g_k 
-        projectionC g_k s Gks ->
-        projectionC g_k t Gkt ->
-        M.find p (create_gamma_k s t Gks Gkt gamma)=Some (ltt_send q xs) -> 
-        onth k' xs <> None ->
-        {u:  (tctx* gtt) |
+        assert(extract_gamma_props_simple:forall s4 k g_k, onth k gcs = Some (s4,g_k) -> 
+        {u:  (ltt*ltt*tctx* gtt) |
         (fun u=> match u with 
-        | (gamma',G'')=>gttstepC g_k G'' p q k' /\
-        assoc gamma' G'' /\ tctxR (create_gamma_k s t Gks Gkt gamma) (lcomm p q k') gamma'
+        | (Gks,Gkt,gamma',G'')=>
+        projectionC g_k s Gks /\
+        projectionC g_k t Gkt /\
+        M.find p (create_gamma_k s t Gks Gkt gamma)=Some (ltt_send q xs0) /\
+        gttstepC g_k G'' p q ell' /\
+        assoc gamma' G'' /\ tctxR (create_gamma_k s t Gks Gkt gamma) (lcomm p q ell') gamma'
         end) u}).
         {
             intros.
-            eapply gamma_k_props_2 with (k':=k') (xs:=xs) 
-            
-            (Gks:=Gks) (Gkt:=Gkt) in 
-            
-            H12;try easy.
+            eapply gamma_props_simple in H12. 
             destruct (constructive_indefinite_description _ H12).
             destruct (constructive_indefinite_description _ (e)).
-            apply exist with (x:= (x,x0)). unfold soundness_pred. easy. 
+            destruct (constructive_indefinite_description _ (e0)).
+            destruct (constructive_indefinite_description _ (e1)).
+            exists (x,x0,x1,x2). easy. 
         }
+        Search SList.
+        Definition verified_indexing_helper (gcs_og:list (option (sort*gtt))) 
+        (gcs:list (option (sort*gtt))) (k_now:nat): list(
+            {u : (nat*option (sort*gtt)) |
+            match u with | (k,None) =>True
+                         | (k, Some (s,g)) => onth k gcs_og=Some (s,g) end
+            } 
+        ).
+        Proof.
+            induction gcs.
+            {
+             exact [].   
+            }
+            {
+                destruct (onth k_now gcs_og) eqn:Heq.
+                {
+                    destruct p.
+                    assert(Hr: {u : (nat*option (sort*gtt)) |
+                    match u with | (k,None) =>True
+                                 | (k, Some (s,g)) => onth k gcs_og=Some (s,g) end
+                    }).
+                    {
+                        exists (k_now, Some (s,g)). assumption.   
+                    }
+                    exact (Hr :: IHgcs).   
+                }
+                {
+                    assert(Hr: {u : (nat*option (sort*gtt)) |
+                    match u with | (k,None) =>True
+                                 | (k, Some (s,g)) => onth k gcs_og=Some (s,g) end
+                    }). exists (k_now,None). easy.
+                    exact(Hr::IHgcs).
+                }
+            }
+        Defined.
 
-        (*
-        set (map_fun := fun u => match u with 
-            | None => None
-            | Some (s4,g_k) => gamma_props_simple k)*)
-        assert (forall k' (Hk':onth k' xs0 <> None),exists gcs'',
+        Definition populate_indices (gcs:list(option(sort*gtt))) :=verified_indexing_helper gcs gcs 0.
+        
+        Print sig.
+
+        Definition create_gcs'' (gcs:list (option (sort*gtt))) p q ell' s t
+        (Hps : p<>s ) (Hqt: q <>t) 
+        (Hwfg:wfgC (gtt_send s t gcs))
+        (P: forall s4 k g_k,
+        onth k gcs =Some (s4,g_k) -> {u:gtt| gttstepC g_k u p q ell'})
+        :{gcs'':list (option (sort*gtt)) | gttstepC (gtt_send s t gcs) (gtt_send s t gcs'') p q ell' }.
+        Proof.
+            set (indexed_gcs:=populate_indices gcs).
+            set (indexed_gcs_mapped:= map (fun u=> 
+                match u with 
+                    | exist (k,None) _ => None
+                    | exist (k,Some (s,g)) H => match (P s k g H) with 
+                                | exist v _ => Some (s,v) end
+                    end
+            ) indexed_gcs).
+            Check indexed_gcs_mapped.
+            exists indexed_gcs_mapped.
+            pfold. constructor;try easy.
+            Check indexed_gcs.
+        Defined.
+        
+        assert(extract_just_gtt: forall s4 k g_k, onth k gcs = Some (s4,g_k) -> 
+        {u:gtt| gttstepC g_k u p q ell'}).
+        {
+            intros.
+            apply extract_gamma_props_simple in H12.
+            destruct H12.
+            destruct x as [[[d1 d2] d3] d4].
+            exists d4. easy.
+        }
+        set(gcs'':=create_gcs'' gcs (eqlenSeq gcs) 
+        extract_just_gtt).
+
+        assert(gttstepC (gtt_send s t gcs) 
+        (gtt_send s t gcs'') p q ell').
+        {
+            generalize dependent gcs.
+            induction gcs;intros.
+            {
+                apply empty_not_wfg in H2. easy.
+            }
+            {
+                destruct a.
+                {
+                    simpl in gcs''.
+                    admit.
+                }  
+                {
+                    unfold gcs''.
+                    simpl in gcs''. simpl.
+                    pfold. constructor;try easy. constructor;try easy. left. easy.
+
+                }
+            }
+            intros.
+            pfold. constructor;try easy. 
+            
+        }
+        assert ({gcs'' : (list (option (sort*gtt))) | 
+            forall k, ((onth k gcs=None -> onth k gcs'' =None) /\ 
+            (exists s4 g_k, onth k gcs=Some (s4,g_k) -> exists G'', 
+            onth k gcs'' =Some (s4,G'') /\ gttstepC g_k G'' p q ell'))}).
+        assert (exists gcs'',
             forall k, 
                 (forall (Hknone:onth k gcs=None), onth k gcs'' =None) /\
                 (forall s4 g_k (Hksome:onth k gcs=Some (s4, g_k)),
                     exists G'', onth k gcs'' =Some (s4,G'') /\
-                    gttstepC g_k G'' p q k'
+                    gttstepC g_k G'' p q ell'
                 )
         ).
         {
