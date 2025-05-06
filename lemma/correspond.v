@@ -594,21 +594,60 @@ Definition soundness_pred p q G gamma ell':= fun u => match u with
     | (gamma', G'') => gttstepC G G'' p q ell' /\ assoc gamma' G'' /\ 
     tctxR gamma (lcomm p q ell') gamma'
      end.
-
-
-Definition decorate_proof {A:Type} (k:nat) (xs:list (option A)) : 
-    {exists a, onth k xs =Some a} + {onth k xs =None}.
+(*
+Lemma subproj_cont_extend_send : forall p q gcs lts k1 k2 s, 
+    wfgC (gtt_send p q gcs) -> SList lts -> p <> q ->
+    issubProj (ltt_send q lts) (gtt_send p q gcs) p ->
+    issubProj k1 k2 p -> 
+    issubProj (ltt_send q (Some (s,k1)::lts)) (gtt_send p q (Some (s,k2)::gcs)) p.
 Proof.
-    destruct (onth k xs). left. exists a. reflexivity.
-    right. reflexivity.
-Defined.
+    intros.
+    unfold issubProj.
+    eapply subproj_inv_send in H2; try easy.
+    destruct H2.
+    {
+        destr_hyps. apply eq_sym in H2;inversion H2;subst.
+        unfold issubProj in H3. destr_hyps.
+        exists (ltt_send q (Some (s,x)::lts)).
+        split.
+        {
+            
+            pfold.
+            constructor; try easy.
+            apply decidable_helper.triv_pt_p. 
+            destruct x.
+            {
+                constructor.   
+            }
+            Print projection. econstructor.   
+        }
+        unfold send_cond in *.   
+    }*)
+Print send_cond.
 
-Definition eqlenSeq {A:Type} (x:list A) := seq 0 (List.length x).
-
-Definition extract_some_ind k gcs_og (H:exists a: sort*gtth, onth k gcs_og =Some a): sort*gtth.
+(*
+Lemma step_to_projection : forall s t gcs gcs'' p q ell,
+    wfgC (gtt_send s t gcs) -> projectableA (gtt_send s t gcs) ->
+    gttstepC (gtt_send s t gcs) (gtt_send s t gcs'') p q ell ->
+    exists xp xq, (projectionC (gtt_send s t gcs) p (ltt_send q xp) /\
+            projectionC (gtt_send s t gcs) q (ltt_recv p xq)).
 Proof.
-    destruct (constructive_indefinite_description _ H). exact x. Defined.
-
+    intros.
+    pinversion H1;subst;try apply step_mon.
+    unfold projectableA in H0. 
+    specialize (H0 p) as Hproject_p.
+    specialize (H0 q) as Hproject_q.
+    destr_hyps.
+    {
+        pinversion H3;pinversion H2;try apply proj_mon;crush.
+        1-2:exfalso; apply H4; apply decidable_helper.triv_pt_p; try easy.
+        
+        exfalso; apply H14; apply decidable_helper.triv_pt_q; try easy.
+        exists ys, ys0.
+        split;pfold; easy.   
+    }
+    Search projectionC "inv".
+Qed.*)
 
 Lemma assoc_soundness: forall G G' gamma  p q ell xs, p <> q -> wfgC G -> isgPartsC p G ->
 tctx_wf gamma -> M.find p gamma =Some (ltt_send q xs) ->
@@ -997,69 +1036,131 @@ Proof.
             exists d4. easy.
         }
         Print gttstep.
-
         assert(aux_Forall_inv_1: forall xss P (aa:option(sort*gtt)), Forall P (aa::xss) -> Forall P xss).
         {
             intros. inversion H12. easy.   
         }
-
         assert (aux_Forall_inv2: forall xss P (aa:option(sort*gtt)), Forall P (aa::xss) -> P aa). 
         {intros. inversion H12. easy. }
         assert (aux3:forall (p0:sort*gtt) H, (Some p0 =None \/ H )-> H).
         {
          intros;destruct H13;easy.   
         }
+
         assert(create_gcs'' : forall gcs1 
-        (Hsubset: Forall (fun u=> u=None \/ exists k, onth k gcs=u) gcs1), {gcs'' : list(option(sort*gtt)) |
-        Forall2
-        (fun u v : option (sort * gtt) =>
-        u = None /\ v = None \/
-        (exists (s0 : sort) (g g' : gtt),
-        u = Some (s0, g) /\
-        v = Some (s0, g') /\
-        upaco5 gttstep bot5 g g' p q ell')) gcs1
-        gcs''
-        }).
+        (Hsubset: Forall (fun u=> u=None \/ exists k, onth k gcs=u) gcs1), 
+        exists gcs''  (gamma'_s:list(option(sort*ltt))) (gamma'_t:list(option(sort*ltt))),
+            Forall2
+            (fun u v : option (sort * gtt) =>
+            u = None /\ v = None \/
+            (exists (s0 : sort) (g g' : gtt),
+            u = Some (s0, g) /\
+            v = Some (s0, g') /\
+            upaco5 gttstep bot5 g g' p q ell')) gcs1
+            gcs''
+        ).
         {
             intros.
-            induction gcs1. exists []. constructor.
-            Print Forall.
+            induction gcs1. exists [],[], []. constructor.
+            
             pose proof Hsubset as Hsubset'.
-            apply aux_Forall_inv_1 in Hsubset.
-            apply IHgcs1 in Hsubset.
-            apply aux_Forall_inv2 in Hsubset'.
+            inversion Hsubset;subst.
+            apply IHgcs1 in H21.
             destruct a.
             {
-                apply aux3 in Hsubset'.
-                destruct (constructive_indefinite_description _ Hsubset').
-                rename x into k.
+                destruct H14;try easy.
+                destruct H12 as [k Honthk].
+                
                 destruct p0 as [s4 g_k].
-                eapply extract_just_gtt in e.
-                destruct e.
-                destruct Hsubset as [grest gforall].
-                exists (Some (s4,x)::grest).
+                eapply extract_gamma_props_simple in Honthk.
+                destruct Honthk.
+                destruct x as [ [[ext_s ext_t] ext_tcx] ext_g].
+                destruct H21 as [grest [gsrest [gkres gforall]]].
+                exists (Some (s4,ext_g)::grest), [], [].
                 constructor.
-                right. exists s4,g_k, x.
+                right. exists s4,g_k, ext_g.
                 split; split;try easy.
                 unfold upaco5.
-                left. exact g.
-                exact gforall.
+                left. destr_hyps. assumption.
+                assumption.
             }
             {
-                destruct Hsubset as [grest gforall].
-                exists (None::grest).
+                destruct H21 as [grest [gsrest [gkres gforall]]].
+                exists (None::grest), [],[].
                 constructor. left. easy.
                 exact gforall.
             }
         }
+        
         assert(Hforall_onth: forall (gcs1:list (option(sort*gtt))), 
-        Forall (fun u=> u=None \/ exists k, onth k gcs1=u) gcs1). admit.
-        set (gcs'':= create_gcs'' gcs (Hforall_onth gcs)).
-        destruct gcs'' as [gcs'' Hgcs''].
-        assert(gttstepC (gtt_send s t gcs) (gtt_send s t gcs'') p q ell').
+        Forall (fun u=> u=None \/ exists k, onth k gcs1=u) gcs1).
         {
-            pfold.
-            constructor;try easy.
+            admit.
+        }
+        set (gcs'':= create_gcs'' gcs (Hforall_onth gcs)).
+        destruct gcs'' as [gcs'' [lks [lkt Hgcs'']]].
+        assert(gcs''_step : gttstepC (gtt_send s t gcs) (gtt_send s t gcs'') p q ell').
+        {
+            pfold. constructor;try easy.
+        }
+        assert(gcs''_wfg: wfgC (gtt_send s t gcs'')).
+        {
+            eapply wfgC_after_step with (G:=(gtt_send s t gcs)) (p:=p) (q:=q) (n:=ell');
+            try easy.
+        }
+        
+        assert(H_anyone: exists any_k s4 g_k, onth any_k gcs=Some (s4,g_k)). admit.
+        destruct H_anyone as [any_k [s_any [g_any H_anyone]]].
+        apply extract_gamma_props_simple in H_anyone.
+        destruct H_anyone as [[[[exhks exhkt] base_gamma] gtb] base_gamma_props].
+        destr_hyps.
+        clear extract_gamma_props_simple gamma_props_simple create_gcs''.
+        set (gamma':= create_gamma_k s t (ltt_send t lks) (ltt_recv s lkt) base_gamma).
+        assert(assoc gamma' (gtt_send s t gcs'')).
+        {
+            unfold assoc.
+            intros r.
+            split.
+            {
+                intros.
+                destruct (Nat.eq_dec r s);
+                destruct (Nat.eq_dec r t);subst;try easy.
+                exists (ltt_send t lks).
+                split.
+                {
+                    unfold gamma'. unfold create_gamma_k. rewrite M.add_spec1. easy.
+                }
+                {
+                    (*this comes from the construction*)
+                    admit.   
+                }
+                exists (ltt_recv s lkt).
+                split.
+                {
+                    unfold gamma'. unfold create_gamma_k.  rewrite M.add_spec2;
+                    try rewrite M.add_spec1;try easy.
+                }
+                {
+                    (*this comes from the construction*)
+                    admit.   
+                }
+
+                assert (Hstep_part: isgPartsC r (gtt_send s t gcs)). admit.
+                pose proof H5 as Hassoc.
+                unfold assoc in Hassoc.
+                specialize (Hassoc r). destr_hyps.
+                apply H27 in Hstep_part.
+                destr_hyps.
+                exists x.
+                split.
+                {
+                    unfold gamma';unfold create_gamma_k;rewrite M.add_spec2;try rewrite M.add_spec2;
+                    try rewrite M.remove_spec2;try rewrite M.remove_spec2;try easy.   
+                }
+                {
+                   
+                }
+            }
         }
     }
 Qed. 
