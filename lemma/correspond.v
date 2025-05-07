@@ -451,7 +451,28 @@ Proof.
     destr_hyps. crush.
 Qed.
 
-Search isgPartsC.
+
+Lemma assoc_step_not_part_send:forall p q gcs gcs'' k s t xs, wfgC (gtt_send s t gcs) -> SList xs ->
+issubProj  (ltt_send q xs) (gtt_send s t gcs) p  ->
+s <> p -> q <> t -> p <> t -> q <> s ->
+gttstepC (gtt_send s t gcs) (gtt_send s t gcs'') p q k -> ( ~ isgPartsC p (gtt_send s t gcs'')) ->  
+exists s', onth k xs =Some (s',ltt_end).
+Proof.
+    intros.
+    pose proof H1 as Hsub.
+    apply subproj_inv_send in H1;crush.
+    apply eq_sym in H8;inversion H8;subst.
+    unfold subproj_cont_cond in H11.
+    pinversion H6;try apply step_mon;crush. 
+Admitted.
+(*
+Lemma assoc_step_not_part_recv:forall p q gcs k g_k s t xs, wfgC (gtt_send p q gcs) -> SList xs ->
+issubProj  (ltt_recv p xs) (gtt_send p q gcs) p  ->
+s <> p -> q <> t ->
+gttstepC (gtt_send p q gcs) g_k s t k -> ( ~ isgPartsC q g_k) -> onth k xs=None \/ exists s', onth k xs =Some (s',ltt_end).
+Proof.
+Admitted.
+*)
 
 Lemma projection_implies_slist_send : 
     forall q g r xs,    wfgC g -> projectionC g r (ltt_send q xs) ->
@@ -590,64 +611,198 @@ Proof.
     }
 Qed.
 
-Definition soundness_pred p q G gamma ell':= fun u => match u with 
-    | (gamma', G'') => gttstepC G G'' p q ell' /\ assoc gamma' G'' /\ 
-    tctxR gamma (lcomm p q ell') gamma'
-     end.
-(*
-Lemma subproj_cont_extend_send : forall p q gcs lts k1 k2 s, 
-    wfgC (gtt_send p q gcs) -> SList lts -> p <> q ->
-    issubProj (ltt_send q lts) (gtt_send p q gcs) p ->
-    issubProj k1 k2 p -> 
-    issubProj (ltt_send q (Some (s,k1)::lts)) (gtt_send p q (Some (s,k2)::gcs)) p.
+Search projectionC Forall. 
+Lemma proj_implies_subproj : forall g p t, projectionC g p t -> issubProj t g p.
 Proof.
-    intros.
-    unfold issubProj.
-    eapply subproj_inv_send in H2; try easy.
-    destruct H2.
-    {
-        destr_hyps. apply eq_sym in H2;inversion H2;subst.
-        unfold issubProj in H3. destr_hyps.
-        exists (ltt_send q (Some (s,x)::lts)).
-        split.
-        {
-            
-            pfold.
-            constructor; try easy.
-            apply decidable_helper.triv_pt_p. 
-            destruct x.
-            {
-                constructor.   
-            }
-            Print projection. econstructor.   
-        }
-        unfold send_cond in *.   
-    }*)
-Print send_cond.
-
-(*
-Lemma step_to_projection : forall s t gcs gcs'' p q ell,
-    wfgC (gtt_send s t gcs) -> projectableA (gtt_send s t gcs) ->
-    gttstepC (gtt_send s t gcs) (gtt_send s t gcs'') p q ell ->
-    exists xp xq, (projectionC (gtt_send s t gcs) p (ltt_send q xp) /\
-            projectionC (gtt_send s t gcs) q (ltt_recv p xq)).
+    intros. unfold issubProj. exists t;split;try apply stRefl;try easy.
+Qed.
+Search Forall onth.
+Lemma continuation_projection_same: forall p q s t gp gq gcs'', wfgC (gtt_send s t gcs'') ->
+p <> q -> p <> s -> q <> t -> p<> t -> q <> s->
+projectionC (gtt_send s t gcs'') p gp ->
+projectionC (gtt_send s t gcs'') q gq -> 
+Forall (fun u=> u=None \/ exists s1 gk, u=Some (s1,gk) /\ projectionC gk p gp /\ 
+projectionC gk q gq) gcs''.
 Proof.
-    intros.
-    pinversion H1;subst;try apply step_mon.
-    unfold projectableA in H0. 
-    specialize (H0 p) as Hproject_p.
-    specialize (H0 q) as Hproject_q.
-    destr_hyps.
+    (*
+    induction gcs''.
     {
-        pinversion H3;pinversion H2;try apply proj_mon;crush.
-        1-2:exfalso; apply H4; apply decidable_helper.triv_pt_p; try easy.
-        
-        exfalso; apply H14; apply decidable_helper.triv_pt_q; try easy.
-        exists ys, ys0.
-        split;pfold; easy.   
+        intros;constructor.
     }
-    Search projectionC "inv".
-Qed.*)
+    {
+        intros.
+        constructor.
+        destruct a. 
+        {
+            right.
+            destruct p0. exists s0, g.
+            split;try easy.
+            split.
+            {
+                pose proof H5 as Hsubp.
+                
+                pinversion H5;try apply proj_mon;subst;try easy.
+                {
+                    Search isgPartsC onth.
+                    assert (isgPartsC p g -> False).
+                    intros. apply H7. eapply part_parent with (k:=0) (s:=s0) (G_k:=g);try easy.
+                    apply not_part_proj;try easy.
+                }
+                {
+                    Search isMerge.
+                    eapply Forall2_prop_r with (l:=0) (p:=(s0,g)) in H16;try easy.
+                    destr_hyps.
+                    destruct H8;try easy. destr_hyps.
+                    Search isMerge onth.
+                    subst.
+                    eapply merge_inv_ss  with (T:=gp) in H9;try easy.
+                    inversion H8;subst.
+                    destruct H14; try easy.
+                }   
+            }
+            {
+                pose proof H6 as Hsubq.
+                
+                pinversion H6;try apply proj_mon;subst;try easy.
+                {
+                    assert (isgPartsC q g -> False).
+                    intros. apply H7. eapply part_parent with (k:=0) (s:=s0) (G_k:=g);try easy.
+                    apply not_part_proj;try easy.
+                }
+                {
+                    Search isMerge.
+                    eapply Forall2_prop_r with (l:=0) (p:=(s0,g)) in H16;try easy.
+                    destr_hyps.
+                    destruct H8;try easy. destr_hyps.
+                    Search isMerge onth.
+                    subst.
+                    eapply merge_inv_ss  with (T:=gq) in H9;try easy.
+                    inversion H8;subst.
+                    destruct H14; try easy.
+                }   
+            }
+        }
+        {
+            left. easy.   
+        }
+        eapply IHgcs'';try easy.  
+    }*)
+Admitted.
+
+
+Lemma subproj_cont_implies_subproj_parent: forall p s t Tp gcs'' k g_k s4, 
+wfgC (gtt_send s t gcs'' ) ->
+projectableA (gtt_send s t gcs'') -> 
+isgPartsC p (gtt_send s t gcs'') ->
+p <> s  -> p<> t -> s<> t->
+onth k gcs''=Some (s4,g_k) ->
+issubProj Tp g_k p->
+issubProj Tp (gtt_send s t gcs'') p.
+Proof.
+
+    intros.
+    Search issubProj onth.
+    unfold issubProj in *. destr_hyps.
+    exists x.
+    split;try easy.
+    assert (gttstepC (gtt_send s t gcs'') g_k s t k).
+    {
+        intros.  
+        pfold. eapply steq with (s:=s4);try easy. 
+    }
+    pfold.
+    admit.
+    (*
+    eapply proj_cont.
+    eapply proj_cont with (ys:=extendLis k (Some x));try easy.
+    pose proof H11 as Hstep.
+    
+    Search projectionC gttstepC.
+    eapply proj_cont_pq_step in H1;try easy.
+    destr_hyps.
+    eapply typ_after_step_3_helper 
+    in H11;try easy.*)
+Admitted.
+
+Lemma subproj_after_step_r: forall G G' r p q ell' x, 
+wfgC G -> wfgC G' -> projectableA G -> 
+issubProj x G r -> r <> p -> r <> q ->
+    gttstepC G G' p q ell' -> issubProj x G' r.
+Proof.
+    intros.
+    Search "proj" "cont".
+    unfold issubProj in *. destr_hyps.
+    pose proof H5 as Hstep.
+    eapply proj_cont_pq_step in H5;try easy.
+    destr_hyps. 
+    Search "typ_after_step_3".
+    eapply typ_after_step_3_helper with (q:=q) (p:=p) (G':=G')
+    (l:=ell') (L1:=x1) (L2:=x2) (LS:=x3) (LS':=x4) (LT':=x6) (LT:=x5)
+     in H2 ; try easy.
+     destr_hyps;subst. exists x7. split;easy.
+Qed.
+
+
+Lemma subproj_after_step1 : forall G G' p q ell'  xsp xsq s1 s2 Tp Tq, 
+wfgC G -> wfgC G' -> projectableA G -> 
+issubProj (ltt_send q xsp) G p ->
+issubProj (ltt_recv p xsq) G q -> 
+onth ell' xsp =Some (s1, Tp) ->
+onth ell' xsq =Some (s2, Tq) ->
+    gttstepC G G' p q ell' -> (issubProj Tp G' p /\ issubProj Tq G' q).
+Proof.
+    Check projection.typ_after_step_12_helper.
+    intros.
+    pose proof H6 as Hstep.
+    eapply proj_cont_pq_step in H6;try easy. destr_hyps. 
+    unfold issubProj in *. destr_hyps.
+    eapply proj_inj with (t:=x6) in H6;try easy;subst.
+    eapply proj_inj with (t:=x5) in H7;try easy;subst.
+    rename x into xsp', x0 into xsq',x3 into Tp', x4 into Tq'.
+    Check typ_after_step_3_helper.
+    
+    eapply projection.typ_after_step_12_helper 
+    with (LP:=xsp') (LQ:=xsq') (S:=x1) (S':=x2) (T:=Tp') (T':=Tq') in Hstep;try easy.
+    split.
+    {
+        exists Tp'.
+        pose proof H11 as Hsubp.
+        pose proof H10 as Hsubq.
+        apply subtype_send_inv in H11.
+        eapply Forall2R_prop with (l:=ell') (p:=(s1,Tp)) in H11;try easy.
+        destr_hyps. destruct H12;try easy. destr_hyps.
+        apply eq_sym in H12;inversion H12;subst.
+        rewrite H13 in H8;inversion H8;subst. easy.
+    }
+    {
+        exists Tq'.
+        pose proof H11 as Hsubp.
+        pose proof H10 as Hsubq.
+        apply subtype_recv_inv in H10.
+        eapply Forall2R_prop with (l:=ell') (p:=(x2,Tq')) in H10;try easy.
+        destr_hyps. destruct H12;try easy. destr_hyps.
+        apply eq_sym in H12;inversion H12;subst.
+        rewrite H13 in H5;inversion H5;subst. easy.
+    }
+Qed.
+
+Lemma assoc_inv_find : forall gamma g p Tp, wfgC g -> assoc gamma g -> M.find p gamma=Some Tp -> issubProj Tp g p.
+Proof.
+    intros.
+    unfold assoc in H0. specialize (H0 p). destr_hyps.
+    Check decidable_isgPartsC.
+    apply decidable_isgPartsC with (pt:=p) in H.
+    destruct H.
+    {
+        apply H0 in H. destr_hyps. rewrite H in H1;inversion H1;subst;try easy.
+    }
+    {
+        pose proof H as Hnotin.
+        apply H2 with (Tpx:=Tp) in H ;subst;try easy.
+        unfold issubProj. exists ltt_end. apply not_part_proj in Hnotin. split;try (apply stRefl);try easy.   
+    }
+Qed.
+
 
 Lemma assoc_soundness: forall G G' gamma  p q ell xs, p <> q -> wfgC G -> isgPartsC p G ->
 tctx_wf gamma -> M.find p gamma =Some (ltt_send q xs) ->
@@ -658,7 +813,7 @@ exists gamma' G'',
 gttstepC G G'' p q ell' /\ assoc gamma' G'' /\ tctxR gamma (lcomm p q ell') gamma'.
 Proof.
     intros.
-    pose proof H4 as Hprojectable. apply assoc_implies_projectable in Hprojectable.
+    pose proof H4 as Hprojectable. apply assoc_implies_projectable in Hprojectable;try easy.
     rename H3 into Hmfindp, H4 into H3, H5 into H4.
     generalize dependent G'.
     revert H2 H3 Hmfindp.
@@ -1035,60 +1190,264 @@ Proof.
             destruct x as [[[d1 d2] d3] d4].
             exists d4. easy.
         }
-        Print gttstep.
-        assert(aux_Forall_inv_1: forall xss P (aa:option(sort*gtt)), Forall P (aa::xss) -> Forall P xss).
-        {
-            intros. inversion H12. easy.   
-        }
-        assert (aux_Forall_inv2: forall xss P (aa:option(sort*gtt)), Forall P (aa::xss) -> P aa). 
-        {intros. inversion H12. easy. }
-        assert (aux3:forall (p0:sort*gtt) H, (Some p0 =None \/ H )-> H).
-        {
-         intros;destruct H13;easy.   
-        }
-
+       
+        Print projection.
+        Search SList projectionC.
         assert(create_gcs'' : forall gcs1 
         (Hsubset: Forall (fun u=> u=None \/ exists k, onth k gcs=u) gcs1), 
-        exists gcs''  (gamma'_s:list(option(sort*ltt))) (gamma'_t:list(option(sort*ltt))),
+        exists gcs'' ,
             Forall2
             (fun u v : option (sort * gtt) =>
             u = None /\ v = None \/
             (exists (s0 : sort) (g g' : gtt),
             u = Some (s0, g) /\
             v = Some (s0, g') /\
-            upaco5 gttstep bot5 g g' p q ell')) gcs1
-            gcs''
+            upaco5 gttstep bot5 g g' p q ell')) gcs1 gcs'' 
+            /\ 
+            (
+            forall xsp xsq Tp Tq s1 s2, M.find p gamma=Some (ltt_send q xsp) ->
+            M.find q gamma=Some (ltt_recv p xsq) ->
+            onth ell' xsp= Some (s1, Tp) ->
+            onth ell' xsq =Some (s2, Tq) ->
+            Forall (fun u=> u=None \/ 
+            (exists s4 g_k, u=Some (s4,g_k)  /\ issubProj Tp g_k p /\ issubProj Tq g_k q)) gcs'')
+            /\
+            (forall r, r <> p  -> r <> q ->  
+            Forall2 (fun u v=> u=None /\ v=None \/ exists s4 g_k g_k', u=Some (s4,g_k) /\
+            v=Some(s4,g_k') /\ (~isgPartsC r g_k' -> ~isgPartsC r g_k) /\
+            forall gr, (issubProj gr g_k r ->issubProj gr g_k' r))
+            gcs1 gcs'') 
+            /\
+            (forall xsp xsq, M.find p gamma=Some (ltt_send q xsp) ->
+            M.find q gamma=Some (ltt_recv p xsq) ->
+            Forall2 (fun u v=> u=None /\ v=None \/ exists s4 g_k g_k', u=Some (s4,g_k) /\
+            v=Some(s4,g_k') /\ (~isgPartsC p g_k' -> onth ell' xsp=None \/  exists s5, onth ell' xsp= Some (s5,ltt_end)) /\
+            (~isgPartsC q g_k' -> onth ell' xsq=None \/ exists s5, onth ell' xsq= Some (s5,ltt_end)))
+            gcs1 gcs'')
+            /\ (forall r, r<>p -> r <> q  -> 
+            Forall2 (fun u v=> u=None /\ v=None \/ exists s4 g_k g_k', u=Some (s4,g_k) /\
+            v=Some(s4,g_k') /\ 
+            (~isgPartsC r g_k' -> ~ isgPartsC r g_k))
+            gcs1 gcs''
+            )
         ).
         {
             intros.
-            induction gcs1. exists [],[], []. constructor.
-            
-            pose proof Hsubset as Hsubset'.
-            inversion Hsubset;subst.
-            apply IHgcs1 in H21.
-            destruct a.
+            induction gcs1.
             {
-                destruct H14;try easy.
-                destruct H12 as [k Honthk].
-                
-                destruct p0 as [s4 g_k].
-                eapply extract_gamma_props_simple in Honthk.
-                destruct Honthk.
-                destruct x as [ [[ext_s ext_t] ext_tcx] ext_g].
-                destruct H21 as [grest [gsrest [gkres gforall]]].
-                exists (Some (s4,ext_g)::grest), [], [].
-                constructor.
-                right. exists s4,g_k, ext_g.
-                split; split;try easy.
-                unfold upaco5.
-                left. destr_hyps. assumption.
-                assumption.
+                exists [].
+                repeat (try split); try intros;try constructor.
             }
             {
-                destruct H21 as [grest [gsrest [gkres gforall]]].
-                exists (None::grest), [],[].
-                constructor. left. easy.
-                exact gforall.
+                pose proof Hsubset as Hsubset'.
+                inversion Hsubset;subst.
+                apply IHgcs1 in H21.
+                clear gamma_k_props_2 gamma_props_simple Hpsame Hchild_proj_1 IHgcs1.
+                destruct a.
+                {
+                    destruct H14;try easy.
+                    destruct H12 as [k Honthk].
+                    
+                    destruct p0 as [s4 g_k].
+                    pose proof Honthk as Honthk'.
+                    eapply extract_gamma_props_simple in Honthk.
+                    destruct Honthk.
+                    destruct x as [ [[ext_s ext_t] ext_tcx] ext_g].
+                    destruct H21 as [grest [Hrest]].
+                    assert(Hwfg_ext: wfgC ext_g). admit.
+                    assert(Hwfg_gk: wfgC g_k). admit.
+                    assert(Hproj_gk: projectableA g_k). admit.
+
+                    assert (Hgamma_k_same: forall Gks Gkt p, 
+                    p <> s -> p <> t ->
+                    M.find p (create_gamma_k s t Gks Gkt gamma) =M.find p gamma).
+                    {
+                        intros.
+                        unfold create_gamma_k. rewrite M.add_spec2;try 
+                        rewrite M.add_spec2;try rewrite M.remove_spec2;try rewrite M.remove_spec2;try easy.
+                    }
+                    
+                    assert(Hproj_p_same: forall xs, M.find p gamma = Some (ltt_send q xs) -> issubProj (ltt_send q xs) g_k p).
+                    {
+                        intros.
+                        assert (SList xs).
+                        {
+                            unfold tctx_wf in H4. Check H4. specialize H4 with (p:=p) (q:=q) (xs:=xs). destr_hyps.
+                            
+                            apply H4. easy.
+                        }
+                        eapply assoc_inv_find with (g:=(gtt_send s t gcs)) in H13; try easy.
+                        eapply subproj_after_cont_send with (p:=s) (q:=t) (gcs:=gcs) (s:=s4) (k:=k);try easy.
+                        admit.
+                    }
+                    assert(Hproj_q_same: forall xs, M.find q gamma = Some (ltt_recv p xs) -> issubProj (ltt_recv p xs) g_k q). admit.
+                    destr_hyps.
+                    pose proof H27 as Hgk_extg_step.
+                    eapply proj_cont_pq_step in Hgk_extg_step;try easy.
+                    destruct Hgk_extg_step as [LP [LQ Hgk_projs]].
+                    destr_hyps. 
+                    
+                    exists (Some (s4,ext_g)::grest).
+                    repeat (try split).
+                    {
+                        constructor.
+                        right. exists s4,g_k, ext_g.
+                        split; split;try easy.
+                        unfold upaco5.
+                        left. destr_hyps. assumption.
+                        assumption.
+                    }
+                    {
+                        intros.
+                        constructor.
+                        {
+                            right. exists s4, ext_g.
+                            split;try easy.
+                            
+                            eapply subproj_after_step1 with (ell':= ell') (xsp:=xsp) (xsq:=xsq) (G:=g_k) (s1:=s1) (s2:=s2); try easy.
+                            apply Hproj_p_same in H34; try easy. 
+                            apply Hproj_q_same in H35; try easy.
+                            
+                            (*admits follow from tctx_wf*)
+                        }
+                        {
+                            eapply H12 with (xsp:=xsp) (xsq:=xsq) (s1:=s1) (s2:=s2);try easy.
+                        }
+                    }
+                    {
+                        intros.
+                        constructor.
+                        {
+                            right. exists s4, g_k, ext_g. split;try split;try easy.
+                            split.
+                            {
+                                unfold not.
+                                intros.
+                                apply H36.
+                                unfold projectableA in Hproj_gk.
+                                specialize (Hproj_gk r). destr_hyps.
+                                eapply part_after_step_r with (p:=p) (q:=q) (G:=g_k) (l:=ell') (T:=x3); try easy.
+                            }
+                            {
+                                intros.   
+                                unfold issubProj in H36.
+                                unfold issubProj. destr_hyps. exists x3.
+                                split;try easy.
+                                Search gttstepC projectionC.
+                                pose proof H27 as Hgk_extg_step.
+                                eapply typ_after_step_3_helper with (s:=r) (T:=x3) (L1:=LP) (L2:=LQ) (LS:=x)
+                                (LS':=x0) (LT:=x1) (LT':=x2)
+                                in Hgk_extg_step; try easy.
+                                destr_hyps. 
+                                subst.
+                                easy.
+                            }
+                        }
+                        {
+                            eapply H13;try easy.   
+                        }
+                    }
+                    {
+                        intros.
+                        constructor.
+                        {
+                            right. exists s4, g_k, ext_g. split;try split;try easy.
+                            split.
+                            {
+                                intros.
+                                pose proof H28 as Hex_assoc.   
+                                pose proof H29 as Hex_red.
+                                destruct (onth ell' xsp) eqn:Hyg1.
+                                {
+                                    right.
+                                    destruct p0 as (s5,lct).
+                                    exists s5.
+                                    assert (lct=ltt_end).
+                                    {
+                                        Search "lem_6".   
+                                        apply lem_6_11c_tctx_comm_invert in Hex_red.
+                                        destr_hyps.
+                                        rewrite Hgamma_k_same in H37;try easy.
+                                        unfold assoc in Hex_assoc.
+                                        specialize (Hex_assoc p).
+                                        destr_hyps.
+                                        eapply H45 with (Tpx:=x6) in H36;try easy.
+                                        crush.
+                                    }
+                                    rewrite H37;easy.   
+                                }
+                                left. easy.
+                            }   
+                            {
+                                intros.
+                                pose proof H28 as Hex_assoc.   
+                                pose proof H29 as Hex_red.
+                                destruct (onth ell' xsq) eqn:Hyg1.
+                                {
+                                    right.
+                                    destruct p0 as (s5,lct).
+                                    exists s5.
+                                    assert (lct=ltt_end).
+                                    {
+                                        Search "lem_6".   
+                                        apply lem_6_11c_tctx_comm_invert in Hex_red.
+                                        destr_hyps.
+                                        rewrite Hgamma_k_same in H38;try easy.
+                                        unfold assoc in Hex_assoc.
+                                        specialize (Hex_assoc q).
+                                        destr_hyps.
+                                        eapply H45 with (Tpx:=x8) in H36;try easy.
+                                        crush.
+                                    }
+                                    rewrite H37;easy.   
+                                }
+                                left. easy.
+                            }
+                        }
+                        eapply H14;try easy.
+                    }
+                    {
+                        intros.
+                        constructor.
+                        {
+                            right. exists s4, g_k, ext_g.
+                            split;try split;try easy. intros.
+                            unfold not. intros. apply H36.
+                            Search gttstepC isgPartsC.
+                            unfold projectableA in Hproj_gk. specialize (Hproj_gk r). 
+                            destruct Hproj_gk as [TT Hproj_gk].
+                            eapply part_after_step_r with (G:=g_k) (p:=p) (q:=q) (l:=ell') (T:=TT);try easy.
+                        }
+                        eapply H21;try easy.   
+                    }
+                }
+                {
+                    destruct H21 as [grest [Hrest1 [Hrest2 [Hrest3 [Hrest4 Hrest5]]]]].
+                    exists (None::grest).
+                    repeat (try split).
+                    {
+                        constructor. left. easy.
+                        destr_hyps.
+                        assumption.
+                    }
+                    {
+                        intros.
+                        constructor. left. easy.
+                        eapply Hrest2 with (xsp:=xsp) (xsq:=xsq) (s1:=s1) (s2:=s2);try easy.
+                    }
+                    {
+                        intros. constructor. left. easy.   
+                        eapply Hrest3; try easy.
+                    }
+                    {
+                        intros. constructor. left. easy.
+                        eapply Hrest4;try easy.   
+                    }
+                    {
+                        intros. constructor. left. easy.
+                        eapply Hrest5;try easy.
+                    }
+                }
             }
         }
         
@@ -1098,7 +1457,7 @@ Proof.
             admit.
         }
         set (gcs'':= create_gcs'' gcs (Hforall_onth gcs)).
-        destruct gcs'' as [gcs'' [lks [lkt Hgcs'']]].
+        destruct gcs'' as [gcs'' [Hgcs''_1 [Hgcs''_2 [Hgcs''_3  [Hgcs''_4 Hgcs''_5]]]]].
         assert(gcs''_step : gttstepC (gtt_send s t gcs) (gtt_send s t gcs'') p q ell').
         {
             pfold. constructor;try easy.
@@ -1108,59 +1467,138 @@ Proof.
             eapply wfgC_after_step with (G:=(gtt_send s t gcs)) (p:=p) (q:=q) (n:=ell');
             try easy.
         }
-        
-        assert(H_anyone: exists any_k s4 g_k, onth any_k gcs=Some (s4,g_k)). admit.
-        destruct H_anyone as [any_k [s_any [g_any H_anyone]]].
-        apply extract_gamma_props_simple in H_anyone.
-        destruct H_anyone as [[[[exhks exhkt] base_gamma] gtb] base_gamma_props].
-        destr_hyps.
-        clear extract_gamma_props_simple gamma_props_simple create_gcs''.
-        set (gamma':= create_gamma_k s t (ltt_send t lks) (ltt_recv s lkt) base_gamma).
-        assert(assoc gamma' (gtt_send s t gcs'')).
+        assert (Hgcs''_nonemp: exists k s4 g_k, onth k gcs'' =Some (s4,g_k)).
         {
-            unfold assoc.
-            intros r.
-            split.
+            apply wfg_implies_slis in gcs''_wfg.
+            apply slist_implies_some in gcs''_wfg.
+            destr_hyps. destruct x0. exists x, s0, g. easy.   
+        }
+        destruct Hgcs''_nonemp as [k [s4 [g_k Honthk]]].
+        assert (projectableA (gtt_send s t gcs'')). admit.
+        (*by proj_cont_step_pq*)
+        assert(exists xsp xsq s1 s2 Tp Tq, M.find p gamma = Some (ltt_send q xsp) /\ 
+        M.find q gamma =Some (ltt_recv p xsq)
+            /\ onth ell' xsp=Some (s1,Tp) /\
+            onth ell' xsq=Some (s2,Tq) /\ 
+            subsort s1 s2 
+            /\ tctxR gamma (lcomm p q ell') (create_gamma_k p q Tp Tq gamma)
+        ). admit.
+        destr_hyps.
+        rename x into xsp, x0 into xsq, x1 into s1, x2 into s2, x3 into Tp, x4 into Tq.
+        assert(assoc (create_gamma_k p q Tp Tq gamma) (gtt_send s t gcs'')).
+        {
+            unfold assoc. intros r. split.
             {
                 intros.
-                destruct (Nat.eq_dec r s);
-                destruct (Nat.eq_dec r t);subst;try easy.
-                exists (ltt_send t lks).
-                split.
+                destruct (Nat.eq_dec r p);   
+                destruct (Nat.eq_dec r q);subst;try easy.
                 {
-                    unfold gamma'. unfold create_gamma_k. rewrite M.add_spec1. easy.
+                    exists Tp.
+                    unfold create_gamma_k.
+                    rewrite M.add_spec1.
+                    split;try easy.
+                    (*get proof from the extraction*)
+                    eapply Hgcs''_2 with (xsp:=xsp) (xsq:=xsq)
+                    (Tp:=Tp) (Tq:=Tq) (s1:=s1)
+                    in H22;try easy.
+                    
+                    eapply Forall_prop  with (l:=k) (p:=(s4,g_k)) in H22;try easy.
+                    destruct H22;try easy.
+                    destr_hyps.
+                    inversion H22;subst.
+                    eapply subproj_cont_implies_subproj_parent with
+                    (g_k:=x0) (k:=k) (s4:=x);try easy.
+                    (*eapply subproj_cont_implies_subproj_parent with (s:=s) (t:=t) in H22 ;try easy. 
+                *)
                 }
                 {
-                    (*this comes from the construction*)
-                    admit.   
-                }
-                exists (ltt_recv s lkt).
-                split.
-                {
-                    unfold gamma'. unfold create_gamma_k.  rewrite M.add_spec2;
-                    try rewrite M.add_spec1;try easy.
-                }
-                {
-                    (*this comes from the construction*)
-                    admit.   
-                }
-
-                assert (Hstep_part: isgPartsC r (gtt_send s t gcs)). admit.
-                pose proof H5 as Hassoc.
-                unfold assoc in Hassoc.
-                specialize (Hassoc r). destr_hyps.
-                apply H27 in Hstep_part.
-                destr_hyps.
-                exists x.
-                split.
-                {
-                    unfold gamma';unfold create_gamma_k;rewrite M.add_spec2;try rewrite M.add_spec2;
-                    try rewrite M.remove_spec2;try rewrite M.remove_spec2;try easy.   
+                    exists Tq.
+                    unfold create_gamma_k.
+                    rewrite M.add_spec2;try rewrite M.add_spec1;try easy.
+                    split;try easy.
+                    (*get proof from the extraction*)
+                    eapply Hgcs''_2 with (xsp:=xsp) (xsq:=xsq)
+                    (Tp:=Tp) (Tq:=Tq) (s1:=s1)
+                    in H22;try easy.
+                    (*eapply subproj_cont_implies_subproj_parent with (s:=s) (t:=t) in H22 ;try easy.*)
+                    
+                    eapply Forall_prop  with (l:=k) (p:=(s4,g_k)) in H22;try easy.
+                    destruct H22;try easy.
+                    destr_hyps.
+                    inversion H22;subst.
+                    eapply subproj_cont_implies_subproj_parent with (p:=q) 
+                    (g_k:=x0) (k:=k) (s4:=x);try easy.
                 }
                 {
-                   
+                    assert (Hisparts: isgPartsC r (gtt_send s t gcs)). admit.
+                    pose proof H5 as Hassoc.
+                    unfold assoc in Hassoc.
+                    specialize (Hassoc r).
+                    destr_hyps.
+                    apply H28 in Hisparts.
+                    destr_hyps.
+                    exists x.
+                    unfold create_gamma_k.
+                    rewrite M.add_spec2;try rewrite M.add_spec2;try rewrite M.remove_spec2;
+                    try rewrite M.remove_spec2;try easy.
+                    split;try easy.
+                    Search projectionC gttstepC.
+                    eapply subproj_after_step_r with (r:=r) (x:=x) in gcs''_step;try easy.
                 }
             }
+            {
+                intros.
+                destruct (Nat.eq_dec r p);
+                destruct (Nat.eq_dec r q);subst;try easy.
+                {
+                    Check assoc_cont_not_part_send.
+                    unfold create_gamma_k in H28;rewrite M.add_spec1 in H28; inversion H28;subst.
+                    eapply Hgcs''_4 with (xsq:=xsq) in H13;try easy.
+                    eapply Forall2_prop_l with (l:=k) (p:=(s4,g_k)) in H13;try easy.
+                    destr_hyps.
+                    destruct H29;try easy. destr_hyps.
+                    apply eq_sym in H30;inversion H30;subst.
+                    assert (~isgPartsC p g_k). admit.
+                    apply H31 in H13.
+                    destruct H13;destr_hyps; rewrite H21 in H13;try easy.
+                    inversion H13;easy.
+                }
+
+                {
+                    unfold create_gamma_k in H28;
+                    rewrite M.add_spec2 in H28;try  rewrite M.add_spec1 in H28;try easy. 
+                    inversion H28;subst; try easy.
+                    eapply Hgcs''_4 with (xsp:=xsp) in H14;try easy.
+                    eapply Forall2_prop_l with (l:=k) (p:=(s4,g_k)) in H14;try easy.
+                    destr_hyps.
+                    destruct H29;try easy. destr_hyps.
+                    apply eq_sym in H30;inversion H30;subst.
+                    assert (~isgPartsC q g_k). admit.
+                    apply H32 in H14.
+                    destruct H14;destr_hyps; rewrite H22 in H14;try easy.
+                    inversion H14;easy.
+                }
+                {
+                    specialize (Hgcs''_5 r n n0).
+                    eapply Forall2_prop_l with (l:=k) (p:=(s4,g_k)) in Hgcs''_5;try easy.
+                    destr_hyps.
+                    destruct H30;try easy. destr_hyps.
+                    assert(~ isgPartsC r g_k). admit.  
+                    apply eq_sym in H31;inversion H31;subst.
+                    apply H32 in H33.
+                    assert (~isgPartsC r (gtt_send s t gcs)). admit.
+                    Search assoc gcs.
+                    pose proof H5 as Hassoc.
+                    unfold assoc in Hassoc. specialize (Hassoc r). destr_hyps.
+                    eapply H35 with (Tpx:=Tpx) in H29. easy.
+                    unfold create_gamma_k in H28; try rewrite M.add_spec2 in H28;
+                    try rewrite M.add_spec2 in H28;
+                    try rewrite M.remove_spec2 in H28;
+                    try rewrite M.remove_spec2 in H28;try easy.
+                }   
+            }   
         }
+        exists (create_gamma_k p q Tp Tq gamma), (gtt_send s t gcs'').
+        destr_hyps. auto.
     }
 Qed. 
