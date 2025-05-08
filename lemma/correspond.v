@@ -713,6 +713,87 @@ Proof.
     eapply wfgC_after_step with (G:=g) (p:=p) (q:=q) (n:=k);try easy.
 Qed.
 
+
+Lemma subtype_send_inv2: forall x q xs, subtypeC x (ltt_send q xs) -> exists ys, x=(ltt_send q ys).
+Proof.
+    intros.
+    destruct x; pinversion H;try apply sub_mon.
+    subst;
+    exists l;easy.
+Qed.
+
+Lemma subtype_recv_inv2: forall x q xs, subtypeC x (ltt_recv q xs) -> 
+exists ys, x=(ltt_recv q ys).
+Proof.
+    intros.
+    destruct x; pinversion H;try apply sub_mon.
+    subst;
+    exists l;easy.
+Qed.
+
+Lemma step_assoc_inv: forall g g' p q ell' s1 gamma xs Tp, 
+wfgC g->
+gttstepC g g' p q ell'  -> assoc gamma g -> 
+M.find p gamma = Some (ltt_send q xs) -> onth ell' xs =Some (s1, Tp) -> tctx_wf gamma -> 
+(
+    exists ys s2 Tq, M.find q gamma = Some (ltt_recv p ys) /\ onth ell' ys =Some (s2,Tq) /\
+    subsort s1 s2
+).
+Proof.
+    intros.
+    rename H4 into Htcwf.
+    pose proof H1 as Hassoc.
+    pose proof H1 as Hprojectable.
+    apply assoc_implies_projectable in Hprojectable;try easy.
+    pose proof H as Hwfg.
+    pose proof H0 as Hstep.
+    unfold assoc in Hassoc. specialize (Hassoc p) as Hasp. specialize (Hassoc q) as Hasq.
+    assert (Hp:isgPartsC p g).
+    {
+           eapply wfgC_step_part with (G':=g') (q:=q) (n:=ell');try easy.
+    } 
+    assert (Hq:isgPartsC q g).
+    {
+        pinversion Hstep;try apply step_mon;subst.
+        apply decidable_helper.triv_pt_q;try easy.
+        pose proof Hwfg as Hwfg2.
+        apply wfg_implies_slis in Hwfg. apply slist_implies_some in Hwfg.
+        destr_hyps.
+        eapply Forall_prop with (l:=x) (p:=x0) in H10;try easy.
+        destruct H10;try easy.
+        destr_hyps.
+        inversion H10;subst.
+        eapply part_parent with (k:=x) (s:=x1) (G_k:=x2);try easy.   
+    }
+    apply proj_cont_pq_step in Hstep;try easy.
+    destr_hyps.
+    pose proof Hp as Hp2.
+    apply H7 in Hp. destr_hyps.
+    rewrite H2 in H12;inversion H12;subst.
+    pose proof Hq as Hq2.
+    apply H5 in Hq. destr_hyps.
+    clear H5 H6 H7 H8.
+    unfold issubProj in H15. destr_hyps.
+    apply proj_inj with (t:=x6) in H9;subst;try easy.
+    apply subtype_recv_inv2 in H6. destr_hyps;subst.
+    unfold tctx_wf in Htcwf.
+    specialize (Htcwf p q xs) as Slis1.
+    specialize (Htcwf q p x6) as Slis2.
+    destr_hyps.
+    assert (Hslis1: SList xs). crush.
+    assert (Hslis2: SList x6). crush.
+    pose proof H2 as H22.
+    eapply assoc_inv_find with (g:=g) in H2;try easy.
+    pose proof H14 as H214.
+    eapply assoc_inv_find with (g:=g) in H14;try easy.
+    eapply lem_6_16_simul_subproj with (xp:=xs) in H14;try easy.
+    eapply Forall2R_prop with (l:=ell') (p:=(s1,Tp)) in H14;try easy.
+    destr_hyps.
+    destruct H15;try easy.
+    destr_hyps. inversion H15;subst.
+    exists x6, x9, x10. easy. 
+Qed.
+
 Lemma assoc_soundness': forall G G' gamma  p q ell xs, p <> q -> wfgC G -> isgPartsC p G ->
 tctx_wf gamma -> M.find p gamma =Some (ltt_send q xs) ->
 assoc gamma G -> 
@@ -1491,7 +1572,6 @@ Proof.
                     rewrite M.add_spec2;try rewrite M.add_spec2;try rewrite M.remove_spec2;
                     try rewrite M.remove_spec2;try easy.
                     split;try easy.
-                    Search projectionC gttstepC.
                     eapply subproj_after_step_r with (r:=r) (x:=x) in gcs''_step;try easy.
                 }
             }
@@ -1500,7 +1580,6 @@ Proof.
                 destruct (Nat.eq_dec r p);
                 destruct (Nat.eq_dec r q);subst;try easy.
                 {
-                    Check assoc_cont_not_part_send.
                     unfold create_gamma_k in H28;rewrite M.add_spec1 in H28; inversion H28;subst.
                     eapply Hgcs''_4 with (xsq:=xsq) in H13;try easy.
                     eapply Forall2_prop_l with (l:=k) (p:=(s4,g_k)) in H13;try easy.
@@ -1578,13 +1657,6 @@ Proof.
     }
 Admitted. 
 
-Lemma subtype_send_inv2: forall x q xs, subtypeC x (ltt_send q xs) -> exists ys, x=(ltt_send q ys).
-Proof.
-    intros.
-    destruct x; pinversion H;try apply sub_mon.
-    subst;
-    exists l;easy.
-Qed.
 
 
 Lemma assoc_soundness : forall G G' gamma  p q ell, p <> q -> wfgC G -> isgPartsC p G ->
