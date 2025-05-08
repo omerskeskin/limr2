@@ -594,9 +594,45 @@ Lemma proj_implies_subproj : forall g p t, projectionC g p t -> issubProj t g p.
 Proof.
     intros. unfold issubProj. exists t;split;try apply stRefl;try easy.
 Qed.
-Search Forall onth.
+Print SList.
 
-
+Lemma proj_cont_implies_proj_parent:forall p s t Tp gcs'' k g_k s4, 
+wfgC (gtt_send s t gcs'' ) ->
+projectableA (gtt_send s t gcs'') -> 
+isgPartsC p (gtt_send s t gcs'') ->
+p <> s  -> p<> t -> s<> t->
+onth k gcs''=Some (s4,g_k) ->
+projectionC g_k p Tp->
+projectionC  (gtt_send s t gcs'') p Tp.
+{
+    intros.
+    assert (Hwfgk: wfgC g_k). eapply continuation_wfgC with (p:=s) (q:=t) in H5;try easy.
+    assert (Hstep:gttstepC (gtt_send s t gcs'') g_k s t k).
+    {
+        intros.  
+        pfold. eapply steq with (s:=s4);try easy. 
+    }
+    assert (Hgkpart: isgPartsC p g_k).
+    {
+        Search isgPartsC gttstepC.
+        unfold projectableA in H0. specialize (H0 p). 
+        destr_hyps.
+        eapply part_after_step_r with (G:=(gtt_send s t gcs'')) (p:=s) (q:=t) (l:=k) (T:=x);try easy.
+    }
+    unfold projectableA in H0;specialize (H0 p). destr_hyps.
+    pinversion H0;try apply proj_mon;crush.
+    eapply Forall2_prop_r with (l:=k) (p:=(s4,g_k)) in H16;try easy.
+    destr_hyps. destruct H8;try easy.
+    destr_hyps.
+    inversion H8;subst.
+    destruct H14;crush.
+    Search isMerge onth.
+    eapply merge_inv_ss with (T:=x) in H9;subst;try easy.
+    change (paco3 projection bot3 x2 p x) with (projectionC x2 p x) in H7.
+    eapply proj_inj with (t:=x) in H6; subst;try easy. 
+    pfold. easy.
+}
+Qed. 
 
 Lemma subproj_cont_implies_subproj_parent: forall p s t Tp gcs'' k g_k s4, 
 wfgC (gtt_send s t gcs'' ) ->
@@ -607,20 +643,12 @@ onth k gcs''=Some (s4,g_k) ->
 issubProj Tp g_k p->
 issubProj Tp (gtt_send s t gcs'') p.
 Proof.
-
     intros.
-    Search issubProj onth.
     unfold issubProj in *. destr_hyps.
     exists x.
     split;try easy.
-    assert (gttstepC (gtt_send s t gcs'') g_k s t k).
-    {
-        intros.  
-        pfold. eapply steq with (s:=s4);try easy. 
-    }
-    pfold.
-    admit.
-Admitted.
+    eapply proj_cont_implies_proj_parent with (k:=k) (s4:=s4) (g_k:=g_k);try easy.
+Qed.
 
 Lemma subproj_after_step_r: forall G G' r p q ell' x, 
 wfgC G -> wfgC G' -> projectableA G -> 
@@ -796,6 +824,7 @@ Qed.
 
 Lemma projectable_after_step : forall g g' p q ell, wfgC g -> projectableA g -> gttstepC g g' p q ell -> projectableA g'.
 Proof.
+    Search projectableA.
     unfold projectableA.
     intros.
     specialize (H0 pt);destr_hyps.
@@ -1358,7 +1387,6 @@ Proof.
                             apply Hproj_p_same in H34; try easy. 
                             apply Hproj_q_same in H35; try easy.
                             
-                            (*admits follow from tctx_wf*)
                         }
                         {
                             eapply H12 with (xsp:=xsp) (xsq:=xsq) (s1:=s1) (s2:=s2);try easy.
