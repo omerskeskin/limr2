@@ -348,23 +348,46 @@ Lemma gamma_end_weak_safe: weak_safety gamma_end.
 Proof. Admitted.
 Lemma gamma_safe: safeC gamma.
 Proof.
+    Ltac safe_helper ext_red Hred gm gmweak:= let Hrk := fresh "Hrk" in pose proof ext_red as Hrk;
+        let Hred2 := fresh "Hred2" in pose proof Hred as Hred2;
+        eapply lem_6_12_reduction_determinism with (g':= gm) in Hred;try easy;
+        split;
+        [ eapply weak_safe_meq_invariant with (c:=gm);try easy; try apply gmweak
+        |exists gm;crush].
     Check safety_red.
     pcofix CIH.
     pfold.
-    constructor; try apply gamma_weak_safe.
+    Check safety_red.
+    econstructor; try apply gamma_weak_safe;try apply MF.Equal_equiv.
     intros.
     pose proof H as Hred.
     eapply gamma_possible_comm in H.
-    destruct H.
-    {
+    destruct H;
         destr_hyps;subst.
-        pose proof red_3 as Hrk.
-        pose proof Hred as Hred2.
-        eapply lem_6_12_reduction_determinism with (g':= gamma) in Hred;try easy.
-        split. eapply weak_safe_meq_invariant with (c:=gamma);try easy; try apply gamma_weak_safe.
-        left.
+    {
+        safe_helper red_3 Hred gamma gamma_weak_safe.
     }
-Admitted.
+    {
+        safe_helper red_7 Hred gamma' gamma'_weak_safe.
+        
+        left.
+        pcofix CIH2.
+        pfold.
+        econstructor;try apply gamma'_weak_safe.
+        intros.
+        pose proof H as Hred3.
+        eapply gamma'_possible_comm in H;destr_hyps;subst.
+        safe_helper red_10 Hred3 gamma_end gamma_end_weak_safe.
+        
+        left.
+        pcofix CIH3.
+        pfold.
+        econstructor; try apply gamma_end_weak_safe.
+        intros.
+        pose proof H as Hred5.
+        eapply gamma_end_possible_comm in H. easy.
+    }
+Qed.
 Definition path_0 := cocons (gamma, (lcomm prt_p prt_q 0)) 
     (cocons (gamma, (lcomm prt_p prt_q 1)) 
         (cocons (gamma', (lcomm prt_q prt_r 2)) 

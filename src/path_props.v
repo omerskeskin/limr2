@@ -78,8 +78,8 @@ forall p q s s'  k k', tctxRE (lsend p q (Some s) k) c -> tctxRE (lrecv q p (Som
 
 Inductive safe (R: tctx -> Prop): tctx -> Prop :=
   | safety_red :  forall c, weak_safety c -> (forall p q c' k, 
-    tctxR c (lcomm p q k) c' -> (weak_safety c' /\ (forall c'', M.Equal c c'' -> R c''))) 
-    -> safe R c.
+    tctxR c (lcomm p q k) c' -> (weak_safety c' /\ (exists c'', M.Equal c' c'' /\ R c''))) 
+    ->  safe R c.
                                (*
 Definition weak_safe_tctx := {c | weak_safety c}.
 Inductive safe (R: weak_safe_tctx -> Prop): weak_safe_tctx -> Prop :=
@@ -97,7 +97,7 @@ Proof.
   eapply safety_red with (c:=c) ;try easy.
   intros.
   eapply H0 in H1. destr_hyps. split; try easy.
-  intros. eapply LE. eapply H2. easy. 
+  intros. exists x. split;try easy. eapply LE;easy.  
 Qed.
 
 #[global] Instance RWMTCTXR: Proper ((@M.Equal ltt) ==> (eq) ==> (@M.Equal ltt) ==> (iff)) tctxR.
@@ -121,6 +121,7 @@ Qed.
 
 Lemma safe_meq_invariant: forall c c', safeC c -> M.Equal c c' -> safeC c'.
 Proof.
+  
   intros.
   pcofix CIH.
   pfold. constructor.
@@ -134,16 +135,12 @@ Proof.
     pose proof H1 as Htx.
     eapply H3 in H1.
     split;try easy.
-
+    
     destr_hyps.
-    intros.
-    setoid_rewrite H5 in H0. 
-    eapply H4 in H0.
-    destruct H0;crush.
-    Search paco1 bot1. 
+    exists x;crush.
     left.
-    eapply paco1_mon_bot with (gf:=safe); try easy.
-  } 
+    eapply paco1_mon_bot with (gf:=safe);pclearbot;try easy.
+  }
 Qed.
 (*
 Inductive livePath (pt: Path): Prop :=
