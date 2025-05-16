@@ -257,75 +257,6 @@ Proof. unfold "==>". constructor; intros; subst.
 apply Rstruct with (g1:=y) (g2:=y1) (g1':=x) (g2':=x1);crush. 
 apply Rstruct with (g1:=x) (g2:=x1) (g1':=y) (g2':=y1);crush.
 Qed.
-Lemma context_red_simple_comm: forall k xq xp p q gamma' s s'' Tp_k Tq_k, 
-    p <> q ->
-    onth k xq = Some (s'', Tq_k) ->
-    onth k xp = Some (s, Tp_k) ->
-    M.find p gamma'= None ->
-    M.find q gamma'=None ->
-    subsort s s'' ->
-    tctxR (M.add p (ltt_send q xp) (M.add q (ltt_recv p xq) gamma'))
-    (lcomm p q k) (M.add p Tp_k (M.add q Tq_k gamma')).
-Proof.
-    intros.
-    assert(Hd1: forall Ttp Ttq,
-    MF.Disjoint (M.add p Ttp (M.add q Ttq M.empty) )
-    gamma').
-    {
-     unfold MF.Disjoint in *. unfold not. intros.
-     destruct(Nat.eq_dec p k0);destruct (Nat.eq_dec q k0);crush.
-     rewrite  <- MF.not_in_find in H2; try easy.
-     rewrite  <- MF.not_in_find in H3; try easy.
-     rewrite MF.in_find in H6. apply opt_lem1 in H6. destr_hyps.
-     Check M.add_spec2.
-     rewrite M.add_spec2 in H5;try easy.
-     rewrite M.add_spec2 in H5;try easy.
-    }
-    assert(H_eq: forall Ttp Ttq Hdd, M.Equal ((M.add p Ttp (M.add q Ttq
-    gamma'))) (disj_merge (M.add p Ttp (M.add q Ttq
-    M.empty)) gamma' Hdd)).
-    {
-     unfold M.Equal. intros.
-     unfold disj_merge. rewrite MF.merge_spec1mn;crush.
-     destruct (Nat.eq_dec p y); destruct (Nat.eq_dec q y);crush.
-     + rewrite M.add_spec1. rewrite M.add_spec1. easy.
-     + rewrite M.add_spec2. rewrite M.add_spec1. rewrite M.add_spec2.
-     rewrite M.add_spec1. 1-3: try easy.
-     + repeat rewrite M.add_spec2;try easy. rewrite M.empty_spec. 
-     destruct (M.find y gamma') eqn:Hyg;crush.   
-    }
-    Ltac Hdeq t1 t2 H_eq Hd1:= setoid_rewrite (H_eq t1 t2 (Hd1 t1 t2)).
-    Hdeq (ltt_send q xp) (ltt_recv p xq) H_eq Hd1.
-    Hdeq Tp_k Tq_k H_eq Hd1.
-    apply tctxR_weakening.
-    assert(Heq1: forall Ttp Ttq Hdd, M.Equal (M.add p Ttp
-    (M.add q Ttq M.empty)) (disj_merge (M.add p Ttp M.empty) (M.add q Ttq M.empty) Hdd)).
-    {
-     intros.
-     unfold M.Equal; intros. unfold disj_merge. rewrite MF.merge_spec1mn;
-     destruct (Nat.eq_dec p y);destruct (Nat.eq_dec q y);crush.
-     + rewrite M.add_spec1. rewrite M.add_spec1. rewrite M.add_spec2. rewrite M.empty_spec.
-     crush. easy.     
-     + rewrite M.add_spec2. rewrite M.add_spec1. rewrite M.add_spec2. rewrite M.empty_spec.
-     crush. easy. easy.
-     + repeat rewrite M.add_spec2; try repeat rewrite M.empty_spec;try easy.     
-    }
-    assert(Hd2: forall (Ttp Ttq:ltt), MF.Disjoint (M.add p Ttp M.empty) (M.add q Ttq M.empty)).
-    {
-     unfold MF.Disjoint. unfold not. intros. destruct (Nat.eq_dec p k0);
-     destruct (Nat.eq_dec q k0);try repeat rewrite MF.in_find in *;
-     crush.
-     + rewrite M.add_spec2 in H7;try easy.
-     + rewrite M.add_spec2 in H6;try easy.
-     + rewrite M.add_spec2 in H6;try easy.    
-    }
-    intros.
-    Hdeq (ltt_send q xp) (ltt_recv p xq) Heq1 Hd2.
-    Hdeq Tp_k Tq_k Heq1 Hd2.
-    eapply Rcomm with (s:=s) (s':=s''); try easy.
-    apply Rsend;try easy.
-    apply Rrecv;try easy.
-Qed.
 
 Lemma subproj_after_cont_send: forall x p q r gcs s gk ls k,
     SList ls ->
@@ -451,11 +382,73 @@ Proof.
     destr_hyps. crush.
 Qed.
 
-
+(*
+Lemma projection_implies_slist_helper : forall xs xs0 r, Forall2
+(fun (u : option (sort * gtt))
+(v : option (sort * ltt)) =>
+u = None /\ v = None \/
+(exists (s : sort) (g : gtt) (t : ltt),
+u = Some (s, g) /\
+v = Some (s, t) /\
+upaco3 projection bot3 g r t)) xs0 xs -> SList xs0 -> SList xs.
+Proof.
+    induction xs.
+    {
+        intros.
+        eapply slist_implies_some in H0;inversion H;crush.
+        destruct x;crush.
+    }
+    {
+        intros.
+        destruct xs0.
+        + inversion H0.
+        + inversion H;subst.
+        destruct o. .
+        {
+            destruct H4;try easy.
+            destruct xs0. inversion H6;subst. crush.
+            assert (SList xs).
+            {
+                eapply IHxs with (r:=r) (xs0:=xs0).
+                simpl in H0.   
+            }   
+        }
+        destruct a;destruct o;crush.   
+    }
+Qed.
+*)
 Lemma projection_implies_slist_send : 
     forall q g r xs,    wfgC g -> projectionC g r (ltt_send q xs) ->
     SList xs.
 Proof.
+    (*
+    intros.
+    eapply wfg_proof_princip2 with (p:=r).
+    {
+        induction ctx using gtth_ind_ref.
+        {
+            intros. unfold typ_p_gtth in H1. destr_hyps.
+            pinversion H0;try apply proj_mon;crush.
+            eapply wfg_implies_slis in H. eapply slist_implies_some in H. destr_hyps.   
+        }   
+    }
+    induction xs.
+    {
+        pinversion H0;try apply proj_mon;subst.
+        inversion H7;
+        apply wfg_implies_slis in H;crush.
+        pose proof H6 as Hmerge.
+        eapply merge_slist in H6.
+        eapply slist_implies_some in H6.
+        destr_hyps.
+        eapply Forall2_prop_l with (l:=x) (p:=x0) in H5;try easy.
+        destr_hyps.
+        destruct H7;try easy. destr_hyps.
+        eapply merge_inv_ss with (T:=ltt_send q []) in H6;try easy.
+        crush.
+        Search isMerge SList.
+    }
+    *)
     admit. 
 Admitted.
 
@@ -824,17 +817,38 @@ Qed.
 
 Lemma projectable_after_step : forall g g' p q ell, wfgC g -> projectableA g -> gttstepC g g' p q ell -> projectableA g'.
 Proof.
-    Search projectableA.
-    unfold projectableA.
-    intros.
+    unfold projectableA; intros.
+    pose proof H0 as Hproj.
+    assert ( p <> q) by (pinversion H1;crush;apply step_mon).   
     specialize (H0 pt);destr_hyps.
-Admitted.
-
+    Search projectionC gttstepC.
+    destruct (Nat.eq_dec p pt);
+    destruct (Nat.eq_dec q pt);crush.
+    eapply proj_cont_pq_step_full in H1;crush; exists x0; easy.
+    eapply proj_cont_pq_step_full in H1;crush; exists x1; easy.
+    pose proof H1 as Hstep.
+    
+    pose proof Hstep as Hstep'. eapply proj_cont_pq_step in Hstep';try easy.
+    destr_hyps.
+    apply wfgC_after_step in H1;try easy.
+    eapply typ_after_step_3_helper with (s:=pt) (T:=x) (L1:=x0) (L2:= x1)
+    (LS:=x2) (LT:=x4) (LS':= x3) (LT':=x5) in Hstep;try easy.
+    destr_hyps. exists x6;try easy.
+Qed.
 
 Lemma Forall_onth: forall (gcs1:list (option(sort*gtt))), 
 Forall (fun u=> u=None \/ exists k, onth k gcs1=u) gcs1.
 Proof.
-Admitted.
+    induction gcs1;constructor.
+    destruct a; [right; exists  0 | left ];crush.
+    set (P:=(fun u : option (sort * gtt) =>
+u = None \/ (exists k : opt_lbl, onth k gcs1 = u))).
+    eapply Forall_impl with (P:=P); unfold P in *;crush.
+    destruct (onth x gcs1) eqn:Hyg;[
+    eapply Forall_prop with (l:=x) (p:=p) in IHgcs1|];crush.
+    right; exists (S x0); crush.
+Qed.
+
 
 Lemma assoc_soundness': forall G G' gamma  p q ell xs, p <> q -> wfgC G -> isgPartsC p G ->
 tctx_wf gamma -> M.find p gamma =Some (ltt_send q xs) ->
@@ -876,6 +890,7 @@ Proof.
         pose proof H9 as Hsubp.
         apply subproj_simple_send_inv in H9;try easy.
         apply subproj_simple_recv_inv in H8;try easy.
+        Search SList ltt.
         destruct H9 as [xp].
         destruct H8 as [xq].
         subst. pose proof H7 as Hpgamma. pose proof H6 as Hqgamma.
@@ -1739,14 +1754,16 @@ Qed.
 
 
 
-Lemma assoc_soundness : forall G G' gamma  p q ell, p <> q -> wfgC G -> isgPartsC p G ->
+Lemma assoc_soundness : forall G G' gamma  p q ell, p <> q -> wfgC G -> 
 tctx_wf gamma ->
 assoc gamma G -> 
 gttstepC G G' p q ell -> 
 exists gamma' G'' ell',
 gttstepC G G'' p q ell' /\ assoc gamma' G'' /\ tctxR gamma (lcomm p q ell') gamma'.
 Proof.
-    intros.
+    intros G G' gamma p q ell H H0 H2 H3 H4.
+    assert (H1: isgPartsC p G) by 
+    (eapply wfgC_step_part with (G':=G') (q:=q) (n:=ell);try easy).
     pose proof H1 as Hisparts.
     pose proof H2 as Hwf.
     pose proof H4 as Hstep.

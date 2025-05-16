@@ -31,6 +31,7 @@ lemma/projection.v
 lemma/main_helper.v
 lemma/example_3.v
 lemma/main.v
+lemma/correspond.v
 cpdtlib/CpdtTactics.v
 cpdtlib/DepList.v
 cpdtlib/MoreSpecif.v

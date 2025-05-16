@@ -938,6 +938,102 @@ Proof.
   assumption.
 Qed.
 
+Lemma context_red_simple_comm: forall k xq xp p q gamma' s s'' Tp_k Tq_k, 
+    p <> q ->
+    onth k xq = Some (s'', Tq_k) ->
+    onth k xp = Some (s, Tp_k) ->
+    M.find p gamma'= None ->
+    M.find q gamma'=None ->
+    subsort s s'' ->
+    tctxR (M.add p (ltt_send q xp) (M.add q (ltt_recv p xq) gamma'))
+    (lcomm p q k) (M.add p Tp_k (M.add q Tq_k gamma')).
+Proof.
+    intros.
+    assert(Hd1: forall Ttp Ttq,
+    MF.Disjoint (M.add p Ttp (M.add q Ttq M.empty) )
+    gamma').
+    {
+     unfold MF.Disjoint in *. unfold not. intros.
+     destruct(Nat.eq_dec p k0);destruct (Nat.eq_dec q k0);crush.
+     rewrite  <- MF.not_in_find in H2; try easy.
+     rewrite  <- MF.not_in_find in H3; try easy.
+     rewrite MF.in_find in H6. apply opt_lem1 in H6. destr_hyps.
+     Check M.add_spec2.
+     rewrite M.add_spec2 in H5;try easy.
+     rewrite M.add_spec2 in H5;try easy.
+    }
+    assert(H_eq: forall Ttp Ttq Hdd, M.Equal ((M.add p Ttp (M.add q Ttq
+    gamma'))) (disj_merge (M.add p Ttp (M.add q Ttq
+    M.empty)) gamma' Hdd)).
+    {
+     unfold M.Equal. intros.
+     unfold disj_merge. rewrite MF.merge_spec1mn;crush.
+     destruct (Nat.eq_dec p y); destruct (Nat.eq_dec q y);crush.
+     + rewrite M.add_spec1. rewrite M.add_spec1. easy.
+     + rewrite M.add_spec2. rewrite M.add_spec1. rewrite M.add_spec2.
+     rewrite M.add_spec1. 1-3: try easy.
+     + repeat rewrite M.add_spec2;try easy. rewrite M.empty_spec. 
+     destruct (M.find y gamma') eqn:Hyg;crush.   
+    }
+    Ltac Hdeq t1 t2 H_eq Hd1:= setoid_rewrite (H_eq t1 t2 (Hd1 t1 t2)).
+    Hdeq (ltt_send q xp) (ltt_recv p xq) H_eq Hd1.
+    Hdeq Tp_k Tq_k H_eq Hd1.
+    apply tctxR_weakening.
+    assert(Heq1: forall Ttp Ttq Hdd, M.Equal (M.add p Ttp
+    (M.add q Ttq M.empty)) (disj_merge (M.add p Ttp M.empty) (M.add q Ttq M.empty) Hdd)).
+    {
+     intros.
+     unfold M.Equal; intros. unfold disj_merge. rewrite MF.merge_spec1mn;
+     destruct (Nat.eq_dec p y);destruct (Nat.eq_dec q y);crush.
+     + rewrite M.add_spec1. rewrite M.add_spec1. rewrite M.add_spec2. rewrite M.empty_spec.
+     crush. easy.     
+     + rewrite M.add_spec2. rewrite M.add_spec1. rewrite M.add_spec2. rewrite M.empty_spec.
+     crush. easy. easy.
+     + repeat rewrite M.add_spec2; try repeat rewrite M.empty_spec;try easy.     
+    }
+    assert(Hd2: forall (Ttp Ttq:ltt), MF.Disjoint (M.add p Ttp M.empty) (M.add q Ttq M.empty)).
+    {
+     unfold MF.Disjoint. unfold not. intros. destruct (Nat.eq_dec p k0);
+     destruct (Nat.eq_dec q k0);try repeat rewrite MF.in_find in *;
+     crush.
+     + rewrite M.add_spec2 in H7;try easy.
+     + rewrite M.add_spec2 in H6;try easy.
+     + rewrite M.add_spec2 in H6;try easy.    
+    }
+    intros.
+    Hdeq (ltt_send q xp) (ltt_recv p xq) Heq1 Hd2.
+    Hdeq Tp_k Tq_k Heq1 Hd2.
+    eapply Rcomm with (s:=s) (s':=s''); try easy.
+    apply Rsend;try easy.
+    apply Rrecv;try easy.
+Qed.
+
+
+Theorem simple_red_comm : forall p q g xp xq sp sq k Tp Tq,
+  p <> q ->
+  M.find p g= Some (ltt_send q xp) ->
+  M.find q g = Some (ltt_recv p xq) ->
+  onth k xp =Some (sp, Tp) ->
+  onth k xq=Some (sq, Tq) ->
+  subsort sp sq ->
+  tctxR g (lcomm p q k) (M.add p Tp (M.add q Tq (M.remove p (M.remove q g)))).
+Proof.
+  intros.
+  set (gamma_same := (M.add p (ltt_send q xp) (M.add q (ltt_recv p xq) (M.remove p (M.remove q g))))). 
+  assert (M.Equal gamma_same g).
+  {
+    unfold M.Equal. intros.
+    destruct (Nat.eq_dec y p); 
+    destruct (Nat.eq_dec y q);unfold gamma_same;subst; 
+    repeat (try rewrite M.add_spec1;try rewrite M.add_spec2;try rewrite M.remove_spec1;try rewrite M.remove_spec2);
+    crush.
+  }
+  setoid_rewrite <- H5 at 1. unfold gamma_same.
+  eapply context_red_simple_comm with (s:=sp) (s'':=sq);crush.
+  rewrite M.remove_spec1. easy.
+  rewrite M.remove_spec2;try rewrite M.remove_spec1;crush.
+Qed.
+
 Lemma lem_6_10 : forall r g l g' , tctxR g l g' ->
      ~ ispSubjl r l ->
      M.find r g = M.find r g'.
