@@ -22,4 +22,8 @@ u = None \/
 (exists (s : sort) (g : ltt), u = Some (s, g) /\ r' g)) in H0;crush;right; exists x,x0;crush.
 Qed.
 Hint Resolve wfltt_mon:paco.
- 
+
+Lemma wfltt_slist_send : forall p xs, wflttC (ltt_send p xs) -> SList xs.
+Proof. intros; pinversion H;easy. Qed.
+Lemma wfltt_slist_recv : forall p xs, wflttC (ltt_recv p xs) -> SList xs.
+Proof. intros; pinversion H;easy. Qed.
