@@ -4,7 +4,7 @@ From SST Require Import src.expr src.header src.local CpdtTactics.
 Require Import List String Coq.Arith.PeanoNat Morphisms Relations Setoid.
 Require Import Coq.Program.Equality.
 Import ListNotations.
-
+Search wfL.
 Notation opt_lbl := nat.
 Inductive label: Type :=
   | lrecv: part -> part -> option sort -> opt_lbl -> label
