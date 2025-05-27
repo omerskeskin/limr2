@@ -255,12 +255,15 @@ Proof.
     eapply Forall2_prop_l with (l:=k) (p:=(x1,x3)) in H10; try easy.
     destr_hyps. destruct H10; try easy. destr_hyps. subst;exists x4, x5;easy.
 Qed.
-#[global] Instance RWMTCTXR: Proper ((@M.Equal ltt) ==> (eq) ==> (@M.Equal ltt) ==> (iff)) tctxR.
+
+(*
+#[export] Instance RWMTCTXR: 
+    Proper ((@M.Equal ltt) ==> (eq) ==> (@M.Equal ltt) ==> (iff)) tctxR.
 Proof. unfold "==>". constructor; intros; subst. 
 apply Rstruct with (g1:=y) (g2:=y1) (g1':=x) (g2':=x1);crush. 
 apply Rstruct with (g1:=x) (g2:=x1) (g1':=y) (g2':=y1);crush.
 Qed.
-
+*)
 Lemma subproj_after_cont_send: forall x p q r gcs s gk ls k,
     SList ls ->
     wfgC (gtt_send p q gcs) ->
@@ -422,14 +425,252 @@ Proof.
     }
 Qed.
 *)
+Lemma projection_wf_helper:forall xs ys r, SList xs -> Forall2
+(fun (u : option (sort * gtt)) (v : option (sort * ltt)) =>
+u = None /\ v = None \/
+(exists (s : sort) (g : gtt) (t : ltt),
+u = Some (s, g) /\
+v = Some (s, t) /\ upaco3 projection bot3 g r t)) xs ys -> SList ys.
+Proof.
+    intros.
+    generalize dependent xs.
+    revert r.
+    generalize dependent ys.
+    induction ys.
+    {
+        intros;
+        inversion H0;crush.   
+    }
+    {
+        intros.
+        inversion H0;subst.
+        destruct H4;destr_hyps;subst.
+        {
+            simpl in H.
+            assert (SList ys). eapply IHys with (r:=r) (xs:=l);try easy.
+            simpl. easy.
+        }
+        {
+            simpl in H. destruct l. inversion H5;crush.   
+            assert (SList ys). eapply IHys with (r:=r) (xs:= (o::l)); try easy.
+            simpl. destruct ys;crush.
+        }
+    }
+Qed.
+
+(*
+Section proj_ind_ref.
+Variable P : gtt -> part -> ltt -> Prop.
+Hypothesis Hproj_end : forall g r, 
+               (isgPartsC r g -> False) -> 
+               P g r (ltt_end).
+
+Hypothesis Hproj_in  : forall p r xs ys,
+               p <> r ->
+               (isgPartsC r (gtt_send p r xs)) ->
+               List.Forall2 (fun u v => (u = None /\ v = None) \/ (exists s g t, u = Some(s, g) /\ v = Some(s, t) /\ P g r t)) xs ys ->
+               P (gtt_send p r xs) r (ltt_recv p ys).
+Hypothesis Hproj_out : forall r q xs ys,
+               r <> q ->
+               (isgPartsC r (gtt_send r q xs)) ->
+               List.Forall2 (fun u v => (u = None /\ v = None) \/ (exists s g t, u = Some(s, g) /\ v = Some(s, t) /\ P g r t)) xs ys ->
+               P (gtt_send r q xs) r (ltt_send q ys).
+Hypothesis Hproj_cont: forall p q r xs ys t,
+               p <> q ->
+               q <> r ->
+               p <> r ->
+               (isgPartsC r (gtt_send p q xs)) ->
+               List.Forall2 (fun u v => (u = None /\ v = None) \/ (exists s g t, u = Some(s, g) /\ v = Some t /\ P g r t)) xs ys ->
+               isMerge t ys ->
+               P (gtt_send p q xs) r t.
+Lemma proj_ind_ref : forall g r t, projectionC g r t -> P g r t.
+Proof.
+    intros.
+    punfold H;try apply proj_mon.
+    induction H.
+    {
+        apply Hproj_end;easy.   
+    }
+    {
+        apply Hproj_in;try easy.
+    }
+
+
+*)
+
 Lemma projection_implies_wf : 
     forall g r t,    wfgC g -> projectionC g r t ->
     wflttC t.
 Proof.
-    admit. 
+    Search projectionC SList.
+    pcofix CIH.
+    intros g pt t Hwfg Hproj.
+    destruct (decidable_isgPartsC g pt);try easy.
+    {
+        destruct g;
+        [pinversion Hproj;try apply proj_mon;subst; easy|].
+        rename n into p, n0 into q, l into gcs.
+        pose proof H as Hgraft.
+        eapply balanced_to_tree in Hgraft;try easy.
+        destruct Hgraft as [ctx [gs [Hgraft1 [Hgraft2 [Hgraft3 Hgraft4]]]]].
+        clear Hgraft4.        
+        generalize dependent p.
+        generalize dependent q.
+        generalize dependent gcs.
+        generalize dependent gs.
+        generalize dependent ctx.
+        
+        induction ctx using gtth_ind_ref.
+        {
+            intros.
+            inversion Hgraft1;subst.
+            eapply Forall_prop with (l:= n) (p:=(gtt_send p q gcs)) in Hgraft3;try easy.
+            
+            destruct Hgraft3;try easy.
+            destruct H0 as [q' [gcs']].
+            destruct H0.
+            {
+                inversion H0;subst.
+                pinversion Hproj;try apply proj_mon;crush.
+                pfold.
+                constructor.
+                eapply projection_wf_helper with (xs:=gcs') (r:=pt);
+                    [apply wfg_implies_slis in Hwfg | ];easy.
+                eapply Forall_forall;
+                intros;
+                destruct x as [p0 | ];try (left;easy);
+                destruct p0 as [s1 t1];
+                right;
+                apply in_some_implies_onth in H1;
+                destruct H1 as [n' Honth];
+                exists s1, t1;
+                split;try easy;
+                right;
+                eapply Forall2_prop_l with (l:=n') (p:=(s1,t1)) in H9;try easy.
+                destr_hyps. destruct H3;try easy; destr_hyps. inversion H4;subst.
+                eapply CIH with (g:=x1) (r0:=pt).
+                eapply continuation_wfgC with (p:=pt) (q:=q') (xs:=gcs') (n:=n') (s:=x0);try easy.
+                destruct H7;crush.
+            }
+            destruct H0.
+            {
+                inversion H0;subst.
+                pinversion Hproj;try apply proj_mon;crush.
+                pfold.
+                constructor.
+                eapply projection_wf_helper with (xs:=gcs') (r:=pt);
+                    [apply wfg_implies_slis in Hwfg | ];easy.
+                eapply Forall_forall;
+                intros;
+                destruct x as [p0 | ];try (left;easy);
+                destruct p0 as [s1 t1];
+                right;
+                apply in_some_implies_onth in H1;
+                destruct H1 as [n' Honth];
+                exists s1, t1;
+                split;try easy;
+                right;
+                eapply Forall2_prop_l with (l:=n') (p:=(s1,t1)) in H9;try easy.
+                destr_hyps. destruct H3;try easy; destr_hyps. inversion H4;subst.
+                eapply CIH with (g:=x1) (r0:=pt).
+                eapply continuation_wfgC with (q:=pt) (p:=q') (xs:=gcs') (n:=n') (s:=x0);try easy.
+                destruct H7;crush.
+            }
+            {
+                easy.   
+            }    
+        }
+        {
+            intros.
+            Search typ_gtth "inv".
+            pose proof Hgraft1 as Htyp.
+            eapply typ_gtth_inv in Hgraft1. destr_hyps.
+            apply eq_sym in H1;inversion H1;subst;clear H1.
+            pinversion Hproj;try apply proj_mon;subst;try easy.
+            exfalso;apply Hgraft2; constructor.
+            exfalso;apply Hgraft2; constructor.
+            pose proof Hwfg as Hslis.
+            apply wfg_implies_slis in Hslis.
+            apply slist_implies_some in Hslis.
+            destr_hyps.
+            destruct x0 as [s1 g1].
+            rename x into n.
+            pose proof H1 as Honth.
+            eapply typ_gtth_cont1 with (p:=p0) (q:=q0) (gs:=gs) (gcs:=xs) in H1;try easy.
+            eapply Forall2_prop_r with (l:=n) (p:=(s1,g1)) in H10;try easy.
+            destr_hyps.
+            Search typ_gtth "cont".
+            eapply Forall_prop with (l:=n) (p:=(s1,x)) in H;try easy.
+            destruct H;try easy.
+            destr_hyps.
+            inversion H;subst.
+            destruct H8;try easy. destr_hyps.
+            inversion H2;subst.
+            eapply merge_inv_ss with (T:=t) in H8;try easy;subst.
+            rename x0 into gc, x into s1, x2 into gh1, xs into ghs.
+            destruct gc.
+            {
+                destruct H10.
+                pinversion H8;subst;try easy;try apply proj_mon. pfold. constructor.
+                inversion H8.
+            }
+            {
+                rename n0 into p, n1 into q, l into gcs'.
+                eapply H9 with (gs:=gs) (p:=p) (q:=q) (gcs:=gcs');try easy.
+                Search ishParts onth.
+                eapply decidable_helper.ishParts_n with (s:=p0) (s':=q0) (xs:=ghs) (s0:=s1) (n:=n);try easy.
+                eapply continuation_wfgC with (p:=p0) (q:=q0) (xs:=gcs) (s:=s1) (n:=n);try easy.
+                destruct H10;try easy.
+            }
+            destruct H3;try easy. destr_hyps. inversion H3;subst.
+            eapply H.
+        }
+    }
+    pinversion Hproj;try apply proj_mon;subst.
+    pfold. constructor.   
+    1-2:
+        pfold;
+        constructor;
+        [
+        eapply projection_wf_helper with (xs:=xs) (r:=pt);
+        [apply wfg_implies_slis in Hwfg | ];
+        easy|];
+        eapply Forall_forall;
+        intros;
+        destruct x as [p0 | ];try (left;easy);
+        destruct p0 as [s1 t1];
+        right;
+        apply in_some_implies_onth in H2;
+        destruct H2 as [n Honth];
+        exists s1, t1;
+        split;try easy;
+        right;
+        eapply Forall2_prop_l with (l:=n) (p:=(s1,t1)) in H1;try easy;
+        destr_hyps; destruct H2;try easy; destr_hyps;inversion H3;subst;
+        eapply CIH with (r0:=pt) (g:=x1).
+    2-4: destruct H4;crush.
+     
+    eapply continuation_wfgC with (n:=n) (xs:=xs) (s:=x0) (p:=p) (q:=pt);easy.
+     eapply continuation_wfgC with (n:=n) (xs:=xs) (s:=x0) (p:=pt) (q:=q);easy.
+
+     pfold.
+     pose proof (merge_slist _ _ H4) as Honth.
+     apply slist_implies_some in Honth.
+     destr_hyps.
+    pose proof H5 as Honth.
+     eapply merge_inv_ss with (T:=t) in H5;try easy;subst.
+     eapply Forall2_prop_l with (l:=x) (p:=t) in H3;try easy. destr_hyps.
+     destruct H5;try easy.
+     destruct t;constructor.
+    assert(r t).
+    {
+        destr_hyps;subst.
+        inversion H6;subst.
+        destruct H7;crush.
+        admit.   
+    } 
+    Print wfltt.
 Admitted.
-
-
 
 Definition create_gamma_k s t Gks Gkt (gamma:tctx) := 
 M.add s Gks (M.add t Gkt (M.remove s (M.remove t gamma))).
@@ -991,8 +1232,14 @@ Proof.
                         eapply subproj_after_cont_send with (k:=k) (s:=s') (gk:=G_k) in H16];
                         try easy;
                         unfold tctx_wf in Htctx_wf;
-                        specialize (Htctx_wf p0 n2 l);
-                        crush.
+                        [
+
+                        specialize (Htctx_wf p0 (ltt_recv n2 l));
+                        eapply wfltt_slist_recv |
+                        
+                        specialize (Htctx_wf p0 (ltt_send n2 l));
+                        eapply wfltt_slist_send
+                        ];apply Htctx_wf;easy.
                     }
                 }
             }
@@ -1010,7 +1257,7 @@ Proof.
                      rewrite H14 in Hellsome.
                      inversion Hellsome;subst.
                      unfold gamma' in H9.
-                     rewrite M.add_spec1 in H9. inversion H9;easy.
+                     rewrite M.add_spec1 in H9. inversion H9;easy. tac_wfl_to_slist.
                 }
                 {
                     eapply assoc_cont_not_part_recv with (p:=p) (xs:=xq) (gcs:=gcs) (k:=k) (s:=s') 
@@ -1020,6 +1267,7 @@ Proof.
                      inversion H12;subst.
                      unfold gamma' in H9.
                      rewrite M.add_spec2 in H9;try easy; rewrite M.add_spec1 in H9. inversion H9;easy.
+                    tac_wfl_to_slist.
                 }
                 {
                     Search isgPartsC.
@@ -1036,10 +1284,7 @@ Proof.
                     destruct (M.find p0 gamma) eqn:Hyg1;
                     [eapply (proj2 (Hassoc p0)) with (Tpx:=l) in Hnotpart;try easy | ];
                         unfold gamma' in H9;
-                        try rewrite M.add_spec2 in H9;
-                        try rewrite M.add_spec2 in H9;
-                        try rewrite M.remove_spec2 in H9;
-                        try rewrite M.remove_spec2 in H9; crush.
+                        autorewrite with mmaps in H9;crush.
                 }
             }
         }
@@ -1052,11 +1297,7 @@ Proof.
             (M.add q (ltt_recv p xq) gamma_nopq))).
             {
                 unfold M.Equal. intros. unfold gamma_nopq.
-                destruct (Nat.eq_dec p y);destruct (Nat.eq_dec q y);crush.
-                + rewrite M.add_spec1. easy.
-                + rewrite M.add_spec2;try easy. rewrite M.add_spec1. easy.
-                +   rewrite M.add_spec2. rewrite M.add_spec2.
-                rewrite M.remove_spec2. rewrite M.remove_spec2. all:easy.
+                destruct (Nat.eq_dec p y);destruct (Nat.eq_dec q y);subst;autorewrite with mmaps;crush.
             }
             unfold gamma'.
             setoid_rewrite Heq_gamma.
@@ -1064,6 +1305,7 @@ Proof.
             apply M.remove_spec1. rewrite M.remove_spec2. rewrite M.remove_spec1.
             easy. easy. 
         }
+        all:tac_wfl_to_slist.
     }
     {
         intros. rename p0 into s, q0 into t, H1 into Ih.
@@ -1300,9 +1542,9 @@ Proof.
                         intros.
                         assert (SList xs).
                         {
-                            unfold tctx_wf in H4. Check H4. specialize H4 with (p:=p) (q:=q) (xs:=xs). destr_hyps.
-                            
-                            apply H4. easy.
+                            unfold tctx_wf in H4. 
+                            specialize H4 with (p:=p) (l:=ltt_send q xs). destr_hyps.
+                            eapply wfltt_slist_send;apply H4; easy.
                         }
                         eapply assoc_inv_find with (g:=(gtt_send s t gcs)) in H13; try easy.
                         eapply subproj_after_cont_send with (p:=s) (q:=t) (gcs:=gcs) (s:=s4) (k:=k);try easy.
@@ -1322,9 +1564,9 @@ Proof.
                         intros.
                         assert (SList xs).
                         {
-                            unfold tctx_wf in H4. Check H4. specialize H4 with (p:=q) (q:=p) (xs:=xs). destr_hyps.
-                            
-                            apply H31. easy.
+                            unfold tctx_wf in H4. 
+                            specialize H4 with (p:=q) (l:=ltt_recv p xs). destr_hyps.
+                            eapply wfltt_slist_recv;apply H4; easy.
                         }
                         eapply assoc_inv_find with (g:=(gtt_send s t gcs)) in H13; try easy.
                         Check subproj_after_cont_send.
@@ -1744,10 +1986,11 @@ Proof.
     eapply proj_inj with (t:=x6) in H4; try easy;subst.
     apply subtype_send_inv2 in H11.
     destr_hyps;subst.
-    unfold tctx_wf in H2. specialize (H2 p q x6).
+    unfold tctx_wf in H2. specialize (H2 p (ltt_send q x6)).
     destr_hyps.
     pose proof H1 as H12.
     apply H2 in H1.
+    apply wfltt_slist_send in H1.
     apply slist_implies_some in H1.
     destr_hyps.
     rename x6 into xss, x5 into ell'.

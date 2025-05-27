@@ -4,7 +4,7 @@ From SST Require Import src.expr src.header src.local CpdtTactics.
 Require Import List String Coq.Arith.PeanoNat Morphisms Relations Setoid.
 Require Import Coq.Program.Equality.
 Import ListNotations.
-Search wfL.
+
 Notation opt_lbl := nat.
 Inductive label: Type :=
   | lrecv: part -> part -> option sort -> opt_lbl -> label
@@ -85,6 +85,7 @@ Proof.
   destruct H.
   {
     specialize (M.merge_spec1 both (@or_introl (M.In x g) (M.In x g') H)) as H_spc.
+    
     destruct H_spc. destruct H0. subst.
     apply MF.in_find.
     unfold disj_merge.
@@ -571,7 +572,7 @@ Qed.
 Instance EqMEQ {A: Type} : Equivalence (@M.Equal A).
 Proof. apply MF.Equal_equiv. Qed.
 
-#[global] Instance RWMEQ {A: Type}: Proper ((@M.Equal A) ==> (@M.Equal A) ==> impl) (@M.Equal A).
+#[export] Instance RWMEQ {A: Type}: Proper ((@M.Equal A) ==> (@M.Equal A) ==> impl) (@M.Equal A).
 Proof. repeat intro.
        unfold M.Equal in *.
        specialize(H y1).
@@ -580,13 +581,13 @@ Proof. repeat intro.
        crush.
 Qed.
 
-#[global] Instance RWMRMV {A: Type}: Proper (eq ==> (@M.Equal A) ==> M.Equal) M.remove.
+#[export] Instance RWMRMV {A: Type}: Proper (eq ==> (@M.Equal A) ==> M.Equal) M.remove.
 Proof. apply MF.remove_m. Qed.
 
-#[global] Instance RWMADD {A: Type}: Proper (eq ==> eq ==> M.Equal ==> (@M.Equal A)) M.add.
+#[export] Instance RWMADD {A: Type}: Proper (eq ==> eq ==> M.Equal ==> (@M.Equal A)) M.add.
 Proof.  apply MF.add_m. Qed.
 
-#[global] Instance RWDSJ {elt: Type}: Proper (M.Equal ==> M.Equal ==> iff) 
+#[export] Instance RWDSJ {elt: Type}: Proper (M.Equal ==> M.Equal ==> iff) 
 (MF.Disjoint (elt:=elt)).
 Proof. 
   unfold "==>". 
@@ -604,10 +605,10 @@ Proof.
   rewrite MF.add_in_iff in H. crush.
 Qed.
 
-#[global] Instance RWMMRG {A: Type}: Proper ((eq ==> eq ==> eq ==> eq) ==> (@M.Equal A) ==> (@M.Equal A) ==> (@M.Equal A)) M.merge.
+#[export] Instance RWMMRG {A: Type}: Proper ((eq ==> eq ==> eq ==> eq) ==> (@M.Equal A) ==> (@M.Equal A) ==> (@M.Equal A)) M.merge.
 Proof. unfold "==>".  apply MF.merge_m. Qed.
 
-#[global] Instance RWMIN {A: Type}: Proper (eq ==> (@M.Equal A) ==> iff) M.In.
+#[export] Instance RWMIN {A: Type}: Proper (eq ==> (@M.Equal A) ==> iff) M.In.
 Proof. unfold "==>".  constructor; unfold M.Equal in H0; intros;
 subst;specialize (H0 y); try rewrite MF.in_find in *.
 rewrite H0 in H1. easy.
@@ -617,17 +618,12 @@ Qed.
 
 Ltac all_to_find := rewrite MF.in_find in *.
 
-#[global] Instance RWMTCTXR: Proper ((@M.Equal ltt) ==> (eq) ==> (@M.Equal ltt) ==> (iff)) tctxR.
+#[export] Instance RWMTCTXR: Proper ((@M.Equal ltt) ==> (eq) ==> (@M.Equal ltt) ==> (iff)) tctxR.
 Proof. unfold "==>". constructor; intros; subst. 
 apply Rstruct with (g1:=y) (g2:=y1) (g1':=x) (g2':=x1);crush. 
 apply Rstruct with (g1:=x) (g2:=x1) (g1':=y) (g2':=y1);crush.
 Qed.
 
-(*
-#[global] Instance RWMDSJMRG: 
-Proper ((@M.Equal ltt) ==> (@M.Equal ltt) ==>MF.Disjoint ==>(@M.Equal ltt)) disj_merge.
-Proof.  apply MF.merge_m. Qed.
-*)
 Theorem tctxR_weakening (g1 g1' g2 : tctx) (Hdisj_1: MF.Disjoint g1 g2) 
   (Hdisj_2: MF.Disjoint g1' g2):
   forall l, tctxR g1 l g1' -> tctxR (disj_merge g1 g2 Hdisj_1) l 
