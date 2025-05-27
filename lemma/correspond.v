@@ -514,6 +514,8 @@ Proof.
         eapply balanced_to_tree in Hgraft;try easy.
         destruct Hgraft as [ctx [gs [Hgraft1 [Hgraft2 [Hgraft3 Hgraft4]]]]].
         clear Hgraft4.        
+        clear H.
+        assert(H:True). constructor.
         generalize dependent p.
         generalize dependent q.
         generalize dependent gcs.
@@ -531,9 +533,8 @@ Proof.
             destruct H0.
             {
                 inversion H0;subst.
-                pinversion Hproj;try apply proj_mon;crush.
-                pfold.
-                constructor.
+                pinversion Hproj;try apply proj_mon;crush;pfold;constructor.
+                
                 eapply projection_wf_helper with (xs:=gcs') (r:=pt);
                     [apply wfg_implies_slis in Hwfg | ];easy.
                 eapply Forall_forall;
@@ -555,9 +556,7 @@ Proof.
             destruct H0.
             {
                 inversion H0;subst.
-                pinversion Hproj;try apply proj_mon;crush.
-                pfold.
-                constructor.
+                pinversion Hproj;try apply proj_mon;crush;pfold;constructor.
                 eapply projection_wf_helper with (xs:=gcs') (r:=pt);
                     [apply wfg_implies_slis in Hwfg | ];easy.
                 eapply Forall_forall;
@@ -586,7 +585,8 @@ Proof.
             pose proof Hgraft1 as Htyp.
             eapply typ_gtth_inv in Hgraft1. destr_hyps.
             apply eq_sym in H1;inversion H1;subst;clear H1.
-            pinversion Hproj;try apply proj_mon;subst;try easy.
+            pinversion Hproj;try apply proj_mon;subst.
+            pfold;constructor.
             exfalso;apply Hgraft2; constructor.
             exfalso;apply Hgraft2; constructor.
             pose proof Hwfg as Hslis.
@@ -600,10 +600,10 @@ Proof.
             eapply Forall2_prop_r with (l:=n) (p:=(s1,g1)) in H10;try easy.
             destr_hyps.
             Search typ_gtth "cont".
-            eapply Forall_prop with (l:=n) (p:=(s1,x)) in H;try easy.
-            destruct H;try easy.
+            eapply Forall_prop with (l:=n) (p:=(s1,x)) in H0;try easy.
+            destruct H0;try easy.
             destr_hyps.
-            inversion H;subst.
+            inversion H0;subst.
             destruct H8;try easy. destr_hyps.
             inversion H2;subst.
             eapply merge_inv_ss with (T:=t) in H8;try easy;subst.
@@ -622,55 +622,13 @@ Proof.
                 eapply continuation_wfgC with (p:=p0) (q:=q0) (xs:=gcs) (s:=s1) (n:=n);try easy.
                 destruct H10;try easy.
             }
-            destruct H3;try easy. destr_hyps. inversion H3;subst.
-            eapply H.
         }
     }
-    pinversion Hproj;try apply proj_mon;subst.
-    pfold. constructor.   
-    1-2:
-        pfold;
-        constructor;
-        [
-        eapply projection_wf_helper with (xs:=xs) (r:=pt);
-        [apply wfg_implies_slis in Hwfg | ];
-        easy|];
-        eapply Forall_forall;
-        intros;
-        destruct x as [p0 | ];try (left;easy);
-        destruct p0 as [s1 t1];
-        right;
-        apply in_some_implies_onth in H2;
-        destruct H2 as [n Honth];
-        exists s1, t1;
-        split;try easy;
-        right;
-        eapply Forall2_prop_l with (l:=n) (p:=(s1,t1)) in H1;try easy;
-        destr_hyps; destruct H2;try easy; destr_hyps;inversion H3;subst;
-        eapply CIH with (r0:=pt) (g:=x1).
-    2-4: destruct H4;crush.
-     
-    eapply continuation_wfgC with (n:=n) (xs:=xs) (s:=x0) (p:=p) (q:=pt);easy.
-     eapply continuation_wfgC with (n:=n) (xs:=xs) (s:=x0) (p:=pt) (q:=q);easy.
-
-     pfold.
-     pose proof (merge_slist _ _ H4) as Honth.
-     apply slist_implies_some in Honth.
-     destr_hyps.
-    pose proof H5 as Honth.
-     eapply merge_inv_ss with (T:=t) in H5;try easy;subst.
-     eapply Forall2_prop_l with (l:=x) (p:=t) in H3;try easy. destr_hyps.
-     destruct H5;try easy.
-     destruct t;constructor.
-    assert(r t).
     {
-        destr_hyps;subst.
-        inversion H6;subst.
-        destruct H7;crush.
-        admit.   
-    } 
-    Print wfltt.
-Admitted.
+        pinversion Hproj;subst;try apply proj_mon;crush.
+        pfold;constructor.
+    }
+Qed.
 
 Definition create_gamma_k s t Gks Gkt (gamma:tctx) := 
 M.add s Gks (M.add t Gkt (M.remove s (M.remove t gamma))).
