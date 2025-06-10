@@ -1,6 +1,6 @@
 (* From mathcomp Require Import ssreflect.seq all_ssreflect. *)
 From Paco Require Import paco pacotac.
-From SST Require Import src.expr src.header src.local CpdtTactics.
+From SST Require Import src.expr src.header src.local src.lcontext CpdtTactics.
 Require Import List String Coq.Arith.PeanoNat Morphisms Relations Setoid.
 Require Import Coq.Program.Equality.
 Import ListNotations.
@@ -27,3 +27,6 @@ Lemma wfltt_slist_send : forall p xs, wflttC (ltt_send p xs) -> SList xs.
 Proof. intros; pinversion H;easy. Qed.
 Lemma wfltt_slist_recv : forall p xs, wflttC (ltt_recv p xs) -> SList xs.
 Proof. intros; pinversion H;easy. Qed.
+
+Definition tctx_wf (g:tctx):= forall p l, 
+(M.find p g = Some l -> wflttC l).

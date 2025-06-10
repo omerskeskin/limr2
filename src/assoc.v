@@ -1,7 +1,7 @@
 (* From mathcomp Require Import ssreflect.seq all_ssreflect. *)
 From Paco Require Import paco pacotac.
 From SST Require Import src.expr src.header src.local CpdtTactics src.lcontext.
-From SST Require Import src.global src.projection src.part  src.balanced src.merge src.gttreeh.
+From SST Require Import src.global src.projection src.part  src.balanced src.merge src.gttreeh src.wfltt.
 From SST Require Import lemma.projection lemma.projection_helper lemma.decidable.
 Require Import List String Coq.Arith.PeanoNat Morphisms Relations Setoid.
 Require Import Coq.Program.Equality.
@@ -12,6 +12,7 @@ Definition issubProj (t:ltt) (g:gtt) (p:part) :=
     exists tg, projectionC g p tg /\ subtypeC t tg.
 
 Search subtypeC.
+
 
 
 Definition assoc (g: tctx) (gt:gtt) := 
@@ -36,33 +37,6 @@ Proof.
     destruct (Nat.eq_dec n q);try (exists l);crush;
     pinversion H;crush;apply subtype_monotone.
 Qed. 
-Print gtth.
-(*
-Definition option_max x y :=
-    match (x,y) with 
-        | (None, None) => None
-        | (Some a, Some b) => Some (max a b)
-        | (Some a, None) => Some a
-        | (None, Some b) => Some b
-    end. 
-Fixpoint extract_hs (hs:list (option (sort * gtth))) := 
-    match hs with 
-        | [] => []
-        | None::ys => None::extract_hs ys
-        | Some (s,a)::ys => Some a :: extract_hs ys end.
-Fixpoint context_height (h:gtth) :=
-    match h with 
-        | gtth_hol n => Some 0
-        | gtth_send p q hs => seq.foldr option_max None (extract_hs hs)
-    end.  *)
-(* context_height h x means height of h <= x*)
-Inductive context_height: gtth -> nat -> Prop :=
-    | height_hole: forall n x, context_height (gtth_hol n) x
-    | height_send: forall p q hs x, 
-        SList hs -> Forall (fun u=> u=None \/ 
-            (exists s h, u=Some (s,h) /\ context_height h x)) hs->
-        context_height (gtth_send p q hs) (S x).
-
 
 Lemma subtype_recv_inv1 : forall q xs T, 
 subtypeC (ltt_recv q xs) T -> exists ys, T=ltt_recv q ys.
@@ -430,20 +404,6 @@ Definition typ_p_gtth  (gs:list (option gtt)) (ctx:gtth) p G:=
     u = Some (gtt_send p q lsg) \/
     u = Some (gtt_send q p lsg) \/ u = Some gtt_end)) gs.
 
-(*
-Lemma wfg_proof_princip: forall (P:gtth -> list (option gtt) -> Prop) (Q:gtt->Prop), 
-(forall ctx gs g, 
-    P ctx gs ->
-    typ_gtth gs ctx g -> Q g) ->
-    (forall p ctx gs, good_grafting ctx gs p  -> P ctx gs) -> forall g p,
-    wfgC g -> isgPartsC p g -> Q g.
-Proof.
-    intros.
-    apply balanced_to_tree with (p:=p) in H1;crush.
-    assert (good_grafting x x0 p). unfold good_grafting. exists g. crush.
-    eapply H0 in H5.
-    eapply H  with (g:=g) in H5;crush.
-Qed.*)
 
 Lemma wfg_proof_princip2: forall (Q:gtt->Prop) p,
     (forall ctx gs g, typ_p_gtth gs ctx p g -> Q g) -> 
@@ -677,4 +637,124 @@ Proof.
     eapply H3 with (Tpx:= (ltt_send q xs)) in H;crush.
 Qed.
 
-Check subproj_inv_send.
+Ltac tac_tctx_wf_to_slist xp Htctx_wf Hfindp q := assert (SList xp) by (red in Htctx_wf;eapply Htctx_wf in Hfindp;
+    solve [
+        apply wfltt_slist_send with (p:=q);easy
+        |
+        apply wfltt_slist_recv with (p:=q);easy
+    ]
+        ).
+
+Section Forall2_forall.
+
+Variables (A B: Type).
+Variable P : option A -> option B -> Prop. 
+Lemma Forall2_forall: 
+forall  (xs: list (option A)) (ys: list (option B)), 
+Datatypes.length xs =Datatypes.length ys -> (forall k, P (onth k xs) (onth k ys)) -> 
+Forall2 P xs ys.
+Proof.
+    induction xs.
+    {
+        intros. Search Datatypes.length 0.
+        simpl in H.
+        apply eq_sym in H.
+        rewrite length_zero_iff_nil in H. subst. easy.       
+    }
+    {
+
+        destruct ys as [| y].
+        {
+            intros. simpl in H. discriminate H.      
+        }
+        {
+            intros. simpl in H. inversion H. constructor.
+            specialize (H0 0). simpl in H0. easy.
+            eapply IHxs;try easy.
+            intros.
+            specialize (H0 (S k)).
+            simpl in H0. easy.
+        }
+    }
+Qed.
+Lemma Forall2_Forall : forall  (xs: list (option A)) (ys: list (option B)), 
+Datatypes.length xs <= Datatypes.length ys -> (forall k, k < Datatypes.length xs -> P (onth k xs) (onth k ys)) -> 
+Forall2R P xs ys.
+Proof.
+    induction xs.
+    intros. constructor.
+
+    intros.
+    destruct ys as [ | y].
+    {
+        simpl in H. inversion H.   
+    }
+    {
+        simpl in H. 
+        constructor.
+        specialize (H0 0). crush.
+        eapply IHxs.
+        apply le_S_n;easy.
+        intros. specialize (H0 (S k)). simpl in H0.
+        apply H0.
+        apply le_n_S. easy.
+    }
+Qed.
+End Forall2_forall.
+
+Lemma assoc_simul_inv: 
+    forall gamma g p q xp xq, 
+    tctx_wf gamma ->
+    wfgC g ->
+    assoc gamma g ->
+    M.find p gamma = Some (ltt_send q xp) -> 
+    M.find q gamma = Some (ltt_recv p xq) ->
+    (
+        exists xg, g=gtt_send p q xg /\
+        send_cond xp xg p  /\
+        recv_cond
+        xq xg q
+    )
+    \/
+    (
+        exists s t xg, g=gtt_send s t xg /\
+        p <> s /\ q <> t /\ 
+        Forall (fun u=> u=None \/ exists s g, u=Some (s,g) /\ issubProj (ltt_send q xp) g p
+        /\ issubProj (ltt_recv p xq) g q
+        ) xg
+    )
+    .
+Proof.
+    intros * Htctx_wf Hwfg Hassoc Hfindp Hfindq.
+    
+    tac_tctx_wf_to_slist xp Htctx_wf Hfindp q.
+    tac_tctx_wf_to_slist xq Htctx_wf Hfindq p.
+    eapply  assoc_inv_send with (G:=g) in Hfindp;try easy.
+    eapply  assoc_inv_recv with (G:=g) in Hfindq; try easy.
+    destruct Hfindp;destruct Hfindq;crush.
+    {
+
+        left.
+        exists x0. crush. 
+        (*follows from the assumptions*)    
+    }
+    {
+        right. rename x2 into s, x3 into t, x4 into xg. 
+        exists s, t, xg. crush.
+        eapply Forall_forall.
+        intros.
+        destruct x2;crush.
+        right.
+        destruct p0 as [s0 g].
+        exists s0, g.
+        Check Forall_forall.
+        Search In onth.
+        apply in_some_implies_onth in H7. destruct H7 as [n].
+        split;try easy.   
+        unfold subproj_cont_cond in H6, H8.
+        inversion H3;subst;clear H3.
+        split;
+        [eapply Forall_prop with (l:=n) (p:=(s0,g)) in H8 |
+        eapply Forall_prop with (l:=n) (p:=(s0,g)) in H6]; crush.
+    }
+Qed.

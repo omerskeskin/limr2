@@ -58,7 +58,6 @@ Proof. intros; induction n;crush. Qed.
 Lemma no_step_from_end: forall G' p q n, gttstepC gtt_end G' p q n -> False.
 Proof. intros. pinversion H. apply step_mon. Qed.
 
-Print usedCtx.
 
 Inductive in_hole_ctx: nat -> gtth -> Prop :=
     | in_hole_hol: forall n, in_hole_ctx n (gtth_hol n) 
@@ -234,8 +233,6 @@ Proof.
 Qed.
 
 
-Definition tctx_wf (g:tctx):= forall p l, 
-(M.find p g = Some l -> wflttC l).
 
 Lemma subproj_onth1: forall p q xp gcs s T_k k, 
     wfgC (gtt_send p q gcs) ->    
@@ -458,45 +455,6 @@ Proof.
     }
 Qed.
 
-(*
-Section proj_ind_ref.
-Variable P : gtt -> part -> ltt -> Prop.
-Hypothesis Hproj_end : forall g r, 
-               (isgPartsC r g -> False) -> 
-               P g r (ltt_end).
-
-Hypothesis Hproj_in  : forall p r xs ys,
-               p <> r ->
-               (isgPartsC r (gtt_send p r xs)) ->
-               List.Forall2 (fun u v => (u = None /\ v = None) \/ (exists s g t, u = Some(s, g) /\ v = Some(s, t) /\ P g r t)) xs ys ->
-               P (gtt_send p r xs) r (ltt_recv p ys).
-Hypothesis Hproj_out : forall r q xs ys,
-               r <> q ->
-               (isgPartsC r (gtt_send r q xs)) ->
-               List.Forall2 (fun u v => (u = None /\ v = None) \/ (exists s g t, u = Some(s, g) /\ v = Some(s, t) /\ P g r t)) xs ys ->
-               P (gtt_send r q xs) r (ltt_send q ys).
-Hypothesis Hproj_cont: forall p q r xs ys t,
-               p <> q ->
-               q <> r ->
-               p <> r ->
-               (isgPartsC r (gtt_send p q xs)) ->
-               List.Forall2 (fun u v => (u = None /\ v = None) \/ (exists s g t, u = Some(s, g) /\ v = Some t /\ P g r t)) xs ys ->
-               isMerge t ys ->
-               P (gtt_send p q xs) r t.
-Lemma proj_ind_ref : forall g r t, projectionC g r t -> P g r t.
-Proof.
-    intros.
-    punfold H;try apply proj_mon.
-    induction H.
-    {
-        apply Hproj_end;easy.   
-    }
-    {
-        apply Hproj_in;try easy.
-    }
-
-
-*)
 
 Lemma projection_implies_wf : 
     forall g r t,    wfgC g -> projectionC g r t ->
