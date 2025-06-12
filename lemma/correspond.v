@@ -7,13 +7,12 @@ From SST Require Import src.step lemma.step src.assoc.
 Require Import List String Coq.Arith.PeanoNat Morphisms Relations Setoid.
 Require Import Coq.Program.Equality.
 Require Import Coq.Init.Logic.
-From Coq Require Import IndefiniteDescription.
 
 Import ListNotations.
 
 Create HintDb mmaps. 
-Hint Rewrite (@M.add_spec1 ) (@M.add_spec2) (@M.remove_spec1)
-    (@M.remove_spec2) (@M.empty_spec) using easy : mmaps.
+Hint Rewrite ( @M.add_spec1 ) ( @M.add_spec2) ( @M.remove_spec1)
+    ( @M.remove_spec2) ( @M.empty_spec) using easy : mmaps.
 
 
 Lemma extendLis_forall {A:Type}: forall (P: option A -> Prop) n x, 
@@ -602,12 +601,6 @@ Lemma gamma_k_props: forall k s' gamma s t g_k gcs Gks Gkt,
     tctx_wf (create_gamma_k s t Gks Gkt gamma) /\ assoc (create_gamma_k s t Gks Gkt gamma) g_k.
 Proof.
     intros.
-    Ltac rewr1 H6:=rewrite M.add_spec1 in H6.
-        Ltac rewr2 H6:=
-        rewrite M.add_spec2 in H6;try rewrite M.add_spec1 in H6;try easy.
-        Ltac rewr3 H6 := rewrite M.add_spec2 in H6;try rewrite M.add_spec2 in H6;
-        try rewrite M.remove_spec2 in H6; try rewrite M.remove_spec2 in H6;
-        try easy.
     set (gamma_k:= M.add s Gks (M.add t Gkt (M.remove s (M.remove t gamma)))).
     unfold create_gamma_k in *. fold gamma_k.
     split.
@@ -667,7 +660,7 @@ Proof.
             destruct (Nat.eq_dec p t);crush;
             try (apply same_rec_send_not_wfg in H0; easy);
             unfold gamma_k in *;
-            try rewr1 H7;try rewr2 H7 ;try rewr3 H7;inversion H7;subst.
+            autorewrite with mmaps in H7;inversion H7;subst.
             {
                 eapply not_part_proj in H6. eapply proj_inj with (t:=Tpx) in H6;try easy.
             }
@@ -678,7 +671,6 @@ Proof.
                 assert(isgPartsC p (gtt_send s t gcs) -> False).
                 {
                     intros.
-                    Search isgPartsC gttstepC.
                     apply H6.
                     unfold assoc in H2. specialize (H2 p). destr_hyps.
                     pose proof H8 as Hpp.
@@ -1329,36 +1321,6 @@ Proof.
             destr_hyps. exists x, x0. crush.
             rewrite Hpsame. easy.
         }
-        assert(extract_gamma_props_simple:forall s4 k g_k, onth k gcs = Some (s4,g_k) -> 
-        {u:  (ltt*ltt*tctx* gtt) |
-        (fun u=> match u with 
-        | (Gks,Gkt,gamma',G'')=>
-        projectionC g_k s Gks /\
-        projectionC g_k t Gkt /\
-        M.find p (create_gamma_k s t Gks Gkt gamma)=Some (ltt_send q xs0) /\
-        gttstepC g_k G'' p q ell' /\
-        assoc gamma' G'' /\ tctxR (create_gamma_k s t Gks Gkt gamma) (lcomm p q ell') gamma'
-        end) u}).
-        {
-            intros.
-            eapply gamma_props_simple in H12. 
-            destruct (constructive_indefinite_description _ H12).
-            destruct (constructive_indefinite_description _ (e)).
-            destruct (constructive_indefinite_description _ (e0)).
-            destruct (constructive_indefinite_description _ (e1)).
-            exists (x,x0,x1,x2). easy. 
-        }
-        (*construct gcs'', together with the proof, inductively*)
-
-        assert(extract_just_gtt: forall s4 k g_k, onth k gcs = Some (s4,g_k) -> 
-            {u:gtt| gttstepC g_k u p q ell'}).
-        {
-            intros.
-            apply extract_gamma_props_simple in H12.
-            destruct H12.
-            destruct x as [[[d1 d2] d3] d4].
-            exists d4. easy.
-        }
        
         Print projection.
         Search SList projectionC.
@@ -1411,7 +1373,6 @@ Proof.
                 pose proof Hsubset as Hsubset'.
                 inversion Hsubset;subst.
                 apply IHgcs1 in H21.
-                clear gamma_k_props_2 gamma_props_simple Hpsame Hchild_proj_1 IHgcs1.
                 destruct a.
                 {
                     destruct H14;try easy.
@@ -1419,9 +1380,8 @@ Proof.
                     
                     destruct p0 as [s4 g_k].
                     pose proof Honthk as Honthk'.
-                    eapply extract_gamma_props_simple in Honthk.
-                    destruct Honthk.
-                    destruct x as [ [[ext_s ext_t] ext_tcx] ext_g].
+                    eapply gamma_props_simple in Honthk.
+                    destruct Honthk as [ ext_s [ext_t [ext_tcx [ext_g y]]]]. 
                     destruct H21 as [grest [Hrest]].
                     
                     assert(Hwfg_gk: wfgC g_k).
