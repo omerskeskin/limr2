@@ -7,7 +7,6 @@ From SST Require Import src.step lemma.step src.assoc.
 Require Import List String Coq.Arith.PeanoNat Morphisms Relations Setoid.
 Require Import Coq.Program.Equality.
 Require Import Coq.Init.Logic.
-From Coq Require Import IndefiniteDescription.
 
 Import ListNotations.
 
@@ -362,132 +361,93 @@ Proof.
     apply not_part_proj in H6. exists ltt_end. split;try easy;try apply stRefl.
 Qed.
 
+Lemma local_step_implies_global_step: forall g gamma gamma' p q ell,
+    wfgC g -> projectableA g -> tctx_wf gamma -> partial_assoc gamma g -> tctxR gamma (lcomm p q ell) gamma' ->
+    exists g', gttstepC g g' p q ell.
+Proof.
+    intros * Hwfg Hproj Hwflt Hassoc Hred.
+    destr_hyps.
+    eapply lem_6_11c_tctx_comm_invert in Hred.
+    
+    destruct Hred as [s [s' [Hred1 Hred2]]].
+    destr_hyps.
+    rename x into xsp, x1 into xsq, x0 into Tp, x2 into Tq.
+     assert(Hsxsp: SList xsp).
+        {
+
+            eapply wfltt_slist_send with (p:=q).
+            red in Hwflt.
+            specialize (Hwflt p (ltt_send q xsp) H). easy.
+        }
+        assert(Hsxsq : SList xsq).
+        {
+            eapply wfltt_slist_recv with (p:=p).
+            red in Hwflt.
+            specialize (Hwflt q _ H0). easy.   
+        }
+    rename H into Hfindp, H0 into Hfindq.
+    (*projection_step_label_s*)
+    specialize (Hassoc p _ Hfindp) as Hsubp.
+    specialize (Hassoc q _ Hfindq) as Hsubq.
+    pose proof Hsubp as Hsubp1.
+    pose proof Hsubq as Hsubq1.
+    red in Hsubp, Hsubq. destr_hyps.
+    eapply subtype_send_inv1 in H7 as Hs1. eapply subtype_recv_inv1 in H6 as Hs2. destr_hyps;subst.
+    assert(exists ss Tt, onth ell x2=Some (ss,Tt)).
+    {
+        apply subtype_send_inv in H7.
+        eapply Forall2R_prop with (l:=ell) (p:=(s,Tp)) in H7.
+        destr_hyps.
+        destruct H8;try easy. destr_hyps. inversion H8;subst. exists x3, x5.
+        all:easy.
+    }
+    destr_hyps.
+    eapply (projection_step_label_s) with (l:=ell) (LP:=x2) (ST:=(x,x0)) in H as Hpp;try easy.
+    destr_hyps.
+    eapply typ_after_step_step with (L1:=x2) (L2:=x1) (S:=x) (T:=x0) (S':=x3) (T':=x4);try easy.
+Qed.
+    
 Theorem assoc_completeness' : forall p q ell gamma gamma' g, partial_assoc gamma g ->
 wfgC g -> projectableA g -> tctx_wf gamma ->
 tctxR gamma (lcomm p q ell) gamma' ->
 exists g', partial_assoc gamma' g' /\ gttstepC g g' p q ell. 
 Proof.
     intros * Hassoc Hwfg Hproj Hwfltt Hred.
-    assert (exists xsp, M.find p  gamma = Some (ltt_send q xsp)).
+    pose proof Hred as Hredinv.
+    eapply lem_6_11c_tctx_comm_invert in Hredinv.
+    destr_hyps.
+    rename x into s, x0 into s', x1 into xsp, x2 into Tp, x3 into xsq, x4 into Tq.
+    Search gttstepC projectionC ltt_send ltt_recv.
+    assert (exists g', gttstepC g g' p q ell).
     {
-        eapply lem_6_11c_tctx_comm_invert in Hred. destr_hyps. exists x1. easy.   
-    }
-    assert (exists xsq, M.find q  gamma = Some (ltt_recv p xsq)).
-    {
-        eapply lem_6_11c_tctx_comm_invert in Hred. destr_hyps. exists x4. easy.   
-    }
-    dependent induction Hred.
-    {
-        rename H1 into Hdisj1, H2 into Hdisj2.
-        destruct H3 as [xsp Hfindp].
-        destruct H4 as [xsq Hfindq].
-        pose proof Hassoc as Hsimul.
-        eapply partial_assoc_simul_inv with (p:=p) (q:=q) (xp:=xsp) (xq:=xsq) in Hsimul;try easy.
-        destruct Hsimul.
-        {
-            destruct H1 as [xg [H1 [Hsendcond Hreccond]]]. subst.
-            red in Hsendcond.
-            pose proof Hwfltt as Hslistxp.
-            set (comb:=disj_merge g1 g2 Hdisj1).
-            red in Hslistxp. specialize (Hslistxp p (ltt_send q xsp) Hfindp).
-            apply wfltt_slist_send in Hslistxp.
-            assert(exists sk gk,onth ell xg = Some (sk, gk)).
-            {
-                apply lem_6_11a_tctx_send_invert in Hred1.
-                destruct Hred1 as [xsp' [Tp' Hred1]].
-                destr_hyps.
-                eapply spc_merge_find1 with (g2:=g2) (H_disj:=Hdisj1) in H1.
-                rewrite Hfindp in H1.
-                inversion H1;subst.
-                eapply Forall2R_prop with (l:=ell) (p:=(s,Tp')) in Hsendcond;try easy.
-                destruct Hsendcond as [p' [Honth Hsend]].
-                destruct Hsend;try easy.
-                destr_hyps.
-                inversion H2;subst.
-                clear H2.
-                rename x1 into sk,x2 into gk, x into s1, x0 into T1.
-                exists sk, gk. easy.
-            }
-            destruct H1 as [sk [gk Honthxg]].
-            assert (Hnstep:gttstepC (gtt_send p q xg) gk p q ell).
-            {
-                pfold. econstructor;try easy. symmetry in  Honthxg. exact Honthxg.
-            }
-            exists gk.
-            split;try easy.
-            red. intros.
-            destruct (Nat.eq_dec p0 p);
-            destruct (Nat.eq_dec p0 q);subst;try easy.
-            {
-                
-                apply lem_6_11a_tctx_send_invert in Hred1.
-                move Hred1 at bottom.
-                destr_hyps.
-                eapply spc_merge_find1 with (g2:=g2) (H_disj:=Hdisj1) in H2.
-                rewrite Hfindp in H2.
-                symmetry in H2;inversion H2;subst. clear H2.
-                eapply Forall2R_prop with (l:=ell) (p:=(s,x0)) in Hsendcond;try easy.
-                move Hsendcond at bottom.
-                destr_hyps.
-                destruct H5;try easy;destr_hyps.
-                eapply spc_merge_find1 with (g2:=g2') (H_disj:=Hdisj2) in H4. crush.
-            }
-            {
-                apply lem_6_11b_tctx_recv_invert in Hred2.
-                move Hred2 at bottom.
-                destr_hyps.
-                eapply spc_merge_find2 with (g1:=g1) (H_disj:=Hdisj1) in H2.
-                rewrite Hfindq in H2.
-                symmetry in H2;inversion H2;subst. clear H2.
-                eapply Forall2R_prop with (l:=ell) (p:=(sk,gk)) in Hreccond;try easy.
-                
-                destr_hyps.
-                destruct H5;try easy;destr_hyps.
-                eapply spc_merge_find2 with (g1:=g1') (H_disj:=Hdisj2) in H4. crush.
-            }
-            {
-                Search p0.
-                Search tctxR M.find.   
-                assert(Har:tctxR (disj_merge g1 g2 Hdisj1) (lcomm p q ell) (disj_merge g1' g2' Hdisj2)).
-                {
-                    econstructor;try easy. exact Hred1. exact Hred2. exact H0.   
-                }
-                eapply lem_6_10 with (r:=p0) in Har.
-                rewrite <- Har in H1.
-                move Hassoc at bottom. red in Hassoc. specialize (Hassoc p0 Tp H1).
-                eapply subproj_after_cont_wfltt with (p:=p) (q:=q) (gcs:=xg) (k:=ell) (s:=sk);try easy.
-                specialize (Hwfltt p0). apply Hwfltt;easy.
-                crush.
-            }
-        }
-    }
-    {
-        rename g0 into gamma, g' into gamma'.
-        rewrite MF.not_mem_find in H.
-        apply lem_6_11c_tctx_comm_invert in Hred. destr_hyps.
-        destruct (Nat.eq_dec p0 p);destruct (Nat.eq_dec p0 q);crush.
-        rename x into s, x0 into s', x3 into xsq, x1 into xsp, x2 into Tp, x4 into Tq.
-        assert (Hpassoc:partial_assoc gamma g) by admit.
-        assert (Hwf2: tctx_wf gamma) by admit.
-        eapply IHHred with (p:=p) (q:=q) (ell:=ell) in Hpassoc;try easy.
+        eapply local_step_implies_global_step with (g:=g) (gamma:=gamma) (gamma':=gamma');easy.
         
-        destr_hyps.
-        exists x.
-        split;try easy.
-        apply partial_assoc_extend;try easy.
-        admit. (*by eqdom*)
-        Search T.
-        pose proof Hassoc as Hassocb.
-        red in Hassoc. specialize (Hassoc p0 T).
-        autorewrite with mmaps in Hassoc. specialize (Hassoc (eq_refl _ )).
-        Search gttstepC issubProj.
-        eapply subproj_after_step_r with (r:=p0) (x:=T) in H8;try easy.
-        apply wfgC_after_step in H8;try easy.
     }
-    {
-        admit.   
-    }
-Admitted.
+    destruct H6 as [g' Hpstep].
+    exists g'.
+    split;try easy.
+    assert(Hwfg' : wfgC g') by (apply wfgC_after_step in Hpstep;try easy).
+    
+    eapply dom_preservation_6_9 in Hred as Heqdom. red;intros.
+    apply opt_lem2 in H6 as Hin. rewrite <- MF.in_find in Hin. apply Heqdom in Hin.
+    rewrite MF.in_find in Hin. apply opt_lem1 in Hin. destr_hyps. rename Tp0 into Tp0',
+    x into Tp0.
+    destruct (Nat.eq_dec p0 p);destruct (Nat.eq_dec p0 q);crush
+    ;[rewrite H5 in H6 | rewrite H3 in H6 |];
+    try(
+    symmetry in H6;inversion H6;subst;
+        eapply subproj_after_step1 with  (xsp:=xsp)(xsq:=xsq) (s1:=s) (Tp:=Tp) 
+        (s2:=s') (Tq:=Tq) in Hpstep as Hsastep;try easy;
+        red in Hassoc;
+        [
+        specialize (Hassoc p _ H)|
+        specialize (Hassoc q _ H0)];try easy).
+    eapply lem_6_10 with (r:=p0) in Hred as Hrelv;[| crush].
+    specialize (Hassoc p0 _ H7) as Hassocp0. rewrite H7 in Hrelv. rewrite H6 in Hrelv. inversion Hrelv;subst.
+    clear Hrelv. 
+    eapply subproj_after_step_r with (x:=Tp0') (r:=p0)in Hpstep;easy.
+Qed.
+
 Theorem assoc_completeness: forall p q ell gamma gamma' g, assoc gamma g ->
     wfgC g ->
     tctx_wf gamma ->
@@ -514,4 +474,5 @@ Proof.
     eapply dom_preservation_6_9 in Heqdom.
     tac_use_assoc Ha1 p0 H2. destr_hyps. apply opt_lem2 in H3. rewrite  <- MF.in_find in H3.
     apply Heqdom in H3. easy.
+    apply assoc_implies_projectable with (gamma:=gamma);easy.
 Qed.
