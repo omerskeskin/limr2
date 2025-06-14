@@ -9,10 +9,10 @@ Require Import Coq.Program.Equality.
 Require Import Coq.Init.Logic.
 
 Import ListNotations.
-
+(*
 Create HintDb mmaps. 
 Hint Rewrite ( @M.add_spec1 ) ( @M.add_spec2) ( @M.remove_spec1)
-    ( @M.remove_spec2) ( @M.empty_spec) using easy : mmaps.
+    ( @M.remove_spec2) ( @M.empty_spec) using easy : mmaps.*)
 
 
 Lemma extendLis_forall {A:Type}: forall (P: option A -> Prop) n x, 

@@ -32,7 +32,9 @@ lemma/projection.v
 lemma/main_helper.v
 lemma/example_3.v
 lemma/main.v
-lemma/correspond.v
+lemma/soundness.v
+lemma/completeness.v
+lemma/safety.v
 cpdtlib/CpdtTactics.v
 cpdtlib/DepList.v
 cpdtlib/MoreSpecif.v

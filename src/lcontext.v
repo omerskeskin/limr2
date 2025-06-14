@@ -78,6 +78,9 @@ Proof.
 Qed.
 
 
+Create HintDb mmaps. 
+Hint Rewrite ( @M.add_spec1 ) ( @M.add_spec2) ( @M.remove_spec1)
+    ( @M.remove_spec2) ( @M.empty_spec) using easy : mmaps.
 (*superseded by spc_merge_find*)
 Lemma spc_merge_spec1: forall (g g': tctx) x (Hdisj: MF.Disjoint g g'),  M.In x g\/ M.In x g' -> (M.In x (disj_merge g g' Hdisj)).
 Proof.
