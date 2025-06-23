@@ -19,10 +19,32 @@ Definition coseq_id {A: Type} (c: coseq A): coseq A :=
     | cocons x xs => cocons x xs
   end.
 
+
 Lemma coseq_eq: forall {A: Type} (c: coseq A), c = coseq_id c.
 Proof. destruct c; easy. Defined.
 
 Notation Path := (coseq (tctx*label)) (only parsing).
+(*
+CoInductive valid_path : Path -> Prop :=
+  | nil_valid: valid_path conil
+  | cons_nil_valid: forall x, valid_path (cocons x conil)
+  | cons_cons_valid: forall g p q ell g' l' xs, valid_path (cocons (g',(lcomm p q ell)) xs) ->
+    tctxR g (lcomm p q ell) g' -> valid_path (cocons (g, (lcomm p q ell)) (cocons (g', l') xs)). 
+*)
+Variant valid_pathI (R: Path -> Prop) : Path -> Prop :=
+  | nil_validI: valid_pathI R conil
+  | cons_nill_validI: forall x, valid_pathI R (cocons x conil)
+  | cons_cons_validI: forall g p q ell g' l' xs, R (cocons (g',(lcomm p q ell)) xs) ->
+    tctxR g (lcomm p q ell) g' -> valid_pathI R (cocons (g, (lcomm p q ell)) (cocons (g', l') xs)). 
+  
+Definition valid_pathC :=paco1 valid_pathI bot1.
+
+Lemma valid_path_mon : monotone1 valid_pathI.
+Proof.
+  red;intros.
+  induction IN;try constructor;try easy.
+  eapply LE;easy.
+Qed.
 
 Inductive eventually {A: Type} (F: coseq A -> Prop): coseq A -> Prop :=
   | evh: forall xs, F xs -> eventually F xs
@@ -37,6 +59,11 @@ Inductive alwaysG {A: Type} (F: coseq A -> Prop) (R: coseq A -> Prop): coseq A -
 Definition alwaysP := @alwaysG (tctx*label).
 
 Definition alwaysC F p := paco1 (alwaysP F) bot1 p.
+
+Lemma always_mon : forall F, monotone1 (alwaysP F).
+Proof.
+  red;intros. induction IN;try constructor;try easy. eapply LE. easy.
+Qed.
 
 Definition enabled (F: tctx -> Prop) (pt: Path): Prop :=
   match pt with
@@ -62,15 +89,15 @@ Definition headComm (p q: part) (pt: Path): Prop :=
     | _                          => False 
   end.
 
-Definition fairPath (pt: Path): Prop :=
+Definition fair_path_local (pt: Path): Prop :=
   forall p q n, enabled (tctxRE (lcomm p q n)) pt ->  eventually (headComm p q) pt.
 
-Definition fairness := alwaysC fairPath.
+Definition fair_path := alwaysC fair_path_local.
 
-Definition livePath (pt: Path) : Prop := forall p q s n, 
-enabled (tctxRE (lsend p q (Some s) n)) pt -> eventually (headComm p q) pt /\
-enabled (tctxRE (lrecv p q (Some s) n)) pt -> eventually (headComm p q) pt.
-Definition liveness := alwaysC livePath.
+Definition live_path_inner (pt: Path) : Prop := forall p q s n, 
+(enabled (tctxRE (lsend p q (Some s) n)) pt -> eventually (headComm p q) pt) /\
+(enabled (tctxRE (lrecv p q (Some s) n)) pt -> eventually (headComm p q) pt).
+Definition live_path := alwaysC live_path_inner.
 
 Definition weak_safety (c: tctx ) :=
 forall p q s s'  k k', tctxRE (lsend p q (Some s) k) c -> tctxRE (lrecv q p (Some s') k') c ->
@@ -100,7 +127,7 @@ Proof.
   intros. exists x. split;try easy. eapply LE;easy.  
 Qed.
 
-#[global] Instance RWMTCTXR: Proper ((@M.Equal ltt) ==> (eq) ==> (@M.Equal ltt) ==> (iff)) tctxR.
+#[global] Instance RWMTCTXR: Proper (( @M.Equal ltt) ==> (eq) ==> ( @M.Equal ltt) ==> (iff)) tctxR.
 Proof. unfold "==>". constructor; intros; subst. 
 apply Rstruct with (g1:=y) (g2:=y1) (g1':=x) (g2':=x1);crush. 
 apply Rstruct with (g1:=x) (g2:=x1) (g1':=y) (g2':=y1);crush.
@@ -142,17 +169,47 @@ Proof.
     eapply paco1_mon_bot with (gf:=safe);pclearbot;try easy.
   }
 Qed.
+
+Definition tctxRcomm (g: tctx) (g':tctx) := exists p q ell, tctxR g (lcomm p q ell) g'.
+
+Definition tctxRtc := clos_refl_trans tctx tctxRcomm.
+
+
+Definition all_fair_live (g:tctx) := forall l xs,  
+  valid_pathC (cocons (g, l) xs) -> fair_path (cocons (g, l) xs) -> 
+  live_path (cocons (g, l) xs).
+
+Definition liveCtx (g: tctx) := forall g',
+  tctxRtc g g' -> all_fair_live g'.
+
+
+
 (*
-Inductive livePath (pt: Path): Prop :=
-  | L1: forall p q s, enabled (tctxRE (lsend p q (Some s) n)) pt -> eventually (headComm p q) pt -> livePath pt
-  | L2: forall p q s, enabled (tctxRE (lrecv q p (Some s)) n) pt -> eventually (headComm p q) pt -> livePath pt.
 
-Definition liveness := alwaysC livePath.
-
-Inductive safe (R: tctx -> Prop): tctx -> Prop :=
-  | sasr  : forall p q s s' c, tctxRE (lsend p q (Some s)) c -> tctxRE (lrecv q p (Some s')) c ->
-                               tctxRE (lcomm p q) c -> safe R c
-  | saimpl:  forall p q c c', R c -> tctxRF (lcomm p q) c c' -> safe R c'.
-
-Definition safeC c := paco1 safe bot1 c.
+Inductive liveCtxI (R: tctx -> Prop): tctx -> Prop :=
+  | live_red :  forall c, all_fair_live c -> (forall p q c' k, 
+    tctxR c (lcomm p q k) c' -> (all_fair_live c' /\ (exists c'', M.Equal c' c'' /\ R c''))) 
+    ->  liveCtxI R c.
+                               (*
+Definition weak_safe_tctx := {c | weak_safety c}.
+Inductive safe (R: weak_safe_tctx -> Prop): weak_safe_tctx -> Prop :=
+  | safety_red :  forall c, (forall p q c' k, 
+    tctxR (proj1_sig c) (lcomm p q k) c' -> (exists P, R (exist weak_safety c' P))) 
+    -> safe R c.
 *)
+Definition liveCtxC c := paco1 liveCtxI bot1 c.
+
+Lemma liveCtx_mon : monotone1 liveCtxI.
+Proof.
+  red;intros.
+  induction IN. constructor;try easy. intros.
+  eapply H0 in H1 as H2.
+  destr_hyps. split;try easy. apply LE in H4. exists x. split;easy.
+Qed.*)
+
+Lemma always_tail : forall P x xs, alwaysC P (cocons x xs) -> alwaysC P xs.
+Proof.
+  intros.
+  pinversion H;subst; [| apply always_mon].
+  pfold. punfold H3. apply always_mon.
+Qed.

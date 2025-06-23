@@ -128,14 +128,14 @@ Ltac Mfind_normalise H0 := repeat (try rewrite M.add_spec1 in H0;
 try rewrite M.add_spec2 in H0; try rewrite M.remove_spec1 in H0;
 try rewrite M.remove_spec2 in H0; try rewrite M.empty_spec in H0; try easy).
 
-Theorem inf_pq_path_fair : fairness inf_pq_path.
+Theorem inf_pq_path_fair : fair_path inf_pq_path.
 Proof.
     red.
     pcofix CIH.
     rewrite (coseq_eq inf_pq_path). simpl.
     pfold.
     constructor.
-    unfold fairPath.
+    unfold fair_path_local.
     intros.
     assert(H_p:p=prt_p).
     {   

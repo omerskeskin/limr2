@@ -18,6 +18,7 @@ src/lcontext.v
 src/path_props.v
 src/assoc.v
 src/wfltt.v
+src/ltth.v
 lemma/inversion.v
 lemma/inversion_expr.v
 lemma/substitution_helper.v
