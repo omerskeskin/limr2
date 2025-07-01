@@ -427,6 +427,63 @@ Proof.
     tac_use_assoc H1 p H4.
     specialize (Hassoc_u _ H2). easy. 
 Qed.
+
+
+Lemma local_types_corr_send : forall p q xs Tq g, 
+wfgC g ->  projectionC g p (ltt_send q xs) ->
+projectionC g q Tq -> exists ls ctx, typ_p_recv_ltth ls ctx p Tq.
+Proof.
+    intros * Hwfg   Hfindp Hfindq.
+    assert (Hisparts: isgPartsC p g) by  admit.
+    eapply balanced_to_tree with (p:=p) in Hwfg as Hgraft;try easy.
+    destr_hyps. rename x0 into gs, x into ctx.
+    induction ctx using gtth_ind_ref.
+    {
+        destruct g.
+        {
+            pinversion Hfindp;crush;apply proj_mon.
+        }
+        {
+            rename n0 into s, n1 into t, l into hxs.
+            eapply typ_gtth_hole_inv in H as Hgs;try easy.
+            destr_hyps;subst.
+            eapply Forall_prop in H1;
+            [|
+            rewrite extendExtract; reflexivity].
+            destruct H1;try easy.
+            
+            destr_hyps.
+            destruct H1;[| destruct H1];inversion H1;subst.
+            {
+                pinversion Hfindp;subst;try apply proj_mon;try easy.
+                {
+                    assert (Hispartsq : isgPartsC q (gtt_send p q hxs)) by (apply decidable_helper.triv_pt_q;try easy).   
+                    pinversion Hfindq;crush;try apply proj_mon.
+                    
+                    exists (extendLis 0 (Some (ltt_recv p ys))), (ltth_hol 0).
+                    red.
+                    repeat split.
+                    {
+                        constructor;crush.   
+                    }
+                    {
+                        intros. inversion H3.   
+                    }
+                    {
+                        eapply extendLis_forall;
+                        split;[
+                        right;exists ys|
+                        left];easy.
+                    } 
+                }
+            }
+            {
+                pinversion Hfindp;crush;apply proj_mon.
+            }
+        }   
+    }
+Admitted.
+
 Section assoc_live_path_helpers.
 Variables (gamma: tctx) (g: gtt).
 Hypotheses (Hwfg: wfgC g) (Hwfltt: tctx_wf gamma) (Hassoc: assoc gamma g).
@@ -437,18 +494,10 @@ Check eventually.
 Check typ_p_gtth.
 
 
-Lemma local_types_corr_send : forall p q xs, M.find p gamma = Some (ltt_send q xs) ->
-exists Tq, M.find q gamma =Some Tq /\ exists ls ctx, typ_p_recv_ltth ls ctx p Tq.
-Proof.
-    intros * Hfindp.
-    assert (Hisparts: isgPartsC p g). (apply assoc_implies_part with (Tp:=ltt_send q xs) (gamma:=gamma));easy.
-    
-    eapply balanced_to_tree with (p:=p) in Hwfg as Hgraft;try easy.
-    destr_hyps. rename x0 into gs, x into ctx.
-    generalize dependent gamma.
-    generalize dependent g.
-    generalize dependent ctx.
 
+End assoc_live_path_helpers.
+
+Check local_types_corr_send.
 
 Lemma multigrafting_lemma_send :
 forall gamma',
