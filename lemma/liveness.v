@@ -218,51 +218,199 @@ Section tree_proper_prefix_ind_ref.
   Qed.
 End tree_proper_prefix_ind_ref.
 
-(*
+Lemma SList_induction_principle {A:Type}: forall P : list (option A) -> Prop, (forall x, P [Some x]) -> 
+(forall x xs, P xs -> P (x::xs)) -> (forall xs, SList xs -> P xs).
+Proof.
+
+    intros.
+    induction xs.
+    inversion H1.
+
+    destruct a.
+    {
+        simpl in H1.
+        destruct xs. eapply H.
+        eapply H0;try easy.
+        eapply IHxs;easy.
+    }
+    {
+        eapply H0.
+        simpl in H1. crush.
+    }
+Qed.
+
+Lemma wfgtth_ind_ref_by_xs : forall P : part -> part -> list (option (sort*gtth)) -> Prop,
+(forall p q xs, P p q [Some xs]) -> 
+(forall p q x xs, P p q xs -> P  p q (x::xs)) ->
+(forall p q xs, wfgtth (gtth_send p q xs) -> P p q xs).
+Proof.
+    intros.
+    induction xs.
+    inversion H1;subst. inversion H4.
+    inversion H1;subst.
+    destruct a;
+    simpl in H4;destruct xs;
+    solve [eapply H | inversion H4 |eapply H0;
+        eapply IHxs;
+        constructor;try easy;
+        inversion H6;subst; easy].
+Qed.
+
+
+Lemma empty_not_wfgtth: forall p q, wfgtth (gtth_send p q []) -> False.
+Proof. intros. inversion H. crush. Qed.
 Lemma max_lt_compat: forall n m p q, n < m -> p< q -> Nat.max n p  < Nat.max m q.
 Proof. crush. Qed.
+
+Lemma gtth_height_unfold_once_some : forall p q xs a b, gtth_height (gtth_send p q (Some (a,b)::xs)) =
+Init.Nat.max (gtth_height b +1) (gtth_height (gtth_send p q xs)).
+Proof.
+    intros.
+    crush.
+Qed.
+
+Lemma gtth_height_unfold_once_none : forall p q xs, gtth_height (gtth_send p q (None::xs)) =
+Init.Nat.max (0) (gtth_height (gtth_send p q xs)).
+Proof.
+    intros.
+    crush.
+Qed.
+
+Lemma SList_by_Forall2 {A:Type}: forall (xs ys: list (option A)), Forall2 (fun u v => u=None /\ v=None \/ exists x1 x2, u=Some x1 /\ v=Some x2) xs ys->
+SList xs -> SList ys.
+Proof.
+    intros. destruct xs. inversion H0.
+    generalize dependent ys. 
+    generalize dependent o. induction xs.
+    {
+        intros;
+        inversion H;subst; destruct o; destruct H3;try easy;
+        destr_hyps; inversion H1;subst;
+        inversion H5;subst;easy.        
+    }
+    {
+        intros.
+        destruct ys;
+        inversion H;subst.
+        
+        destruct o;destruct H4;destr_hyps;subst;try easy;
+        (assert (Hnys: SList ys) by (eapply IHxs with (o:=a);try easy));
+        [inversion H1;subst;simpl;destruct ys|];try easy.
+    }
+Qed.
 Lemma proper_prefix_height_helper: forall p q s t xs ys, 
 wfgtth (gtth_send p q xs) -> wfgtth (gtth_send s t ys) ->
 Forall2 (fun u v => (u=None /\ v=None) \/ exists s g g', u=Some (s,g) /\ v=Some (s,g') /\ gtth_height g < gtth_height g') xs ys ->
 gtth_height (gtth_send p q xs) < gtth_height (gtth_send s t ys).
 Proof.
-    intros.
+    intros * Hwfg1 Hwfg2.
+    (*
+    destruct xs;destruct ys; try (apply empty_not_wfgtth in H);try (apply empty_not_wfgtth in H1);try easy.
+    *)
     generalize dependent ys.
     generalize dependent xs.
+    destruct xs.
+    intros. inversion Hwfg1;subst;inversion H2.
+    revert o.
     induction xs.
     {
-        intros. inversion H;crush.   
+        intros.
+        destruct o.
+        {
+            inversion H;subst.
+            destruct H2;try easy. destr_hyps.
+            inversion H0;subst.
+            destruct l';[|inversion H4];crush.
+        }
+        inversion Hwfg1. inversion H2.   
     }
     {
         intros.
-        destruct ys. inversion H1.
+        destruct ys. inversion H.
 
-        inversion H1;subst.
-        destruct a.
+        inversion H;subst.
+        destruct o.
         {
-            destruct H5;try easy.
-            destr_hyps;subst. inversion H2;subst.
-            simpl.
-            eapply Arith_base.add_lt_mono_r_proj_l2r.
-            eapply max_lt_compat. easy.
-            assert (gtth_height (gtth_send p q xs) < gtth_height (gtth_send s t ys)).
+            destruct H3;try easy. destr_hyps. inversion H0;subst.
+            do 2 rewrite gtth_height_unfold_once_some.
+            eapply max_lt_compat. crush.
+            eapply IHxs;try easy.
+            assert(SList (a::xs)) by (inversion Hwfg1;subst;try easy).
+            constructor;[| inversion Hwfg1;subst;inversion H8];easy.
+            assert (SList ys).
             {
-                eapply IHxs;try easy.   
+                inversion Hwfg2;subst;simpl in H4.
+                destruct ys;try easy.   
             }
-            crush.
+            constructor;inversion Hwfg2;inversion H8;try easy.
         }
         {
-            inversion H0;crush.
+            destruct H3;destr_hyps;try easy;subst.    
+            do 2 rewrite gtth_height_unfold_once_none.
+            do 2 rewrite (Nat.max_0_l).
+            eapply IHxs;try easy.
+            assert(SList (a::xs)) by (inversion Hwfg1;subst;try easy).
+            constructor;[| inversion Hwfg1;subst;inversion H7];easy.
+            assert (SList ys).
+            {
+                inversion Hwfg2;subst. simpl in H3.
+                destruct ys;try easy.   
+            }
+            constructor;inversion Hwfg2;inversion H7;try easy.
         }
     }
 Qed.
-*)
+
+Lemma gtth_height_gt_0 : forall p q xs, wfgtth ((gtth_send p q xs)) -> gtth_height (gtth_send p q xs) > 0.
+Proof.
+    intros;
+    destruct (gtth_height (gtth_send p q xs)) eqn:Hyg;
+    [
+        apply gtth_height_0_means_hol in Hyg|];crush.
+Qed.
+
 Lemma proper_prefix_height_le : forall gc gp, wfgtth gc -> wfgtth gp -> 
     is_tree_proper_prefix gc gp -> 
     gtth_height gc < gtth_height gp.
 Proof.
-    
-Admitted.
+    destruct gc;destruct gp;try easy;intros.
+    simpl gtth_height at 1.
+    specialize (gtth_height_gt_0 n0 n1 l) as Hgt.
+    apply Hgt in H0. crush.
+
+    rename l into xs, l0 into ys.
+    induction H1 using tree_proper_prefix_ind_ref.
+    {
+        simpl gtth_height at 1.  specialize (gtth_height_gt_0 p q xs0) as Hgt. crush.    
+    }
+    {
+        eapply proper_prefix_height_helper;try easy.
+        eapply Forall2_forall;
+        [eapply Forall2_length; exact H1|].
+        intros.
+        destruct (onth k xs0) eqn:Hyg.
+        {
+            right.
+            eapply Forall2_prop_r in H1;[ | exact Hyg].
+            destr_hyps.
+            destruct H2;try easy.
+            destr_hyps;subst. inversion H2;subst. exists x0, x1, x2.
+            crush.
+            inversion H;subst. eapply Forall_prop in H8; [| exact Hyg].
+            destruct H8;try easy.
+            destr_hyps.
+            inversion H1;subst.
+            inversion H0;subst; eapply Forall_prop in H11; [ | exact H3].
+            destruct H11;try easy;destr_hyps. inversion H7;subst. apply H4;easy.
+        }
+        {
+            left.
+            destruct (onth k ys0) eqn:Hyg1;crush.
+            eapply Forall2_prop_l in H1;[| exact Hyg1]. destr_hyps. destruct H2;try easy.
+            destr_hyps. crush.
+        }    
+    }
+Qed.
 
 Definition path_starts_with (gamma:tctx) (pt:Path):=
   match pt with 
@@ -270,6 +418,15 @@ Definition path_starts_with (gamma:tctx) (pt:Path):=
   | _ => False
   end.
 
+
+Lemma assoc_implies_part: forall p Tp gamma g, tctx_wf gamma  -> wfgC g -> assoc gamma g ->
+M.find p gamma = Some Tp -> Tp <> ltt_end -> isgPartsC p g.
+Proof.
+    intros.
+    destruct (decidable_isgPartsC g p);try easy.
+    tac_use_assoc H1 p H4.
+    specialize (Hassoc_u _ H2). easy. 
+Qed.
 Section assoc_live_path_helpers.
 Variables (gamma: tctx) (g: gtt).
 Hypotheses (Hwfg: wfgC g) (Hwfltt: tctx_wf gamma) (Hassoc: assoc gamma g).
@@ -278,6 +435,20 @@ Hypotheses (Hvalid_pth: valid_pathC pth) (Hfair: fair_path pth) (Hpath_start: pa
 Check eventually.
 
 Check typ_p_gtth.
+
+
+Lemma local_types_corr_send : forall p q xs, M.find p gamma = Some (ltt_send q xs) ->
+exists Tq, M.find q gamma =Some Tq /\ exists ls ctx, typ_p_recv_ltth ls ctx p Tq.
+Proof.
+    intros * Hfindp.
+    assert (Hisparts: isgPartsC p g). (apply assoc_implies_part with (Tp:=ltt_send q xs) (gamma:=gamma));easy.
+    
+    eapply balanced_to_tree with (p:=p) in Hwfg as Hgraft;try easy.
+    destr_hyps. rename x0 into gs, x into ctx.
+    generalize dependent gamma.
+    generalize dependent g.
+    generalize dependent ctx.
+
 
 Lemma multigrafting_lemma_send :
 forall gamma',
