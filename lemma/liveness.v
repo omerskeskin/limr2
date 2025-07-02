@@ -218,43 +218,9 @@ Section tree_proper_prefix_ind_ref.
   Qed.
 End tree_proper_prefix_ind_ref.
 
-Lemma SList_induction_principle {A:Type}: forall P : list (option A) -> Prop, (forall x, P [Some x]) -> 
-(forall x xs, P xs -> P (x::xs)) -> (forall xs, SList xs -> P xs).
-Proof.
+Print projection.
 
-    intros.
-    induction xs.
-    inversion H1.
 
-    destruct a.
-    {
-        simpl in H1.
-        destruct xs. eapply H.
-        eapply H0;try easy.
-        eapply IHxs;easy.
-    }
-    {
-        eapply H0.
-        simpl in H1. crush.
-    }
-Qed.
-
-Lemma wfgtth_ind_ref_by_xs : forall P : part -> part -> list (option (sort*gtth)) -> Prop,
-(forall p q xs, P p q [Some xs]) -> 
-(forall p q x xs, P p q xs -> P  p q (x::xs)) ->
-(forall p q xs, wfgtth (gtth_send p q xs) -> P p q xs).
-Proof.
-    intros.
-    induction xs.
-    inversion H1;subst. inversion H4.
-    inversion H1;subst.
-    destruct a;
-    simpl in H4;destruct xs;
-    solve [eapply H | inversion H4 |eapply H0;
-        eapply IHxs;
-        constructor;try easy;
-        inversion H6;subst; easy].
-Qed.
 
 
 Lemma empty_not_wfgtth: forall p q, wfgtth (gtth_send p q []) -> False.
@@ -428,6 +394,138 @@ Proof.
     specialize (Hassoc_u _ H2). easy. 
 Qed.
 
+Check balanced_to_tree.
+Print typ_p_gtth.
+
+Print projection.
+(*
+
+Inductive used_in_gtth : nat -> gtth -> Prop := 
+    | used_hol_gtth : forall n, used_in_gtth n (gtth_hol n)
+    | used_send_gtth : forall n xs p q k s ll, onth k xs = Some (s, ll) -> used_in_gtth n ll -> 
+    used_in_gtth n (gtth_send p q xs).
+
+Definition fills_holes_gtth (ls :list (option gtt)) (l : gtth) :=
+    forall n, used_in_gtth n l -> exists s, onth n ls = Some s.
+
+
+Definition Forall_used ctx (P:nat -> Prop) := forall n , used_in_gtth n ctx -> 
+    P n.
+
+Inductive projectionH : list (option gtt) -> gtth -> part -> ltt -> Prop :=
+    | projectionH_hol : forall gs p t n, 
+    fills_holes_gtth gs (gtth_hol n) ->
+    Forall_used  (gtth_hol n) (fun u=> exists g, onth u gs =Some g /\ projectionC g p t)->
+    projectionH gs (gtth_hol n) p t
+    | projectionH_send : forall gs  r p q t ghs ys,
+    fills_holes_gtth gs (gtth_send p q ghs) ->
+    (ishParts r (gtth_send p q ghs) -> False) ->
+    Forall2 (fun u v => u=None /\ v=None 
+    \/ exists s g t', u=Some (s,g) /\ v=Some t' /\ projectionH gs g r t') ghs ys  ->
+    isMerge t ys -> projectionH gs (gtth_send p q ghs) r t.
+
+Lemma fills_holes_cont: forall gs p q k xs s g', fills_holes_gtth gs (gtth_send p q xs) -> onth k xs = Some (s,g') ->
+fills_holes_gtth gs g'.
+Proof.
+    intros.
+    red in H. red. intros.
+    assert(used_in_gtth n (gtth_send p q xs)).
+    {
+        econstructor;[exact H0 | exact H1].   
+    }
+    specialize (H n H2). exact H.
+Qed.
+
+Lemma projectionH_corr_projectionC : forall gs ctx p Tp g, 
+wfgC g -> fills_holes_gtth gs ctx -> typ_p_gtth gs ctx p g ->
+ projectionH gs ctx p Tp -> projectionC g p Tp.
+Proof. 
+    intros * Hwfg  Hfills Htyp_p Hprojh.
+    red in Htyp_p.
+    induction ctx using gtth_ind_ref.
+    {
+        destr_hyps.
+        destruct g.
+        {
+            constructor;try easy.
+            eapply Forall_forall. intros.
+            destruct x. right. exists g.
+            eapply in_some_implies_onth in H2. destr_hyps.
+            eapply Forall_prop in H1;[| exact H2]. destruct H1;try easy. destr_hyps.   
+        }   
+    }
+*)
+Lemma restricted_grafting : forall gs ctx p q g xs, 
+wfgC g -> projectableA g -> typ_gtth gs ctx g -> 
+(ishParts p ctx -> False) ->
+usedCtx gs ctx ->
+projectionC g p (ltt_send q xs) -> 
+Forall
+(fun u : option gtt =>
+u = None \/
+(exists (q : opt_lbl) (lsg : list (option (sort * gtt))),
+u = Some (gtt_send p q lsg) \/
+u = Some (gtt_send q p lsg) \/ u = Some gtt_end))
+gs -> 
+Forall (fun u=> u=None\/ exists ys, u=Some (gtt_send p q ys)) gs.
+Proof.
+    intros * Hwfg  Hprojable Hgraft Hishparts Hused Hprojp Hgraftcond.
+    destruct g;[pinversion Hprojp;apply proj_mon|].
+    induction Hgraft using typ_gtth_ind_ref.
+    {
+        inversion Hused;subst.
+        rewrite extendExtract in H;inversion H;subst.
+        eapply extendLis_forall.
+        split;[|left;easy].
+
+        right. eapply Forall_prop in Hgraftcond;[|rewrite extendExtract;easy].
+        destruct Hgraftcond;try easy. destr_hyps.
+        destruct H0;[|destruct H0];inversion H0;subst;pinversion Hprojp;crush;try apply proj_mon. 
+        exists x0;easy.
+    }
+    {
+        pinversion Hprojp;try apply proj_mon;subst;try easy;
+        [exfalso;apply Hishparts;apply ha_sendp | ].
+        Search usedCtx.
+        eapply Forall_forall.
+        intros.
+        destruct x;[|left;easy].
+        right. eapply in_some_implies_onth in H1. destr_hyps.
+        Search isMerge.
+        eapply merge_slist in H11 as Hys0slist.
+        eapply slist_implies_some in Hys0slist. destr_hyps.
+        eapply merge_inv_ss with (T:=ltt_send q xs) in H2 as Hmg;try easy; subst.
+        eapply Forall2_prop_l in H10;[|exact H2]. destr_hyps.
+        destruct H8;try easy. destr_hyps;subst.
+        eapply Forall2_prop_l in H0;[|exact H8]. destr_hyps.
+        destruct H3;try easy. destr_hyps;subst.
+    }
+    generalize dependent gs.
+    generalize dependent ctx.
+    induction ctx using gtth_ind_ref.
+    {
+        intros.
+        Search gtth_hol "inv".
+        eapply extendLis_forall. split;[|left;easy].
+        
+        right. exists x. eapply Forall_prop in Hgraftcond;[|rewrite extendExtract;easy].
+        destruct Hgraftcond; try easy. destr_hyps.
+        destruct H;[|destruct H];inversion H;subst;pinversion Hprojp;crush;apply proj_mon.   
+    }
+    {
+        intros.
+        inversion Hgraft;subst.
+        rename n into s, n0 into t, xs0 into ghs, l into gcs.
+        eapply Forall_forall;intros.
+        destruct x.
+        eapply in_some_implies_onth in H0. destr_hyps.
+        right.
+        eapply slist_implies_some in H3 as Hsome. destr_hyps;subst.
+        eapply Forall_prop in H;[|exact H1]. destruct H;try easy. destr_hyps.
+        inversion H;subst.
+        Search typ_gtth projectionC.
+        eapply Forall2_prop_r in H8;[|exact H0].   
+    } 
 
 Lemma local_types_corr_send : forall p q xs Tq g, 
 wfgC g ->  projectionC g p (ltt_send q xs) ->
