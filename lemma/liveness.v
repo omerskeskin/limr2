@@ -455,6 +455,265 @@ Proof.
         }   
     }
 *)
+Search isMergeCtx Forall.
+Print isMergeCtx.
+
+Definition triple_opt_sum:= (fun u v w : option gtt =>
+u = None /\ v = None /\ w = None \/
+(exists t0 : gtt, u = None /\ v = Some t0 /\ w = Some
+t0) \/
+(exists t0 : gtt, u = Some t0 /\ v = None /\ w = Some
+t0) \/
+(exists t0 : gtt, u = Some t0 /\ v = Some t0 /\
+w = Some t0)).
+
+Lemma Forall3S_samesize {A:Type}: forall P (xs ys zs:list A), Forall3S P xs ys zs -> 
+Datatypes.length xs= Datatypes.length zs \/ Datatypes.length ys = Datatypes.length zs.
+Proof.
+    intros;induction H;crush.
+Qed.
+
+Lemma Forall2R_to_Forall2 {A:Type}: 
+forall (xs ys:list A) P,
+Forall2R P xs ys -> Datatypes.length xs = Datatypes.length ys ->
+Forall2 P xs ys.
+Proof.
+    intros.
+    induction H.
+    {
+        destruct ys;crush.   
+    }
+    {
+        constructor;try easy.
+        eapply IHForall2R.
+        simpl in H0. crush.   
+    }
+Qed.
+Search Forall2R Datatypes.length.
+Search Forall3S.
+
+Lemma triple_sum_trilemma: forall xs ys zs x n, Forall3S triple_opt_sum xs ys zs ->
+onth n zs = Some x -> onth n xs = Some x \/ onth n ys= Some x.
+Proof.
+    intros.
+    generalize dependent ys.
+    generalize dependent xs.
+    generalize dependent n.
+    induction zs.
+    {
+        intros.
+        rewrite onth_nil in H0. easy.
+    }
+    {
+        intros.
+        destruct xs;destruct ys;intros;inversion H;[crush | crush |];subst.
+        destruct n.
+        {
+            simpl in H0;subst.
+            red in H5.
+            destruct H5;crush.
+        }
+        {
+            simpl in H0.
+            simpl.
+            eapply IHzs;try easy.
+        }   
+    }
+Qed.
+
+
+Lemma Forall_merge_gs P: forall gs gss,
+P None -> isMergeCtx gs gss -> Forall (fun u=> u=None \/ exists g, u=Some g /\ Forall P g) gss ->
+Forall P gs.
+Proof.
+    intros * Hpn.
+    intros.
+    induction H.
+    {
+        intros.
+        eapply Forall_prop with (l:=0) in H0.
+        destruct H0;try easy. destr_hyps.
+        inversion H;subst.
+        2:simpl;reflexivity. easy. 
+    }
+    {
+        eapply IHisMergeCtx. inversion H0;try easy.   
+    }
+    {
+        eapply Forall_forall.
+        intros.
+        destruct x;try easy.
+        {
+            Search Forall3S.
+            Search isMergeCtx Forall.
+            eapply in_some_implies_onth in H2 as Hsome. destr_hyps. rename x into n.
+            eapply triple_sum_trilemma in H;[|exact H3].
+            inversion H0;subst.
+            destruct H.
+            {
+                specialize (IHisMergeCtx H7).
+                eapply Forall_prop in H;[|exact IHisMergeCtx];easy.
+            }
+            {
+                destruct H6;try easy;destr_hyps;subst.
+                inversion H4;subst.
+                eapply Forall_prop in H5;[|exact H];easy.
+            }
+        }
+    }
+Qed.
+
+Lemma triple_sum_or_prop_l :  forall xs ys zs x n, Forall3S triple_opt_sum xs ys zs ->
+onth n xs = Some x -> onth n zs = Some x.
+Proof.
+    intros * Hsum Honth.
+    unfold triple_opt_sum in Hsum.
+    Print Forall3S.
+    generalize dependent xs.
+    generalize dependent ys.
+    revert n.
+    induction zs.
+    {
+        intros.
+        inversion Hsum;subst; rewrite onth_nil in Honth;easy.   
+    }
+    {
+        intros.
+        destruct xs;destruct ys;intros; inversion Hsum;[crush | crush |];subst.
+        rewrite onth_nil in Honth;easy.
+        destruct n.
+        {
+            simpl.
+            simpl in Honth;subst.
+            destruct H3;crush.   
+        }
+        {
+            simpl in Honth.
+            simpl.
+            eapply IHzs;[exact H7|exact Honth].   
+        }
+    }
+Qed.
+
+Lemma triple_sum_or_prop_r :  forall xs ys zs x n, Forall3S triple_opt_sum xs ys zs ->
+onth n ys = Some x -> onth n zs = Some x.
+Proof.
+    intros * Hsum Honth.
+    unfold triple_opt_sum in Hsum.
+    Print Forall3S.
+    generalize dependent xs.
+    generalize dependent ys.
+    revert n.
+    induction zs.
+    {
+        intros.
+        inversion Hsum;subst; rewrite onth_nil in Honth;easy.   
+    }
+    {
+        intros.
+        destruct xs;destruct ys;intros; inversion Hsum;[crush | crush |];subst.
+        rewrite onth_nil in Honth;easy.
+        destruct n.
+        {
+            simpl.
+            simpl in Honth;subst.
+            destruct H3;crush.   
+        }
+        {
+            simpl in Honth.
+            simpl.
+            eapply IHzs;[exact Honth|exact H7].   
+        }
+    }
+Qed.
+
+Lemma Forall2R_length {A:Type}: forall (P:A -> A-> Prop) xs ys, Forall2R P xs ys -> Datatypes.length xs <= Datatypes.length ys.
+Proof.
+    intros;
+    induction H;crush.
+Qed.
+Lemma Forall2R_subset_trans {A:Type}: forall (xs ys zs: list (option A)),
+Forall2R (fun u v=> u=None \/ u=v) xs ys ->
+Forall2R (fun u v=> u=None \/ u=v) ys zs ->
+Forall2R (fun u v=> u=None \/ u=v) xs zs.
+Proof.
+    intros.
+    eapply Forall2_Forall.
+    {
+        eapply Forall2R_length in H, H0. crush.
+    }
+    {
+        intros.
+        destruct (onth k xs) eqn:Hyg.
+        {
+            eapply Forall2R_prop in H;[|exact Hyg].
+            destr_hyps;subst.
+            destruct H2;try easy.   
+            symmetry in H.
+            eapply Forall2R_prop in H0;[|exact H]. 
+            destr_hyps.
+            destruct H2;try easy;subst. right;easy.
+        }
+        left;easy.
+    }
+Qed.
+
+Lemma mergeCtx_onth_subset: 
+forall gs gs' gss n,
+isMergeCtx gs gss ->
+onth n gss = Some gs' ->
+Forall2R (fun u v : option gtt => u = None \/ u = v) gs' gs.
+Proof.
+    intros * Hmerge Honth.
+    generalize dependent n.
+    induction Hmerge.
+    {
+        intros.
+        destruct n. simpl in Honth. inversion Honth;subst.
+        Search Forall2R.
+        eapply Forall2_Forall;crush.
+        
+        simpl in Honth. rewrite onth_nil in Honth;easy.
+    }
+    {
+        intros.
+        destruct n; simpl in Honth;try easy.
+        eapply IHHmerge;exact Honth.
+    }
+    {
+        intros.
+        destruct n.
+        {
+            simpl in Honth;inversion Honth;subst.
+            Search Forall3S.
+            eapply Forall3S_to_Forall2_r;exact H.   
+        }
+        {
+            simpl in Honth.
+            specialize (IHHmerge _ Honth).
+            eapply Forall3S_to_Forall2_l in H.
+            eapply Forall2R_subset_trans;[exact IHHmerge|];easy.
+        }
+    }
+Qed.
+
+Lemma Forall_subset {A:Type}: forall gs gs' (P: option A -> Prop), Forall2R (fun u v  => u = None \/ u = v) gs' gs -> P None -> 
+Forall P gs -> Forall P gs'.
+Proof.
+    intros.
+    eapply Forall_forall.
+    intros.
+    destruct x;try easy.
+    eapply in_some_implies_onth in H2 as Hsome.
+    destr_hyps.
+    eapply Forall2R_prop in H;[|exact H3].
+    destr_hyps.
+    destruct H4;crush.
+    symmetry in H4.
+    eapply Forall_prop in H1;[|exact H4].
+    crush.
+Qed.
+
 Lemma restricted_grafting : forall gs ctx p q g xs, 
 wfgC g -> projectableA g -> typ_gtth gs ctx g -> 
 (ishParts p ctx -> False) ->
@@ -467,45 +726,19 @@ u = None \/
 u = Some (gtt_send p q lsg) \/
 u = Some (gtt_send q p lsg) \/ u = Some gtt_end))
 gs -> 
-Forall (fun u=> u=None\/ exists ys, u=Some (gtt_send p q ys)) gs.
+Forall (fun u=> u=None\/ exists ys, u=Some (gtt_send p q ys
+)) gs.
 Proof.
     intros * Hwfg  Hprojable Hgraft Hishparts Hused Hprojp Hgraftcond.
-    destruct g;[pinversion Hprojp;apply proj_mon|].
-    induction Hgraft using typ_gtth_ind_ref.
-    {
-        inversion Hused;subst.
-        rewrite extendExtract in H;inversion H;subst.
-        eapply extendLis_forall.
-        split;[|left;easy].
-
-        right. eapply Forall_prop in Hgraftcond;[|rewrite extendExtract;easy].
-        destruct Hgraftcond;try easy. destr_hyps.
-        destruct H0;[|destruct H0];inversion H0;subst;pinversion Hprojp;crush;try apply proj_mon. 
-        exists x0;easy.
-    }
-    {
-        pinversion Hprojp;try apply proj_mon;subst;try easy;
-        [exfalso;apply Hishparts;apply ha_sendp | ].
-        Search usedCtx.
-        eapply Forall_forall.
-        intros.
-        destruct x;[|left;easy].
-        right. eapply in_some_implies_onth in H1. destr_hyps.
-        Search isMerge.
-        eapply merge_slist in H11 as Hys0slist.
-        eapply slist_implies_some in Hys0slist. destr_hyps.
-        eapply merge_inv_ss with (T:=ltt_send q xs) in H2 as Hmg;try easy; subst.
-        eapply Forall2_prop_l in H10;[|exact H2]. destr_hyps.
-        destruct H8;try easy. destr_hyps;subst.
-        eapply Forall2_prop_l in H0;[|exact H8]. destr_hyps.
-        destruct H3;try easy. destr_hyps;subst.
-    }
+    
+    generalize dependent g.
     generalize dependent gs.
     generalize dependent ctx.
     induction ctx using gtth_ind_ref.
     {
         intros.
-        Search gtth_hol "inv".
+        destruct g;[pinversion Hprojp;apply proj_mon|].
+        eapply typ_gtth_hole_inv in Hgraft;try easy. destr_hyps;subst.
         eapply extendLis_forall. split;[|left;easy].
         
         right. exists x. eapply Forall_prop in Hgraftcond;[|rewrite extendExtract;easy].
@@ -514,19 +747,89 @@ Proof.
     }
     {
         intros.
+        destruct g;[pinversion Hprojp;apply proj_mon|].
         inversion Hgraft;subst.
         rename n into s, n0 into t, xs0 into ghs, l into gcs.
-        eapply Forall_forall;intros.
-        destruct x.
-        eapply in_some_implies_onth in H0. destr_hyps.
-        right.
+        inversion Hused;subst.
+        (*
         eapply slist_implies_some in H3 as Hsome. destr_hyps;subst.
-        eapply Forall_prop in H;[|exact H1]. destruct H;try easy. destr_hyps.
-        inversion H;subst.
-        Search typ_gtth projectionC.
-        eapply Forall2_prop_r in H8;[|exact H0].   
-    } 
+        eapply Forall_prop in H;[|exact H0]. destruct H;try easy. destr_hyps.
+        
+        inversion H;subst. clear H.
+       *)
+       eapply Forall_merge_gs;[|exact H4 | ].
+        left. easy.
 
+        eapply Forall_forall.
+        intros.
+        destruct x;[|crush].
+        right. eapply in_some_implies_onth in H0 as Hsome.
+        destr_hyps.
+        exists l.
+        split;try easy.
+        eapply Forall2_prop_r in H6;[|exact H1].
+        destr_hyps.
+        destruct H5;try easy.
+        destr_hyps.
+        inversion H5;subst.
+        rename x1 into ctx1,x2 into s1, x3 into ghs1.
+        eapply Forall_prop in H as IH;[|exact H6].
+        destruct IH;try easy;destr_hyps;inversion H2;subst.
+        eapply Forall2_prop_r in H8 as Hgraftn;try exact H6.
+        destr_hyps. 
+        destruct H11;subst;try easy.
+        destr_hyps. inversion H10;subst.
+        rename x4 into g', x3 into ctx'.
+        eapply mergeCtx_onth_subset with (gs:=gs) in H1 as Hsubs;try easy.
+        assert (Hsp_noteq: s <> p).
+        {
+            red.
+            intros;subst. apply Hishparts.
+            apply ha_sendp.   
+        }
+        assert (Htp_noteq: t <> p).
+        {
+            red.
+            intros;subst. apply Hishparts.
+            apply ha_sendq.   
+        }
+        eapply H9 with (g:=g');try easy.
+        {
+            intros.
+            eapply Hishparts. econstructor;try exact H13;try easy;exact H6.
+        }
+        {
+            eapply Forall_subset with (gs:=gs);crush.   
+        }
+        {
+            eapply continuation_wfgC;[exact Hwfg|exact H11].   
+        }
+        {
+            Search projectableA gttstepC.
+            eapply projectable_after_step with (g:=(gtt_send s t gcs));try easy.
+            pfold.
+            econstructor.
+            2:symmetry in H11;exact H11.
+            Search wfgC (_ <> _).
+            eapply wfgC_triv in Hwfg as Hw. easy.
+        }
+        {
+            Search typ_gtth usedCtx.
+            eapply decidable_helper.typh_with_less;try exact Hsubs;easy.   
+        }
+        {
+            pinversion Hprojp;try apply proj_mon;crush.
+            eapply Forall2_prop_r in H22;[|exact H11].
+            destr_hyps.
+            destruct H14;try easy. destr_hyps;subst.
+            inversion H14;subst.
+            destruct H20;try easy.
+            Search isMerge onth.
+            eapply merge_inv_ss in H23;[|exact H15];subst.
+            easy.  
+        }  
+    }
+Qed. 
 Lemma local_types_corr_send : forall p q xs Tq g, 
 wfgC g ->  projectionC g p (ltt_send q xs) ->
 projectionC g q Tq -> exists ls ctx, typ_p_recv_ltth ls ctx p Tq.
