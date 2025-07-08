@@ -38,15 +38,15 @@ Inductive wfltth : ltth -> Prop :=
         wfltth (ltth_recv p xs)    
     .
 
-Inductive usedInLtth : nat -> ltth -> Prop := 
-    | used_hol : forall n, usedInLtth n (ltth_hol n)
-    | used_send : forall n xs p k s ll, onth k xs = Some (s, ll) -> usedInLtth n ll -> 
-    usedInLtth n (ltth_send p xs)
-    | used_recv : forall n xs p k s ll, onth k xs = Some (s, ll) -> usedInLtth n ll -> 
-    usedInLtth n (ltth_recv p xs).
+Inductive used_in_ltth : nat -> ltth -> Prop := 
+    | used_hol : forall n, used_in_ltth n (ltth_hol n)
+    | used_send : forall n xs p k s ll, onth k xs = Some (s, ll) -> used_in_ltth n ll -> 
+    used_in_ltth n (ltth_send p xs)
+    | used_recv : forall n xs p k s ll, onth k xs = Some (s, ll) -> used_in_ltth n ll -> 
+    used_in_ltth n (ltth_recv p xs).
 
 Definition fills_holes (ls :list (option ltth)) (l : ltth) :=
-    forall n, usedInLtth n l -> exists s, onth n ls = Some s.
+    forall n, used_in_ltth n l -> exists s, onth n ls = Some s.
 
 Inductive typ_ltth : ltth -> list (option ltt) -> ltt -> Prop :=
     | typ_ltth_hol : forall n ll xs, 
@@ -76,11 +76,13 @@ Inductive ishlParts : part -> ltth -> Prop :=
 Print typ_p_gtth.
 Definition typ_p_send_ltth (ls:list (option ltt)) (ctx: ltth) (p:part) (t:ltt) := 
     typ_ltth ctx ls t /\  (ishlParts p ctx -> False) /\
-     Forall (fun u => u=None \/ exists xs, u=Some (ltt_send p xs)) ls.
      
+    (forall n, used_in_ltth n ctx -> exists xs, onth n ls=Some (ltt_send p xs)).
+     
+
 Definition typ_p_recv_ltth (ls:list (option ltt)) (ctx: ltth) (p:part) (t:ltt) := 
     typ_ltth ctx ls t /\  (ishlParts p ctx -> False) /\
-     Forall (fun u => u=None \/ exists xs, u=Some (ltt_recv p xs)) ls.
+    (forall n, used_in_ltth n ctx -> exists xs, onth n ls=Some (ltt_recv p xs)).
 Fixpoint gtth_height (gh : gtth) : nat :=
     match gh with
     | gtth_hol n => 0 
