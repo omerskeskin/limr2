@@ -62,7 +62,28 @@ Inductive typ_ltth : ltth -> list (option ltt) -> ltt -> Prop :=
     Forall2 
     (fun u v=> (u=None /\ v= None) 
     \/ exists s lt ltr, u=Some (s,lt) /\ v= Some (s, ltr) /\ typ_ltth lt ls ltr) xs ys ->
-    typ_ltth (ltth_recv p xs) ls (ltt_recv p ys).  
+    typ_ltth (ltth_recv p xs) ls (ltt_recv p ys).
+    
+Lemma typ_ltth_fills_holes :forall lx ls t n, typ_ltth lx ls t -> used_in_ltth n lx ->
+exists x, onth n ls =Some x.
+Proof.
+    intros * Htyp Hused.
+    generalize dependent ls.
+    generalize dependent t.
+    induction Hused.
+    {
+        intros * Htyp.
+        inversion Htyp;subst;exists t;easy.
+    }
+    all:
+        intros * Htyp;
+        inversion Htyp;subst;
+        
+        eapply Forall2_prop_r in H4;try exact H; 
+        destr_hyps; destruct H1;try easy; destr_hyps; inversion H1;subst;
+        eapply IHHused;exact H3.
+Qed.
+        
     
 Print ishParts.
 Inductive ishlParts : part -> ltth -> Prop :=
