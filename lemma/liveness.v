@@ -627,7 +627,7 @@ Proof.
     }
 Qed.
 
-Lemma Forall2R_length {A:Type}: forall (P:A -> A-> Prop) xs ys, Forall2R P xs ys -> Datatypes.length xs <= Datatypes.length ys.
+Lemma Forall2R_length {A:Type} {B:Type}: forall (P:A -> B-> Prop) xs ys, Forall2R P xs ys -> Datatypes.length xs <= Datatypes.length ys.
 Proof.
     intros;
     induction H;crush.
@@ -1282,6 +1282,19 @@ Proof.
     pfold. econstructor;[apply wfgC_triv in H;easy|symmetry;exact H1].
 Qed.
 
+Lemma Forall_onth_generic {A:Type}: forall (gcs1:list (option A)), 
+Forall (fun u=> u=None \/ exists k, onth k gcs1=u) gcs1.
+Proof.
+    induction gcs1;constructor.
+    destruct a; [right; exists  0 | left ];crush.
+    set (P:=(fun u  =>
+u = None \/ (exists k : opt_lbl, onth k gcs1 = u))).
+    eapply Forall_impl with (P:=P); unfold P in *;crush.
+    destruct (onth x gcs1) eqn:Hyg;[
+    eapply Forall_prop with (l:=x) (p:=a0) in IHgcs1|];crush.
+    right; exists (S x0); crush.
+Qed.
+
 
 Definition opt_list_subset {A:Type} (gs' gs :list (option A)) := 
 Forall2R  (fun u v : option A => u = None \/ u = v) gs' gs.
@@ -1369,7 +1382,8 @@ Proof.
     }
 Qed.
 
-Definition is_proj_list gs q ls := Forall2 (fun u v => u=None /\ v=None \/ exists g t, u=Some g /\ v=Some t /\ projectionC g q t) gs ls.
+(*gs is a subset of proj_list ls*)
+Definition is_proj_list_subset gs q ls := Forall2R (fun u v => u=None  \/ exists g t, u=Some g /\ v=Some t /\ projectionC g q t) gs ls.
 
 Lemma local_graft_send : forall gx gs p q g ls,
 typ_gtth gs gx g -> wfgC g -> wfgtth gx ->
@@ -1377,7 +1391,7 @@ projectableA g ->
 (ishParts p gx -> False) ->
 Forall (fun u=> u=None\/ exists ys, u=Some (gtt_send p q ys
 )) gs -> usedCtx gs gx -> 
-is_proj_list gs q ls -> 
+is_proj_list_subset gs q ls -> 
 exists lx , projectionH gx gs q lx ls.
 Proof.
     induction gx using gtth_ind_ref.
@@ -1394,7 +1408,7 @@ Proof.
         {
             exfalso;apply H0;apply decidable_helper.triv_pt_q;try easy.   
         }
-        eapply Forall2_prop_r in Hprojlist;try (rewrite extendExtract;reflexivity).
+        eapply Forall2R_prop in Hprojlist;try (rewrite extendExtract;reflexivity).
         tac_sanitize.
         econstructor;try exact H3;try exact H6.
         rewrite extendExtract;easy.
@@ -1402,15 +1416,13 @@ Proof.
     {
         intros * Htyp Hwfg Hwfgth Hprojable  Hishparts Hresgraft Hused Hprojlist.
         destruct (Nat.eq_dec p q0);
-        destruct (Nat.eq_dec q q0);subst.
-        {
-            inversion Htyp;subst. apply wfgC_triv in Hwfg;try easy.   
-        }
+        destruct (Nat.eq_dec q q0);subst;
+            try solve [inversion Htyp;subst;apply wfgC_triv in Hwfg;try easy].   
+        
         {
             inversion Htyp;subst.
             
             destr_hyps.
-            rename x into ls.
             assert(create_lx: forall xs1
         (Hsubset: Forall (fun u=> u=None \/ exists k, onth k xs=u) xs1),
         exists lx,
@@ -1431,43 +1443,44 @@ u = Some (s, g0) /\ v = Some (s, t) /\ projectionH g0 gs q0 t ls)) xs1 lx
                     inversion Hsubset;subst.
                     destruct a.
                     {
-                        destruct H4;try easy;destr_hyps.
-                        rename x into k.
-                        eapply Forall_prop in H;try exact H2;
+                        destruct H2;try easy;destr_hyps.
+                        rename x into k,  H0 into Honthkxs.
+                        eapply Forall_prop in H;try exact Honthkxs;
                         tac_sanitize.
-                        eapply Forall2_prop_r in H6;try exact H2;tac_sanitize.
+                        rename H0 into IH1.
+                        eapply Forall2_prop_r in H6;try exact Honthkxs;tac_sanitize.
                         inversion Hused;subst.
-                        eapply Forall2_prop_l in H12;try exact H2;tac_sanitize.
+                        eapply Forall2_prop_l in H8;try exact Honthkxs;tac_sanitize.
                         
-                        eapply mergeCtx_onth_subset with (gs:=gs) in H4 as Hmergesubs;try easy.
+                        eapply mergeCtx_onth_subset with (gs:=gs) in H0 as Hmergesubs;try easy.
                         assert(Hwfg2: wfgC x4).
                         {
-                            eapply continuation_wfgC;try exact H6;try exact Hwfg;try easy.   
+                            eapply continuation_wfgC;try exact H1;try exact Hwfg;try easy.   
                         }
-                        eapply H3 with (p:=p0) (q:=q0) (gs:=x0)  in Hwfg2 as IH;try easy;
+                        eapply IH1 with (p :=p0) (q:=q0) (gs:=x0)  in Hwfg2 as IH;try easy;
                         rename x4 into g', x0 into gs', x5 into gh, x1 into s.
                         {
                             destr_hyps.
-                            specialize (IHxs1 H7) as IHxs'.
+                            specialize (IHxs1 H3) as IHxs'.
                             destr_hyps.
-                            exists (Some (s,x)::x1).
+                            exists (Some (s,x)::x0).
                             constructor;try easy.
                             right. exists s, gh,x.
                             repeat split;try easy.
                             eapply projectionH_with_more_gs with (gs':=gs');try easy.
-                            admit.   
+                            try exact H.
                         }
                         {
-                            eapply decidable_helper.typh_with_less;try exact H8;try easy.   
+                            eapply decidable_helper.typh_with_less;try exact H2;try easy.   
                         }
                         {
-                            inversion Hwfgth;subst;eapply Forall_prop in H14;try exact H2;tac_sanitize;easy.   
+                            inversion Hwfgth;subst; eapply Forall_prop in H10;try exact Honthkxs;tac_sanitize;easy.   
                         }
                         {   
-                            eapply projectable_onth;try exact Hwfg;try exact H6;try easy.
+                            eapply projectable_onth;try exact Hwfg;try exact H1;try easy.
                         }
                         {
-                            intros;apply Hishparts;eapply ha_sendr;try exact H2;try easy.
+                            intros;apply Hishparts;eapply ha_sendr;try exact Honthkxs;try easy.
                             destruct (Nat.eq_dec q0 p0);destruct (Nat.eq_dec q p0);subst;try easy.
                             exfalso;apply Hishparts;constructor.
                             red;intros;subst;apply Hishparts;constructor.
@@ -1476,28 +1489,39 @@ u = Some (s, g0) /\ v = Some (s, t) /\ projectionH g0 gs q0 t ls)) xs1 lx
                             eapply Forall_forall;intros;destruct x;try (left;easy);right.
                             eapply in_some_implies_onth in H;destr_hyps.
                             eapply Forall2R_prop in Hmergesubs;try exact H;destr_hyps.
-                            destruct H12;try easy;subst.
-                            eapply Forall_prop in Hresgraft;try (symmetry in H12;exact H12).
+                            destruct H8;try easy;subst.
+                            eapply Forall_prop in Hresgraft;try (symmetry in H8;exact H8).
                             destruct Hresgraft;try easy;destr_hyps;exists ys;subst;try easy.
+                        }
+                        {
+                            red. 
+                            eapply Forall2_Forall.
+                            {
+                                eapply Forall2R_length in Hprojlist.
+                                eapply Forall2R_length in Hmergesubs.
+                                crush.
+                            } 
+                            intros.
+                            destruct (onth k0 gs') eqn:Hyg1;[right |left;easy].
+                            eapply Forall2R_prop in Hmergesubs;try exact Hyg1;destr_hyps.
+                            destruct H8;try easy;subst;symmetry in H8.
+                            eapply Forall2R_prop in Hprojlist;try exact H8;tac_sanitize.
+                            exists x0, x1. crush.   
                         }   
                     }
-                    specialize (IHxs1 H3). destr_hyps.
-
-                    exists    
+                    {
+                        specialize (IHxs1 H3).
+                        destr_hyps.
+                        exists (None::x).
+                        constructor;crush.   
+                    }
                 }   
             }
-            evar (lx:list (option (sort*ltth))).
-            
-            exists (ltth_send q lx), ls.
-            split. 
-            {
-                constructor.      
-            }
-            eapply Forall_forall;intros.
-            destruct x;[|left;easy].
-            
-            right. eapply in_some_implies_onth in H2;destr_hyps.
-            eapply Forall_prop in H1;try exact H2. tac_sanitize.   
+            specialize (create_lx xs (Forall_onth_generic xs)) as lx_gen.
+            destruct lx_gen as [lx lxprop].
+            exists (ltth_send q lx); 
+                constructor;try easy.   
+               
         }
         inversion Htyp;subst.
         inversion Husedltth;subst.
