@@ -238,22 +238,22 @@ Proof.
     }
 Qed.
 
+
 Section gtth_ind_by_height.
 
 Variable P : gtth -> Prop.
 
-Variable gh:gtth.
-Hypothesis wfgh: wfgtth gh.
-Hypothesis P0 : forall gh', wfgtth gh' -> gtth_height gh' = 0 -> 
+
+Hypothesis P0 : forall gh', gtth_height gh' = 0 -> 
         P gh'.
 
 Hypothesis IH :
 forall gh'',
-wfgtth gh'' ->
-(forall gh', wfgtth gh' -> gtth_height gh' < (gtth_height gh'') -> P gh') -> P gh''.
+(forall gh', gtth_height gh' < (gtth_height gh'') -> P gh') -> P gh''.
 
-Lemma gtth_ind_by_height_aux : forall n g, wfgtth g -> gtth_height g = n -> P g.
+Lemma gtth_ind_by_height_aux : forall n g, gtth_height g = n -> P g.
 Proof.
+    Check lt_wf_ind.
     induction n as [n IHn] using lt_wf_ind.
     {
         intros.
@@ -263,7 +263,7 @@ Proof.
     }
 Qed.
 
-Lemma gtth_ind_by_height: P gh.
+Lemma gtth_ind_by_height (gh:gtth): P gh.
 Proof.
     eapply (gtth_ind_by_height_aux);easy.
 Qed.

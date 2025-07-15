@@ -36,6 +36,7 @@ lemma/main.v
 lemma/soundness.v
 lemma/completeness.v
 lemma/safety.v
+lemma/liveness_helpers.v
 cpdtlib/CpdtTactics.v
 cpdtlib/DepList.v
 cpdtlib/MoreSpecif.v
