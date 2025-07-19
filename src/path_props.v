@@ -24,6 +24,7 @@ Lemma coseq_eq: forall {A: Type} (c: coseq A), c = coseq_id c.
 Proof. destruct c; easy. Defined.
 
 Notation Path := (coseq (tctx*label)) (only parsing).
+
 (*
 CoInductive valid_path : Path -> Prop :=
   | nil_valid: valid_path conil
@@ -31,20 +32,49 @@ CoInductive valid_path : Path -> Prop :=
   | cons_cons_valid: forall g p q ell g' l' xs, valid_path (cocons (g',(lcomm p q ell)) xs) ->
     tctxR g (lcomm p q ell) g' -> valid_path (cocons (g, (lcomm p q ell)) (cocons (g', l') xs)). 
 *)
+
+
+Variant valid_pathGI {A:Type} (V: A -> A -> Prop)  
+(R: coseq A ->  Prop) 
+: 
+coseq A -> Prop :=
+  | nil_validGI: valid_pathGI V R conil
+  | cons_nill_validGI: forall x, valid_pathGI V R (cocons x conil)  
+  | cons_cons_validGI: forall x y xs, 
+  R (cocons x xs) ->
+    V y x -> 
+    valid_pathGI V R (cocons y (cocons x xs)).
+  
+
+Definition valid_path_GC {A:Type} (V: A-> A-> Prop) := paco1 (valid_pathGI V) bot1.
+
+
+
 Variant valid_pathI (R: Path -> Prop) : Path -> Prop :=
   | nil_validI: valid_pathI R conil
   | cons_nill_validI: forall x, valid_pathI R (cocons x conil)
   | cons_cons_validI: forall g p q ell g' l' xs, R (cocons (g',(lcomm p q ell)) xs) ->
     tctxR g (lcomm p q ell) g' -> valid_pathI R (cocons (g, (lcomm p q ell)) (cocons (g', l') xs)). 
-  
-Definition valid_pathC :=paco1 valid_pathI bot1.
 
-Lemma valid_path_mon : monotone1 valid_pathI.
+
+Definition local_path_vcriteria := (fun (x1 x2 : tctx* label) =>
+  match (x1,x2) with 
+    | ((g1,lcomm p q ell),(g2,_)) => tctxR g1 (lcomm p q ell) g2
+    | _ => False 
+  end
+).
+
+Definition valid_local_path := valid_path_GC local_path_vcriteria.
+
+
+Lemma valid_path_mon {A:Type}: forall (V : A -> A-> Prop), monotone1 (valid_pathGI V).
 Proof.
+  
   red;intros.
   induction IN;try constructor;try easy.
   eapply LE;easy.
 Qed.
+
 
 Inductive eventually {A: Type} (F: coseq A -> Prop): coseq A -> Prop :=
   | evh: forall xs, F xs -> eventually F xs
@@ -56,11 +86,10 @@ Inductive alwaysG {A: Type} (F: coseq A -> Prop) (R: coseq A -> Prop): coseq A -
   | alwn: F conil -> alwaysG F R conil
   | alwc: forall x xs, F (cocons x xs) -> R xs -> alwaysG F R (cocons x xs).
 
-Definition alwaysP := @alwaysG (tctx*label).
 
-Definition alwaysC F p := paco1 (alwaysP F) bot1 p.
+Definition alwaysCG {A:Type} (F: coseq A -> Prop) := paco1 (alwaysG F) bot1.
 
-Lemma always_mon : forall F, monotone1 (alwaysP F).
+Lemma always_mon {A:Type}: forall (F: coseq A -> Prop), monotone1 (alwaysG F).
 Proof.
   red;intros. induction IN;try constructor;try easy. eapply LE. easy.
 Qed.
@@ -92,12 +121,12 @@ Definition headComm (p q: part) (pt: Path): Prop :=
 Definition fair_path_local (pt: Path): Prop :=
   forall p q n, enabled (tctxRE (lcomm p q n)) pt ->  eventually (headComm p q) pt.
 
-Definition fair_path := alwaysC fair_path_local.
+Definition fair_path := alwaysCG fair_path_local.
 
 Definition live_path_inner (pt: Path) : Prop := forall p q s n, 
 (enabled (tctxRE (lsend p q (Some s) n)) pt -> eventually (headComm p q) pt) /\
 (enabled (tctxRE (lrecv p q (Some s) n)) pt -> eventually (headComm p q) pt).
-Definition live_path := alwaysC live_path_inner.
+Definition live_path := alwaysCG live_path_inner.
 
 Definition weak_safety (c: tctx ) :=
 forall p q s s'  k k', tctxRE (lsend p q (Some s) k) c -> tctxRE (lrecv q p (Some s') k') c ->
@@ -176,7 +205,7 @@ Definition tctxRtc := clos_refl_trans tctx tctxRcomm.
 
 
 Definition all_fair_live (g:tctx) := forall l xs,  
-  valid_pathC (cocons (g, l) xs) -> fair_path (cocons (g, l) xs) -> 
+  valid_local_path (cocons (g, l) xs) -> fair_path (cocons (g, l) xs) -> 
   live_path (cocons (g, l) xs).
 
 Definition liveCtx (g: tctx) := forall g',
@@ -207,9 +236,3 @@ Proof.
   destr_hyps. split;try easy. apply LE in H4. exists x. split;easy.
 Qed.*)
 
-Lemma always_tail : forall P x xs, alwaysC P (cocons x xs) -> alwaysC P xs.
-Proof.
-  intros.
-  pinversion H;subst; [| apply always_mon].
-  pfold. punfold H3. apply always_mon.
-Qed.

@@ -444,6 +444,78 @@ Proof.
 Qed.
 
 Check Path.
+
+Check seq.foldr.
+Search gtth_height.
+Print gtth_height.
+
+Definition xs_height_map_fn := fun u : option (sort * gtth) =>
+match u with
+| Some (_, x) => gtth_height x
+| None => 0
+end.
+Lemma gtth_height_fold : forall p q xs, 
+gtth_height (gtth_send p q xs) =
+seq.foldr ( fun g a => Init.Nat.max (xs_height_map_fn g + 1) a) 1 xs.
+Proof.
+    intros * .
+    induction xs.
+    { 
+        simpl;easy.   
+    }
+    {
+        destruct a. 
+        destruct p0. rewrite gtth_height_unfold_once_some.
+        simpl seq.foldr. rewrite IHxs;easy.
+        rewrite gtth_height_unfold_once_none. simpl seq.foldr.
+        rewrite <- IHxs.
+        rewrite Nat.max_0_l.
+        
+        destruct (gtth_height (gtth_send p q xs)) eqn:Hyg;try easy.
+        eapply gtth_height_0_means_hol_general in Hyg;destr_hyps;easy.
+    }
+Qed.
+
+Notation global_path := (coseq (gtt*label)) (only parsing).
+
+Definition global_path_vcriteria (x1 x2: gtt*label) :=
+    match (x1,x2) with 
+        | ((g1,lcomm p q ell),(g2,l2)) => gttstepC g1 g2 p q ell
+        | _ =>False
+    end.
+
+Search projectionC gttstepC.
+
+Definition global_comm_enabled p q n g := exists xs ys, 
+projectionC g p (ltt_send q xs)  /\ projectionC g q (ltt_recv p ys) /\
+onth n xs <>None.
+
+Definition enabled_global (P: gtt -> Prop) (xs: global_path) :=  
+ match xs with
+    | cocons (g, l) xs => P g
+    | _                => False 
+  end.
+
+Definition headComm_global (p q: part) (pt: global_path): Prop :=
+  match pt with
+    | cocons (g, (lcomm a b n)) xs => if Nat.eq_dec p a then if Nat.eq_dec q b then True else False else False
+    | _                          => False 
+  end.
+
+Definition fair_path_global_local (pt: global_path): Prop :=
+  forall p q n, 
+  enabled_global (global_comm_enabled p q n) pt ->  
+  eventually (headComm_global p q) pt.
+
+
+
+Definition fair_path_global := alwaysC fair_path_global_local.
+
+Definition live_path_inner (pt: Path) : Prop := forall p q s n, 
+(enabled (tctxRE (lsend p q (Some s) n)) pt -> eventually (headComm p q) pt) /\
+(enabled (tctxRE (lrecv p q (Some s) n)) pt -> eventually (headComm p q) pt).
+Definition live_path := alwaysC live_path_inner.
+*)
 Definition head_contains_q_recv p q:=(
     fun (pt:Path) => match pt with 
         | cocons (hd,l) tl => exists ys, M.find q hd=Some (ltt_recv p ys)  

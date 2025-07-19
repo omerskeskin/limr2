@@ -238,6 +238,34 @@ Proof.
     }
 Qed.
 
+Lemma list_max_ge_0 : forall xs, 0 <= list_max xs.
+Proof.
+    induction xs; crush.
+Qed. 
+
+Lemma gtth_height_0_means_hol_general : forall gh, 
+gtth_height gh = 0 -> exists n, gh=gtth_hol n.
+Proof.
+    intros.
+    destruct gh.
+    { 
+        exists n. easy.
+    }
+    {
+        (*simpl in H0.*)
+        inversion H;subst.
+        Search list_max .
+        specialize (list_max_ge_0
+(map
+(fun u : option (sort * gtth) =>
+match u with
+| Some (_, x) => gtth_height x
+| None => 0
+end) l)) as Hlm. crush.
+    }
+Qed.
+
+
 
 Section gtth_ind_by_height.
 
