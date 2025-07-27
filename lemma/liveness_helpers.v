@@ -1274,8 +1274,6 @@ Proof.
     }
 Qed.
 
-Definition gttstepC_any g g':= exists p q ell, gttstepC g g' p q ell. 
-Definition gttstepC_RT := clos_refl_trans gtt gttstepC_any.
 
 Lemma extend_onth_inv {A:Type}: forall n (a:A) b n', onth n (extendLis n' (Some a))=Some b ->
 n=n'.
@@ -1337,7 +1335,7 @@ typ_gtth gs gx g ->
 usedCtx gs gx ->
 wfgC g ->
 onth n gs= Some g' ->
-    gttstepC_RT g g'.
+    gttstepRtc g g'.
 Proof.
     induction gx using gtth_ind_ref.
     {
@@ -1369,7 +1367,7 @@ Proof.
             apply wfgC_triv in Hwfg;try easy.
             symmetry;exact H8.   
         }
-        assert(Hrest: gttstepC_RT gc g').
+        assert(Hrest: gttstepRtc gc g').
         {
             eapply H2 with (gs:=gs') (n:=n);try easy.
             eapply decidable_helper.typh_with_less;try exact H9;try easy.
@@ -1382,7 +1380,7 @@ Proof.
 Qed.   
 
 Lemma gttstep_preserves_wfg: forall g g', wfgC g -> projectableA g -> 
-gttstepC_RT g g' -> wfgC g' /\ projectableA g'.
+gttstepRtc g g' -> wfgC g' /\ projectableA g'.
 Proof.
     intros.
     induction H1. red in H1. destr_hyps.
@@ -1400,7 +1398,7 @@ Proof.
     try apply gttstep_preserves_wfg in H3;try easy.
 Qed.
 
-Lemma gttstep_reflects_part : forall g g' r, wfgC g -> projectableA g -> isgPartsC r g' -> gttstepC_RT g g'->
+Lemma gttstep_reflects_part : forall g g' r, wfgC g -> projectableA g -> isgPartsC r g' -> gttstepRtc g g'->
 isgPartsC r g.
 Proof.
     intros * Hwfg Hproj Hisparts Hstep.

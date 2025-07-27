@@ -14,6 +14,24 @@ Inductive ltth :=
     | ltth_recv : part -> list (option (sort*ltth)) -> ltth
     | ltth_hol :  nat -> ltth.
 
+
+Section ltth_ind.
+
+Variable P : ltth -> Prop.
+Hypothesis Hhol : forall n, P (ltth_hol n).
+Hypothesis Hsend : forall q xs, Forall (fun u => u=None \/ exists s g, u= Some (s,g) /\ P g) xs -> P (ltth_send q xs).
+Hypothesis Hrecv : forall q xs, Forall (fun u => u=None \/ 
+exists s g, u= Some (s,g) /\ P g) xs -> P (ltth_recv q xs).
+
+Fixpoint ltth_ind_ref (x:ltth):  P x.
+Proof.
+    destruct x;[| |eapply Hhol];
+    [apply Hsend| apply Hrecv]; induction l;constructor;try easy;
+    destruct a;try tauto;
+    right; destruct p; exists s, l0; split; try reflexivity; 
+    apply ltth_ind_ref.
+Qed.
+End ltth_ind.
 Print list_max.
 Definition max_option_list (xs: list (option nat)) : nat :=
     list_max (map (fun u=> match u with 
