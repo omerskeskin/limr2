@@ -7,6 +7,8 @@ From SST Require Import src.step lemma.step src.assoc lemma.completeness src.ltt
 Require Import List String Coq.Arith.PeanoNat Morphisms Relations Setoid.
 Require Import Coq.Program.Equality.
 Require Import Coq.Init.Logic.
+From Coq Require Import IndefiniteDescription.
+
 From Equations Require Import Equations.
 
 
@@ -73,7 +75,7 @@ Proof.
     eapply balanced_to_tree in Hispartsp as Hss;try exact Hwfg;destr_hyps.
     eapply restricted_grafting_send in H1;try exact H;try exact Hproj;try easy.
     split. eapply projection_implies_part_send;try exact Hproj.
-    Search isgPartsC gttstepC_RT.
+    Search isgPartsC gttstepRtc.
     eapply   typ_gtth_means_slist_gs in H as ?Ht;try easy; try eapply typ_gtth_means_wfgtth;try exact H.
     destr_hyps.
     eapply gttstep_reflects_part with (g':=x2);try easy.
@@ -97,7 +99,7 @@ Proof.
     eapply balanced_to_tree in Hispartsp as Hss;try exact Hwfg;destr_hyps.
     eapply restricted_grafting_recv in H1;try exact H;try exact Hproj;try easy.
     split;try easy.
-    Search isgPartsC gttstepC_RT.
+    Search isgPartsC gttstepRtc.
     eapply   typ_gtth_means_slist_gs in H as ?Ht;try easy; try eapply typ_gtth_means_wfgtth;try exact H.
     destr_hyps.
     eapply gttstep_reflects_part with (g':=x2);try easy.
@@ -433,8 +435,8 @@ Proof.
     }
 Qed.
 
-Lemma eventually_if : 
-forall (P Q : Path -> Prop) (xs:Path), eventually P xs -> 
+Lemma eventually_if {A:Type}: 
+forall (P Q : coseq A -> Prop) (xs:coseq A), eventually P xs -> 
 (forall ys, P ys -> eventually Q ys) -> eventually Q xs.
 Proof.
     intros.
@@ -443,11 +445,6 @@ Proof.
     constructor 2. easy.
 Qed.
 
-Check Path.
-
-Check seq.foldr.
-Search gtth_height.
-Print gtth_height.
 
 Definition xs_height_map_fn := fun u : option (sort * gtth) =>
 match u with
@@ -476,132 +473,179 @@ Proof.
     }
 Qed.
 
-Notation global_path := (coseq (gtt*label)) (only parsing).
-
-Section global_path.
-
-
-Definition global_path_vcriteria (x1 x2: gtt*label) :=
-    match (x1,x2) with 
-        | ((g1,lcomm p q ell),(g2,l2)) => gttstepC g1 g2 p q ell
-        | _ =>False
-    end.
-
-Definition global_valid_pathC := valid_path_GC global_path_vcriteria.
-
-
-
-Definition global_comm_enabled p q n g := exists xs ys, 
-projectionC g p (ltt_send q xs)  /\ projectionC g q (ltt_recv p ys) /\
-onth n xs <>None.
-
-Definition enabled_global (P: gtt -> Prop) (xs: global_path) :=  
- match xs with
-    | cocons (g, l) xs => P g
-    | _                => False 
-  end.
-
-Definition headComm_global (p q: part) (pt: global_path): Prop :=
-  match pt with
-    | cocons (g, (lcomm a b n)) xs => if Nat.eq_dec p a then if Nat.eq_dec q b then True else False else False
-    | _                          => False 
-  end.
-
-Definition fair_path_inner_global (pt: global_path): Prop :=
-  forall p q n, 
-  enabled_global (global_comm_enabled p q n) pt ->  
-  eventually (headComm_global p q) pt.
-
-
-
-Definition fair_path_global := alwaysCG fair_path_inner_global.
-
-Definition global_label_enabled l g:= match l with 
-    | lsend p q (Some s) n => exists xs g',
-        projectionC g p  (ltt_send q xs) /\ onth n xs=Some (s,g')
-    | lrecv p q (Some s) n => exists xs g',
-        projectionC g p  (ltt_recv q xs) /\ onth n xs=Some (s,g')
-    | lcomm p q n => exists xs ys, projectionC g p (ltt_send q xs)  /\ projectionC g q (ltt_recv p ys) /\
-    onth n xs <>None
-    | _ => False end.
-    
-Definition live_path_inner_global (pt: global_path) : Prop := forall p q s n, 
-(enabled_global (global_label_enabled (lsend p q (Some s) n)) pt -> 
-eventually (headComm_global p q) pt) /\
-(enabled_global (global_label_enabled (lrecv p q (Some s) n)) pt -> 
-eventually (headComm_global p q) pt).
-
-Definition live_path_global := alwaysCG live_path_inner_global.
-
-Definition all_fair_live_global (g:gtt) := forall l xs,  
-  global_valid_pathC (cocons (g, l) xs) -> fair_path_global (cocons (g, l) xs) -> 
-  live_path_global (cocons (g, l) xs).
-
-Definition live_type_global (g: gtt) := forall g',
-  gttstepRtc g g' -> all_fair_live_global g'.
-
-End global_path.
-
-
-
-Notation paired_path := (coseq (tctx*gtt*label)) (only parsing).
-
-Definition paired_path_vcriteria (x1 x2: (tctx*gtt*label)) :=
-    match (x1,x2) with 
-        | ((t1, g1, lcomm p q ell),
-        (t2,g2, l2)) => (gttstepC g1 g2 p q ell) 
-        /\ tctxR t1  (lcomm p q ell) t2 /\  l2 = lcomm p q ell
-        | _ =>False
-    end.
-
-Definition assoc_cond := fun u:paired_path => match u with 
-    | (cocons (a,b,_) xs) => assoc a b
-    | (conil) => True end.
-
-Definition paired_path_assoc_cond := alwaysCG assoc_cond.
-
-CoFixpoint proj1_paired_path (xs: paired_path) := match xs with 
-    | conil => conil
-    | cocons (t,g, c) xss => cocons (t,c) (proj1_paired_path xss) end.
-
-CoFixpoint proj2_paired_path (xs: paired_path) := match xs with 
-    | conil => conil
-    | cocons (t,g,c) xss => cocons (g,c) (proj2_paired_path xss) end.
-
-Definition paired_valid_pathC := valid_path_GC paired_path_vcriteria.
-
-Lemma pair_valid_proj1_valid: forall xs, paired_valid_pathC xs -> (valid_local_path (proj1_paired_path xs)).
-Proof.
-    pcofix CIH.
-    intros.
-    destruct xs;
-    [
-    pfold;
-    rewrite coseq_eq; simpl; constructor|].
-
-    pfold.
-    rewrite coseq_eq. destruct p as [[[t g] H] l].  simpl.
-    destruct xs. rewrite (coseq_eq (proj1_paired_path _)). simpl.
-    constructor.
-    
-    pinversion H0;try apply valid_path_mon;subst.
-    destruct p as [[t' g'] l']. rewrite (coseq_eq (proj1_paired_path _));simpl.
-    constructor.
-    right.
-    Check exist.
-    Check proj1_paired_path.
-    specialize (CIH (cocons (t',g',l') xs)) as CIH'.
-    rewrite (coseq_eq (proj1_paired_path _)) in CIH';simpl in CIH';eapply CIH';
-    easy.
-    destruct l;try easy; red in H5;try easy.
-Qed.
-
 Lemma paired_assoc_head : forall t g l xs, 
 paired_path_assoc_cond (cocons (t,g,l) xs) -> assoc t g.
 Proof.
     intros.
     pinversion H;try apply always_mon;subst. simpl in H2;easy.
 Qed.
+
+Variant coseq_bisimI {A:Type} (R: coseq A -> coseq A -> Prop): 
+coseq A -> coseq A -> Prop :=
+    | coseq_bis_nil : coseq_bisimI R conil conil
+    | coseq_bis_cons: forall xs ys x y, 
+    R xs ys -> coseq_bisimI R (cocons x xs) (cocons y ys).
+
+Definition coseq_bisimC {A:Type}:= paco2 ( @coseq_bisimI A) bot2.
+
+
+
+Variant path_assoc (R:local_path -> global_path -> Prop): local_path -> global_path -> Prop :=
+   | path_assoc_nil : path_assoc R conil conil
+   | path_assoc_xs : forall g gamma l xs ys, assoc gamma g ->
+    R xs ys ->
+   path_assoc R (cocons (gamma, l) xs) (cocons (g, l) ys)
+   .
+   
+Definition path_assocC := paco2 path_assoc bot2.
+
+Definition g_by_gamma_trans : forall t p q ell g t', wfgC g -> tctx_wf t -> assoc t g ->
+tctxR t (lcomm p q ell) t' ->
+{g' | assoc t' g' /\ gttstepC g g' p q ell}.
+Proof.
+    intros. eapply assoc_completeness with (g:=g) in H0;try exact H2;try easy.
+    destruct (constructive_indefinite_description _ H0) as [g' Hg'].
+    exists g'. easy.
+Defined.
+
+
+Lemma valid_local_path_valid_trans: forall t p q ell xs,
+valid_local_path (cocons (t, Some (lcomm p q ell)) xs) ->
+exists t' l ys, xs= cocons (t',l) ys /\ tctxR t (lcomm p q ell) t'.
+Proof.
+    intros. pinversion H;subst;try apply valid_path_mon. red in H4. 
+    exists x, l', xs0. easy.
+Qed.
+
+Check sumbool.
+
+Lemma valid_local_path_dilemma: forall t l xs, valid_local_path (cocons (t,l) xs) ->
+{ s & match s with (p,q,ell) => {l=Some (lcomm p q ell)} + {l=None} end }.
+Proof.
+    intros.
+    destruct l;try tauto.
+    {
+        assert(Hrec: { s | match s with (p,q,ell) => l=lcomm p q ell end}).
+        {
+                refine ((match l as m return 
+                (l=m -> { s | match s with (p,q,ell) => l=lcomm p q ell end}) with 
+                | lsend a b c d => _
+                | lrecv a b c d => _
+                
+                | lcomm p q ell => _ end) (eq_refl));intros;subst;
+                try (
+                assert(False) by
+                (
+                    pinversion H;subst;try apply valid_path_mon; inversion H4  
+                );
+                exists (0,0,0); easy).
+                exists (p,q,ell). reflexivity.
+        }
+        destruct Hrec. destruct x as [[p q] ell]. subst. exists (p,q,ell). tauto.
+    }
+    {
+        exists (0,0,0). right. easy.   
+    }
+Defined.
+Ltac indef_destruct H := let tth := type of H in match tth with 
+     | ex _  => let nx := fresh "x" in let nh:= fresh "H" in  
+    destruct (constructive_indefinite_description _ H) as [nx nh];try indef_destruct nh;clear H end.
+     
+CoFixpoint conj_path : forall t g l  xs, wfgC g -> tctx_wf t -> assoc t g ->
+    valid_local_path (cocons (t, l) xs) ->
+    global_path.
+Proof.
+    intros * Hwfg Htxt Hassoc Hvalid.
+    eapply valid_local_path_dilemma in Hvalid as Hdl.
+    destruct Hdl as [[[p q] ell] Hdd].
+    destruct Hdd.
+    {
+        subst.
+        eapply valid_local_path_valid_trans in Hvalid as Htrans.
+        indef_destruct Htrans.
+        destruct H1;subst. 
+        set (seq_hd := (g,Some (lcomm p q ell))).
+        eapply g_by_gamma_trans with (g:=g) in H0 as Ht2;try easy.
+        destruct Ht2.
+        rename  x into t', x0 into l, x1 into xs, x2 into g'.
+        destruct a as [Ha0 Ha1].
+        assert(Hwft': tctx_wf t').
+        {
+            eapply tctx_wf_after_red_comm;try exact H0;try easy.   
+        }
+        assert(Hwfg': wfgC g').
+        {
+
+            eapply wfgC_after_step;try exact Ha1;try easy.
+            eapply assoc_implies_projectable;try exact Hassoc;try easy.   
+        }
+        assert(Hvlxs: valid_local_path (cocons (t', l) xs)).
+        {
+            pinversion Hvalid;try apply valid_path_mon;tauto.   
+        }
+        
+        specialize (conj_path t' g' l xs Hwfg' Hwft' Ha0 Hvlxs) as vxs.
+        exact (cocons seq_hd vxs).
+    }
+    subst. exact (cocons (g, None) conil).
+Defined.
+
+
+Lemma conj_path_recur : forall (t:tctx) (g:gtt) (l:option label) (xs:local_path) 
+ (Hwfg : wfgC g) (Htxwf : tctx_wf t) (Hassoc: assoc t g) 
+(Hvalid : valid_local_path (cocons (t,l) xs)), exists ys,
+(conj_path _ _ _ _ Hwfg Htxwf Hassoc Hvalid) = cocons (g,l) ys.
+Proof.
+    intros.
+    destruct l.
+    {
+           destruct l;
+        pose proof Hvalid as Hvalid'; pinversion Hvalid'; try apply valid_path_mon;try tauto;subst.
+        rewrite (coseq_eq (conj_path _ _ _ _ _ _ _ _   )). simpl.
+    }
+    {
+        rewrite (coseq_eq (conj_path _ _ _ _ _ _ _ _   )). simpl. exists conil;easy.
+    }
+    
+
+Lemma conj_path_path_assoc : forall (t:tctx) (g:gtt) (l:option label) (xs:local_path) 
+ (Hwfg : wfgC g) (Htxwf : tctx_wf t) (Hassoc: assoc t g) 
+(Hvalid : valid_local_path (cocons (t,l) xs)),
+
+path_assocC (cocons (t,l) xs) 
+(conj_path _ _ _ _ Hwfg Htxwf Hassoc Hvalid).
+Proof.
+    pcofix CIH.
+    intros.
+    destruct l.
+    {
+        destruct l;
+        pose proof Hvalid as Hvalid'; pinversion Hvalid'; try apply valid_path_mon;try tauto;subst.
+
+        rewrite (coseq_eq (conj_path _ _ _ _ _ _ _ _   )).
+        pfold.
+           
+            
+    }
+    {
+        Search valid_path_GC conil.
+        eapply valid_path_none_next_nil in Hvalid as Hv2;subst.
+        pfold.
+        assert(conj_path t g None conil Hwfg Htxwf Hassoc Hvalid = cocons (g,None) conil).
+        {
+            rewrite (coseq_eq (conj_path _ _ _ _ _ _ _ _   )).
+            simpl. reflexivity.
+        }
+        rewrite H. constructor;try tauto.
+        left. pfold. constructor.     
+    }
+
+
+Lemma local_path_to_paired_path : forall t g xs l, 
+assoc t g -> valid_local_path (cocons (t,l) xs) ->
+    exists ys, paired_path_assoc_cond ys /\ proj1_paired_path ys = xs.
+Proof.
+    intros *.
 
 Lemma proj2_live_proj1_live : forall xs, paired_valid_pathC xs -> 
 paired_path_assoc_cond xs ->
@@ -617,6 +661,20 @@ Proof.
         inversion H.   
     }
     {
+        destruct p as [[t g] l].
+        destruct l.
+        {
+            rewrite (coseq_eq (proj1_paired_path _) );simpl.
+            pfold. constructor.
+            {
+
+                red;split;intros.
+                eapply paired_assoc_head in Hpassoc as Hassoc.
+                do 2 red in H. destruct H as [t' Htxr].
+                rewrite (coseq_eq (proj2_paired_path _)) in Hlive;simpl in Hlive.
+                pinversion Hlive;try apply always_mon;subst.
+            }   
+        }
         destruct xs.
         {
             destruct p as [[t g]  l].
@@ -644,16 +702,6 @@ Proof.
     
 
 
-Variant path_assoc (R:Path -> global_path -> Prop): Path -> global_path -> Prop :=
-   | path_assoc_nil : path_assoc R conil conil
-   | path_assoc_single : forall g gamma l1 l2, assoc gamma g -> 
-   path_assoc R (cocons (gamma, l1) conil) (cocons (g, l2) conil)
-   | path_assoc_xs : forall g gamma l xs ys, assoc gamma g ->
-    R xs ys ->
-   path_assoc R (cocons (gamma, l) xs) (cocons (g, l) ys)
-   .
-   
-Definition path_assocC := paco2 path_assoc bot2.
 
 Lemma path_assoc_by_assoc : forall gamma g ptl_tl  l, tctx_wf gamma ->
     wfgC g -> projectableA g -> assoc gamma g -> 

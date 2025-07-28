@@ -12,11 +12,6 @@ From Equations Require Import Equations.
 
 Import ListNotations.
 
-Definition gttstepRel g g' := exists p q ell, gttstepC g g' p q ell.
-
-Definition gttstepRtc := clos_refl_trans gtt gttstepRel.
-
-Locate tctxRtc.
 
 Lemma tctxR_invariance (P:tctx -> Prop): forall gamma gamma', 
     P gamma -> (forall a b , P a -> tctxRcomm a b -> P b) ->
@@ -377,8 +372,8 @@ Proof.
         }    
     }
 Qed.
-
-Definition path_starts_with (gamma:tctx) (pt:Path):=
+Locate gttstepRtc.
+Definition path_starts_with (gamma:tctx) (pt:local_path):=
   match pt with 
   | cocons (a,b) _ => a=gamma
   | _ => False

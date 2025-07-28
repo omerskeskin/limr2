@@ -31,11 +31,9 @@ lemma/step.v
 lemma/projection_helper.v
 lemma/projection.v
 lemma/main_helper.v
-lemma/example_3.v
 lemma/main.v
 lemma/soundness.v
 lemma/completeness.v
-lemma/safety.v
 lemma/liveness_helpers.v
 cpdtlib/CpdtTactics.v
 cpdtlib/DepList.v

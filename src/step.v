@@ -49,3 +49,8 @@ Proof. unfold monotone5.
            easy.
            easy.
 Qed.
+
+
+Definition gttstepRel g g' := exists p q ell, gttstepC g g' p q ell.
+
+Definition gttstepRtc := clos_refl_trans gtt gttstepRel.
