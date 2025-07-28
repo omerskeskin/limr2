@@ -511,13 +511,31 @@ Defined.
 
 Lemma valid_local_path_valid_trans: forall t p q ell xs,
 valid_local_path (cocons (t, Some (lcomm p q ell)) xs) ->
-exists t' l ys, xs= cocons (t',l) ys /\ tctxR t (lcomm p q ell) t'.
+{s| match s with (t',l,ys) => 
+xs= cocons (t',l) ys /\ tctxR t (lcomm p q ell) t' end}.
 Proof.
-    intros. pinversion H;subst;try apply valid_path_mon. red in H4. 
-    exists x, l', xs0. easy.
-Qed.
+    intros. 
+    refine (
+        (match xs as m return xs =m -> {s| match s with (t',l,ys) => 
+xs= cocons (t',l) ys /\ tctxR t (lcomm p q ell) t' end} with 
+    |conil => _
+    | cocons (t',l) ys => _ end
+) (eq_refl)).
+    {
+        intros. subst.
+        assert(False).
+        {
+            pinversion H;try apply valid_path_mon.   
+        }
+        exists (M.empty, None, conil). easy.   
+    }
+    {
+        intros. subst. exists (t', l, ys).
+        split. easy.
+        pinversion H;subst;try apply valid_path_mon. easy.   
+    }
+Defined.
 
-Check sumbool.
 
 Lemma valid_local_path_dilemma: forall t l xs, valid_local_path (cocons (t,l) xs) ->
 { s & match s with (p,q,ell) => {l=Some (lcomm p q ell)} + {l=None} end }.
@@ -547,10 +565,11 @@ Proof.
         exists (0,0,0). right. easy.   
     }
 Defined.
+(*
 Ltac indef_destruct H := let tth := type of H in match tth with 
      | ex _  => let nx := fresh "x" in let nh:= fresh "H" in  
     destruct (constructive_indefinite_description _ H) as [nx nh];try indef_destruct nh;clear H end.
-     
+*)   
 CoFixpoint conj_path : forall t g l  xs, wfgC g -> tctx_wf t -> assoc t g ->
     valid_local_path (cocons (t, l) xs) ->
     global_path.
@@ -562,12 +581,13 @@ Proof.
     {
         subst.
         eapply valid_local_path_valid_trans in Hvalid as Htrans.
-        indef_destruct Htrans.
+        destruct Htrans as [[[t' l] ys] H1].
+        
         destruct H1;subst. 
         set (seq_hd := (g,Some (lcomm p q ell))).
         eapply g_by_gamma_trans with (g:=g) in H0 as Ht2;try easy.
         destruct Ht2.
-        rename  x into t', x0 into l, x1 into xs, x2 into g'.
+        rename  x into g'.
         destruct a as [Ha0 Ha1].
         assert(Hwft': tctx_wf t').
         {
@@ -579,12 +599,12 @@ Proof.
             eapply wfgC_after_step;try exact Ha1;try easy.
             eapply assoc_implies_projectable;try exact Hassoc;try easy.   
         }
-        assert(Hvlxs: valid_local_path (cocons (t', l) xs)).
+        assert(Hvlxs: valid_local_path (cocons (t', l) ys)).
         {
             pinversion Hvalid;try apply valid_path_mon;tauto.   
         }
         
-        specialize (conj_path t' g' l xs Hwfg' Hwft' Ha0 Hvlxs) as vxs.
+        specialize (conj_path t' g' l ys Hwfg' Hwft' Ha0 Hvlxs) as vxs.
         exact (cocons seq_hd vxs).
     }
     subst. exact (cocons (g, None) conil).
@@ -602,6 +622,10 @@ Proof.
            destruct l;
         pose proof Hvalid as Hvalid'; pinversion Hvalid'; try apply valid_path_mon;try tauto;subst.
         rewrite (coseq_eq (conj_path _ _ _ _ _ _ _ _   )). simpl.
+        
+        destruct (g_by_gamma_trans t n n0 n1 g x Hwfg Htxwf Hassoc) (eqn:Hyg).
+        Check eq_rec_r.
+
     }
     {
         rewrite (coseq_eq (conj_path _ _ _ _ _ _ _ _   )). simpl. exists conil;easy.
