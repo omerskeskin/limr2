@@ -57,7 +57,7 @@ Definition local_path_vcriteria := (fun x1 l  x2  =>
   end
 ).
 
-Definition valid_local_path := valid_path_GC local_path_vcriteria.
+Definition local_valid_pathC := valid_path_GC local_path_vcriteria.
 
 
 Lemma valid_path_mon {A:Type}: forall (V : A -> label ->  A-> Prop), monotone1 (valid_pathGI V).
@@ -87,23 +87,14 @@ Proof.
   red;intros. induction IN;try constructor;try easy. eapply LE. easy.
 Qed.
 
-Definition enabled (F: tctx -> Prop) (pt: local_path): Prop :=
-  match pt with
-    | cocons (g, l) xs => F g
-    | _                => False 
-  end.
+Definition to_path_prop {A:Type} (P:A -> Prop) (on_conil : Prop): (coseq (A*option label)-> Prop) :=
+    fun u=> match u with 
+            | conil => on_conil 
+            | cocons (g,_) _ => P g
+    end.
 
-Definition headRecv (p q: part) (pt: local_path): Prop :=
-  match pt with
-    | cocons (g, Some (lrecv a b (Some s) n)) xs => if Nat.eq_dec p a then if Nat.eq_dec q b then True else False else False
-    | _                                   => False 
-  end.
 
-Definition headSend (p q: part) (pt: local_path): Prop :=
-  match pt with
-    | cocons (g, Some (lsend a b (Some s) n)) xs => if Nat.eq_dec p a then if Nat.eq_dec q b then True else False else False
-    | _                                   => False 
-  end.
+
 
 Definition headComm (p q: part) (pt: local_path): Prop :=
   match pt with
@@ -111,14 +102,14 @@ Definition headComm (p q: part) (pt: local_path): Prop :=
     | _                          => False 
   end.
 
-Definition fair_path_local (pt: local_path): Prop :=
-  forall p q n, enabled (tctxRE (lcomm p q n)) pt ->  eventually (headComm p q) pt.
+Definition fair_path_local_inner (pt: local_path): Prop :=
+  forall p q n, to_path_prop (tctxRE (lcomm p q n)) False pt ->  eventually (headComm p q) pt.
 
-Definition fair_path := alwaysCG fair_path_local.
+Definition fair_path := alwaysCG fair_path_local_inner.
 
 Definition live_path_inner (pt: local_path) : Prop := forall p q s n, 
-(enabled (tctxRE (lsend p q (Some s) n)) pt -> eventually (headComm p q) pt) /\
-(enabled (tctxRE (lrecv p q (Some s) n)) pt -> eventually (headComm p q) pt).
+(to_path_prop (tctxRE (lsend p q (Some s) n)) False pt -> eventually (headComm p q) pt) /\
+(to_path_prop (tctxRE (lrecv p q (Some s) n)) False pt -> eventually (headComm p q) pt).
 Definition live_path := alwaysCG live_path_inner.
 
 Definition weak_safety (c: tctx ) :=
@@ -198,7 +189,7 @@ Definition tctxRtc := clos_refl_trans tctx tctxRcomm.
 
 
 Definition all_fair_live (g:tctx) := forall l xs,  
-  valid_local_path (cocons (g, l) xs) -> fair_path (cocons (g, l) xs) -> 
+  local_valid_pathC (cocons (g, l) xs) -> fair_path (cocons (g, l) xs) -> 
   live_path (cocons (g, l) xs).
 
 Definition liveCtx (g: tctx) := forall g',
@@ -220,15 +211,7 @@ Definition global_valid_pathC := valid_path_GC global_path_vcriteria.
 
 
 
-Definition global_comm_enabled p q n g := exists xs ys, 
-projectionC g p (ltt_send q xs)  /\ projectionC g q (ltt_recv p ys) /\
-onth n xs <>None.
-
-Definition enabled_global (P: gtt -> Prop) (xs: global_path) :=  
- match xs with
-    | cocons (g, l) xs => P g
-    | _                => False 
-  end.
+Definition global_comm_enabled p q n g := exists g', gttstepC g g' p q n.
 
 Definition headComm_global (p q: part) (pt: global_path): Prop :=
   match pt with
@@ -238,9 +221,8 @@ Definition headComm_global (p q: part) (pt: global_path): Prop :=
 
 Definition fair_path_inner_global (pt: global_path): Prop :=
   forall p q n, 
-  enabled_global (global_comm_enabled p q n) pt ->  
+  to_path_prop (global_comm_enabled p q n) False pt ->  
   eventually (headComm_global p q) pt.
-
 
 
 Definition fair_path_global := alwaysCG fair_path_inner_global.
@@ -250,14 +232,13 @@ Definition global_label_enabled l g:= match l with
         projectionC g p  (ltt_send q xs) /\ onth n xs=Some (s,g')
     | lrecv p q (Some s) n => exists xs g',
         projectionC g p  (ltt_recv q xs) /\ onth n xs=Some (s,g')
-    | lcomm p q n => exists xs ys, projectionC g p (ltt_send q xs)  /\ projectionC g q (ltt_recv p ys) /\
-    onth n xs <>None
+    | lcomm p q n => exists g', gttstepC g g' p q n
     | _ => False end.
     
 Definition live_path_inner_global (pt: global_path) : Prop := forall p q s n, 
-(enabled_global (global_label_enabled (lsend p q (Some s) n)) pt -> 
+(to_path_prop (global_label_enabled (lsend p q (Some s) n)) False pt -> 
 eventually (headComm_global p q) pt) /\
-(enabled_global (global_label_enabled (lrecv p q (Some s) n)) pt -> 
+(to_path_prop (global_label_enabled (lrecv p q (Some s) n)) False pt -> 
 eventually (headComm_global p q) pt).
 
 Definition live_path_global := alwaysCG live_path_inner_global.
@@ -271,79 +252,3 @@ Definition live_type_global (g: gtt) := forall g',
   gttstepRtc g g' -> all_fair_live_global g'.
 
 End global_path.
-
-
-
-Notation paired_path := (coseq (tctx*gtt*option label)) (only parsing).
-
-Definition paired_path_vcriteria x1 l (x2: (tctx*gtt))  :=
-    match (x1,l,x2) with 
-        | ((t1, g1), lcomm p q ell,(t2,g2)) => (gttstepC g1 g2 p q ell) 
-        /\ tctxR t1  (lcomm p q ell) t2
-        | _ =>False
-    end.
-
-Definition assoc_cond := fun u:paired_path => match u with 
-    | (cocons (a,b,_) xs) => assoc a b
-    | (conil) => True end.
-
-Definition paired_path_assoc_cond := alwaysCG assoc_cond.
-
-CoFixpoint proj1_paired_path (xs: paired_path) := match xs with 
-    | conil => conil
-    | cocons (t,g, c) xss => cocons (t,c) (proj1_paired_path xss) end.
-
-CoFixpoint proj2_paired_path (xs: paired_path) := match xs with 
-    | conil => conil
-    | cocons (t,g,c) xss => cocons (g,c) (proj2_paired_path xss) end.
-
-Definition paired_valid_pathC := valid_path_GC paired_path_vcriteria.
-
-Lemma valid_path_some_l_next_cons {A:Type}: forall (V: A -> label -> A -> Prop) a l xs,
-(valid_path_GC V) (cocons (a, Some l) xs) ->
-  exists y ys, xs=cocons y ys.
-Proof.
-  intros. pinversion H;try apply valid_path_mon;subst. inversion H;subst.
-  exists (x,l'), xs0. reflexivity.
-Qed.
-
-Lemma valid_path_none_next_nil {A:Type}: forall (V: A -> label -> A -> Prop) a xs,
-(valid_path_GC V) (cocons (a, None) xs) ->
-  xs=conil.
-Proof.
-  intros. pinversion H;try apply valid_path_mon;subst;easy.
-Qed.
-
-Lemma pair_valid_proj1_valid: forall xs, paired_valid_pathC xs -> (valid_local_path (proj1_paired_path xs)).
-Proof.
-    pcofix CIH.
-    intros.
-    destruct xs;
-    [
-    pfold;
-    rewrite coseq_eq; simpl; constructor|].
-
-    rewrite coseq_eq. destruct p as [[t g]  l].  simpl.
-    destruct l. 
-    {
-      eapply valid_path_some_l_next_cons in H0 as Hnc;destr_hyps;subst.
-      pfold.
-      pinversion H0;try apply valid_path_mon;subst.
-      
-      destruct x1 as [t' g'].
-      
-      rewrite (coseq_eq (proj1_paired_path _));simpl.
-      constructor.
-      right.     specialize (CIH (cocons (t',g',l') x0)) as CIH'.
-      rewrite (coseq_eq (proj1_paired_path _)) in CIH';simpl in CIH';eapply CIH';easy.
-
-      red in H5;destruct l;easy.
-      
-    }
-    {
-      pfold.
-      pinversion H0;try apply valid_path_mon;subst.
-      rewrite (coseq_eq (proj1_paired_path _)). simpl.
-      constructor.
-    }
-Qed.
