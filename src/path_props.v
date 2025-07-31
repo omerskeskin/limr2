@@ -73,12 +73,20 @@ Inductive eventually {A: Type} (F: coseq A -> Prop): coseq A -> Prop :=
   | evh: forall xs, F xs -> eventually F xs
   | evc: forall x xs, eventually F xs -> eventually F (cocons x xs).
 
-Definition eventualyP := @eventually (tctx*label).
-
 Inductive alwaysG {A: Type} (F: coseq A -> Prop) (R: coseq A -> Prop): coseq A -> Prop :=
   | alwn: F conil -> alwaysG F R conil
   | alwc: forall x xs, F (cocons x xs) -> R xs -> alwaysG F R (cocons x xs).
 
+Inductive until {A:Type} (F: coseq A -> Prop) (G: coseq A -> Prop) : coseq A -> Prop:= 
+  | untilh : forall xs, G xs -> until F G xs
+  | untilc: forall x xs, F (cocons x xs) -> until F G xs -> until F G (cocons x xs).
+  
+Inductive weak_untilI {A:Type}  (F: coseq A -> Prop) (G: coseq A -> Prop) (R:coseq A -> Prop): coseq A -> Prop:= 
+  | wuntilh : forall xs, G xs -> weak_untilI F G R xs
+  | wuntilc: forall x xs, F (cocons x xs) -> R xs -> weak_untilI F G R (cocons x xs)
+  | wuntiln : F conil -> weak_untilI F G R conil.
+  
+Definition weak_untilC {A:Type} (F: coseq A -> Prop) G := paco1 (weak_untilI F G) bot1.
 
 Definition alwaysCG {A:Type} (F: coseq A -> Prop) := paco1 (alwaysG F) bot1.
 
@@ -86,6 +94,20 @@ Lemma always_mon {A:Type}: forall (F: coseq A -> Prop), monotone1 (alwaysG F).
 Proof.
   red;intros. induction IN;try constructor;try easy. eapply LE. easy.
 Qed.
+
+Lemma weak_until_mon {A:Type}: forall (F: coseq A -> Prop) G, monotone1 (weak_untilI F G).
+Proof.
+  red;intros. induction IN. try constructor;try easy. constructor 2;try easy. eapply LE. easy.
+  constructor 3. easy.
+Qed.
+
+Hint Resolve weak_until_mon : paco.
+
+Hint Resolve always_mon : paco.
+
+Definition next {A:Type} P (xs:coseq A) := match xs with 
+            | conil => False
+            | cocons x xs => P xs end.
 
 Definition to_path_prop {A:Type} (P:A -> Prop) (on_conil : Prop): (coseq (A*option label)-> Prop) :=
     fun u=> match u with 
