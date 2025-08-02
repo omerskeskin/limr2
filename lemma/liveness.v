@@ -1213,6 +1213,44 @@ Proof.
     }
 Qed. 
 
+Inductive is_suffix {A:Type}: coseq A -> coseq A -> Prop :=
+    | suffix_refl : forall xs, is_suffix xs xs
+    | suffix_cons : forall a xs ys, is_suffix xs ys -> is_suffix xs (cocons a ys).
+
+Definition eventually_P_iff_P_suffix {A:Type} (P: coseq A -> Prop): forall xs, 
+eventually P xs <-> exists ys,
+is_suffix ys xs /\ P ys.
+Proof.
+    intros;split;intros.
+    induction H.
+    exists xs;split;[constructor | easy].
+    destr_hyps. exists x0. split;[constructor | ];crush.
+    destruct H as [ys [Hsuf Hp]].
+    induction Hsuf;
+    [constructor 1 | constructor 2];crush.
+Qed.
+
+Lemma suffix_trans {A:Type}: forall (xs: coseq A) ys zs,is_suffix xs ys -> is_suffix zs xs -> is_suffix zs ys.
+Proof.
+    intros.
+    
+    generalize dependent zs.
+    induction H.
+    intros;easy.
+
+    intros. constructor. eapply IHis_suffix. easy.
+Qed.
+
+Lemma eventually_idemp {A:Type}: forall (P : coseq A -> Prop) xs, 
+eventually P xs <-> eventually (eventually P) xs.
+Proof.
+    split;intros.
+    constructor. easy.
+    induction H;try easy.
+
+    constructor 2. easy.
+Qed.
+
 
 Lemma assoc_live_helper : forall  p g ls lx q Tp l pt_tl, fair_path_global (cocons (g,l) pt_tl) -> 
 global_valid_pathC (cocons (g,l) pt_tl) ->  wfg_global_path (cocons (g,l) pt_tl) ->
@@ -1221,13 +1259,14 @@ isgPartsC p g -> isgPartsC q g -> projectionC g p Tp ->
 (typ_p_recv_ltth ls lx q Tp -> eventually (head_proj_is_recv p q) (cocons (g,l) pt_tl)).
 Proof.
     intros * Hfair Hvalid Hwfgp Hispartsp Hispartsq Hprojp.
+    
+    assert (Hwfg : wfgC g). pinversion Hwfgp;subst;red in H1;tauto.
+    assert (Hprojable : projectableA g). pinversion Hwfgp;subst;red in H1;tauto.
     eapply balanced_to_tree in Hispartsp as Hgraftp;try easy.
     destruct Hgraftp as [ctx_p [gs_p [?Hgraftp [?Hgraftp [?Hgraftp ?Hgraftp ]]]]].
     eapply typ_gtth_means_wfgtth in Hgraftp as Hwfgth.
     assert (Hgraftp_p : typ_p_gtth gs_p ctx_p p g)
     by (red;crush). 
-    assert (Hwfg : wfgC g). pinversion Hwfgp;subst;red in H1;tauto.
-    assert (Hprojable : projectableA g). pinversion Hwfgp;subst;red in H1;tauto.
     generalize dependent gs_p.
     generalize dependent g.
     generalize dependent  pt_tl.
@@ -1237,6 +1276,219 @@ Proof.
 
     revert Hwfgth.
     revert lx ls Tp.
+    induction ctx_p using gtth_ind_by_height.
+    {
+        intros lx. revert ctx_p H.
+        induction lx using ltth_ind_ref.
+        {
+            intros;
+            split;intros Htypp_send;
+            red in Htypp_send;
+            destruct Htypp_send as [?Htypp_send [?Htypp_send ?Htypp_send]];
+            inversion Htypp_send;subst;
+            specialize (Htypp_send1 n);
+            assert (used_in_ltth n (ltth_hol n)) by constructor;
+            specialize (Htypp_send1 H0); destr_hyps; rewrite H1 in H2; inversion H2;subst;
+            constructor 1; simpl; exists x; easy.   
+        }
+        {
+            rename H into IH2.
+            intros;
+            split;
+            intros Htypp.
+            pose proof Htypp as Htypp'.
+            
+            destruct Htypp as [?Htypp [?Htypp ?Htypp]].
+            rename q into r, q0 into q.
+            inversion Htypp;subst;rename H4 into Htypp_cont. 
+            (*graft r*)
+            assert (Hispartsr:isgPartsC r g) by (
+                eapply proj_contains_q_implies_part_send in Hprojp;easy).
+            eapply balanced_to_tree in Hispartsr as Hgraftr; try easy.
+            destruct Hgraftr as [ctx_r [gs_r [?Htypr [?Htypr [?Htypr ?Htypr]]]]];try easy.
+            assert(Htyp_r : typ_p_gtth gs_r ctx_r r g) by (red;crush).
+            specialize (Hprojable r) as Hprojr;destruct Hprojr as [Tr Hprojr].
+
+            eapply multigrafting_lemma with (p:=p) (q:=r) (xs:=ys) (Tq:=Tr) in Hwfg as Hmg;try exact Htyp_r;
+            try exact Hgraftp_p;try easy.
+
+            assert(Hevqp : eventually (head_proj_is_recv r p) (cocons (g, l) pt_tl)).
+            {
+                destruct Hmg;
+                [| 
+                eapply multigrafting_lemma_1 with (p:=p) (q:=r) (Tq:=Tr) in Hwfg as Htr;try exact Hprojp;try exact Hgraftp_p;
+                try exact Htyp_r;try easy;
+                destr_hyps;subst; constructor 1;simpl;exists x;easy]. 
+                eapply local_types_corr_send_and_projH with (q:=r) (xs:=ys) (Tq:=Tr) in Hgraftp_p as Hlgraft;
+                try easy.
+                destruct Hlgraft as [lsr [lxr [?Hlgraft [?Hlgraft ?Hlgraft]]]].
+                assert(Hwfgthr : wfgtth ctx_r) by (eapply typ_gtth_means_wfgtth in Htypr;easy).
+                
+                eapply H with (gh':= ctx_r) (gs_p:=gs_r) (Tp:=Tr) (ls:=lsr) (lx:=lxr);try easy.
+                eapply proper_prefix_height_le;try easy.
+                red. repeat split;try tauto. 
+                Search ishlParts.
+                eapply projectionH_ishparts;try exact Hlgraft0;try easy.
+
+                intros.
+                eapply typ_ltth_fills_holes in H1;try exact Hlgraft. destr_hyps.
+                red in Hlgraft1.
+                eapply Forall2_prop_l in Hlgraft1;try exact H1;tac_sanitize.
+                
+                eapply restricted_grafting_send in Hgraftp as Hrg;try exact Hprojp;try easy. 
+                eapply Forall_prop in Hrg;try exact H3;tac_sanitize.
+                pinversion H5;try apply proj_mon;try easy;subst.
+                {
+                    subtac_triv_isparts_false. 
+                    eapply wfg_list_by_grafting in Hgraftp;try easy. destr_hyps.
+                    eapply Forall_prop in H6;try exact H3;tac_sanitize;try easy.
+                }
+                exists ys0;easy.
+                
+            }
+            assert(Headpr: head_proj_is_send p r (cocons (g, l) pt_tl)) by (red;exists ys;easy).
+            
+            assert (Huse_IH: exists n s' lh' Tp', 
+            onth n xs = Some (s',lh') /\ eventually (fun u =>
+                match u with cocons (g,l) xs => 
+                projectionC g p Tp' /\ typ_p_send_ltth ls lh' 
+                q Tp'
+                | _ => False 
+                end
+            ) (cocons (g,l) pt_tl)).
+            {
+                admit.   
+            }
+            (*massage the goal so it's cocons (g',l) pt_tl (NOT cocons (g,l))*)
+            destruct Huse_IH as [n [s' [lh' [Tp' [Honth Hev2]]]]].
+            rewrite eventually_P_iff_P_suffix in Hev2.
+            destruct Hev2 as [pt2 [Hsuf2 Hm]].
+            enough (eventually (head_proj_is_send p q) pt2).
+            {
+                rewrite eventually_idemp.
+                rewrite eventually_P_iff_P_suffix. exists pt2;try tauto.   
+            }
+            destruct pt2;try easy.
+            destruct p0;try easy.
+            eapply Forall_prop in IH2;try exact Honth;tac_sanitize.
+            eapply H3 with (gs_p:=gs_p) (Tp:=Tp');try easy.
+            
+            eapply no_trans_until_heads_match with (p:=p) (q:=r) in Hwfgp as Hnt;try easy.
+            eapply weak_untilC_to_until in Hnt;try easy.
+            eapply no_trans_implies_same_proj in Hnt;try easy.
+            eapply matching_head_proj_to_comm in Hnt;try easy.
+            
+
+
+            (*
+Section contexts_mutual_ind.
+
+Variable (P: gtth -> ltth -> Prop).
+
+Hypothesis Hsend : forall gx q xs, 
+Forall (fun u => u=None \/ exists s g, u= Some (s,g) /\ P gx g) xs -> P gx (ltth_send q xs).
+
+Hypothesis Hrecv : forall gx q xs, 
+Forall (fun u => u=None \/ exists s g, u= Some (s,g) /\ P gx g) xs -> P gx (ltth_recv q xs).
+Hypothesis Hsend : forall q xs, Forall (fun u => u=None \/ exists s g, u= Some (s,g) /\ P g) xs -> P (ltth_send q xs).
+Hypothesis Hrecv : forall q xs, Forall (fun u => u=None \/ 
+exists s g, u= Some (s,g) /\ P g) xs -> P (ltth_recv q xs)
+*)
+
+
+Lemma assoc_live_helper : forall  p g ls lx q Tp l pt_tl, fair_path_global (cocons (g,l) pt_tl) -> 
+global_valid_pathC (cocons (g,l) pt_tl) ->  wfg_global_path (cocons (g,l) pt_tl) ->
+isgPartsC p g -> isgPartsC q g -> projectionC g p Tp ->
+(typ_p_send_ltth ls lx q Tp -> eventually (head_proj_is_send p q) (cocons (g,l) pt_tl)) /\ 
+(typ_p_recv_ltth ls lx q Tp -> eventually (head_proj_is_recv p q) (cocons (g,l) pt_tl)).
+Proof.
+    intros * Hfair Hvalid Hwfgp Hispartsp Hispartsq Hprojp.
+    
+    assert (Hwfg : wfgC g). pinversion Hwfgp;subst;red in H1;tauto.
+    assert (Hprojable : projectableA g). pinversion Hwfgp;subst;red in H1;tauto.
+    eapply balanced_to_tree in Hispartsp as Hgraftp;try easy.
+    destruct Hgraftp as [ctx_p [gs_p [?Hgraftp [?Hgraftp [?Hgraftp ?Hgraftp ]]]]].
+    eapply typ_gtth_means_wfgtth in Hgraftp as Hwfgth.
+    assert (Hgraftp_p : typ_p_gtth gs_p ctx_p p g)
+    by (red;crush). 
+    generalize dependent gs_p.
+    generalize dependent g.
+    generalize dependent  pt_tl.
+    generalize dependent l.
+    generalize dependent p.
+    generalize dependent q.
+
+    revert Hwfgth.
+    revert ctx_p ls Tp.
+    induction lx using ltth_ind_ref.
+    {
+        intros;
+            split;intros Htypp_send;
+            red in Htypp_send;
+            destruct Htypp_send as [?Htypp_send [?Htypp_send ?Htypp_send]];
+            inversion Htypp_send;subst;
+            specialize (Htypp_send1 n);
+            assert (used_in_ltth n (ltth_hol n)) by constructor;
+            specialize (Htypp_send1 H); destr_hyps; rewrite H0 in H1; inversion H1;subst;
+            constructor 1; simpl; exists x; easy.
+    }
+    {
+        intros ctx_p.
+        revert q xs H.
+        induction ctx_p using gtth_ind_by_height.
+        intros.
+        rename H0 into IH2.
+        intros;split;intros Htypp.   
+        pose proof Htypp as Htypp'.
+            
+        destruct Htypp as [?Htypp [?Htypp ?Htypp]].
+        rename q into r, q0 into q.
+        inversion Htypp;subst;rename H4 into Htypp_cont. 
+            (*graft r*)
+        assert (Hispartsr:isgPartsC r g) by (
+        eapply proj_contains_q_implies_part_send in Hprojp;easy).
+        eapply balanced_to_tree in Hispartsr as Hgraftr; try easy.
+        destruct Hgraftr as [ctx_r [gs_r [?Htypr [?Htypr [?Htypr ?Htypr]]]]];try easy.
+        assert(Htyp_r : typ_p_gtth gs_r ctx_r r g) by (red;crush).
+        specialize (Hprojable r) as Hprojr;destruct Hprojr as [Tr Hprojr].
+
+        eapply multigrafting_lemma with (p:=p) (q:=r) (xs:=ys) (Tq:=Tr) in Hwfg as Hmg;try exact Htyp_r;
+        try exact Hgraftp_p;try easy.
+        assert(Hevqp : eventually (head_proj_is_recv r p) (cocons (g, l) pt_tl)).
+            {
+                destruct Hmg;
+                [| 
+                eapply multigrafting_lemma_1 with (p:=p) (q:=r) (Tq:=Tr) in Hwfg as Htr;try exact Hprojp;try exact Hgraftp_p;
+                try exact Htyp_r;try easy;
+                destr_hyps;subst; constructor 1;simpl;exists x;easy]. 
+                eapply local_types_corr_send_and_projH with (q:=r) (xs:=ys) (Tq:=Tr) in Hgraftp_p as Hlgraft;
+                try easy.
+                destruct Hlgraft as [lsr [lxr [?Hlgraft [?Hlgraft ?Hlgraft]]]].
+                assert(Hwfgthr : wfgtth ctx_r) by (eapply typ_gtth_means_wfgtth in Htypr;easy).
+                
+                eapply H with (gh':= ctx_r) (gs_p:=gs_r) (ls:=lsr)(Tp:=Tr) (g:=lxr);try easy.
+                eapply proper_prefix_height_le;try easy.
+                red. repeat split;try tauto. 
+                Search ishlParts.
+                eapply projectionH_ishparts;try exact Hlgraft0;try easy.
+
+                intros.
+                eapply typ_ltth_fills_holes in H1;try exact Hlgraft. destr_hyps.
+                red in Hlgraft1.
+                eapply Forall2_prop_l in Hlgraft1;try exact H1;tac_sanitize.
+                
+                eapply restricted_grafting_send in Hgraftp as Hrg;try exact Hprojp;try easy. 
+                eapply Forall_prop in Hrg;try exact H3;tac_sanitize.
+                pinversion H5;try apply proj_mon;try easy;subst.
+                {
+                    subtac_triv_isparts_false. 
+                    eapply wfg_list_by_grafting in Hgraftp;try easy. destr_hyps.
+                    eapply Forall_prop in H6;try exact H3;tac_sanitize;try easy.
+                }
+                exists ys0;easy.
+                
+            }
+    }
     induction ctx_p using gtth_ind_by_height.
     {
         induction lx using ltth_ind_ref.
@@ -1312,7 +1564,32 @@ Proof.
             eapply no_trans_implies_same_proj in Hnt;try easy.
             eapply matching_head_proj_to_comm in Hnt;try easy.
             
-            assert (exists ltth)
+            assert (Huse_IH: exists n s' lh' Tp', 
+            onth n xs = Some (s',lh') /\ eventually (fun u =>
+                match u with cocons (g,l) xs => 
+                projectionC g p Tp' /\ typ_p_send_ltth ls lh' 
+                q Tp'
+                | _ => False 
+                end
+            ) (cocons (g,l) pt_tl)).
+            {
+                admit.   
+            }
+            (*massage the goal so it's cocons (g',l) pt_tl (NOT cocons (g,l))*)
+            destruct Huse_IH as [n [s' [lh' [Tp' [Honth Hev2]]]]].
+            rewrite eventually_P_iff_P_suffix in Hev2.
+            destruct Hev2 as [pt2 [Hsuf2 Hm]].
+            enough (eventually (head_proj_is_send p q) pt2).
+            {
+                rewrite eventually_invol.
+                rewrite eventually_P_iff_P_suffix. exists pt2;try tauto.   
+            }
+            destruct pt2;try easy.
+            destruct p0;try easy.
+            eapply Forall_prop in IH2;try exact Honth;tac_sanitize.
+            eapply H3 with (gs_p:=gs_p) (Tp:=Tp');try easy.
+            destr_hyps.
+            
             (*prove [always (a -> ev b) xs] with an assertion 
             or lemma with forall xs : fair xs -> valid xs -> ..*)
             Lemma always_event_trans : 
