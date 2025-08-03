@@ -793,7 +793,11 @@ Proof.
     eapply tctx_wf_after_red_comm;try exact H5;try easy.
 Qed.
 
-
+Lemma eventually_and {A:Type} P Q : forall (xs:coseq A),
+            eventually ( P /1\ Q) xs <-> eventually (Q /1\ P) xs.
+            Proof. split;intros; induction H; 
+            try solve [constructor; easy | constructor 2; easy].  Qed.
+            
 Lemma path_assoc_eventually_enabled : forall xs ys P Q, wfg_global_path ys -> wf_local_path xs -> path_assocC xs ys -> 
 conj_props P Q -> eventually (to_path_prop  P False) xs -> eventually (to_path_prop  Q False) ys.
 Proof.
@@ -1438,13 +1442,16 @@ Proof.
 Qed.
 
 
-Lemma no_trans_implies_same_proj_send : forall xs p q,
+Definition head_proj_is p lt (xs:global_path) := match xs with | conil => False
+    | cocons (g,l) xs => projectionC g p lt end.
+
+Lemma no_trans_implies_same_proj_send : forall xs p q lcs,
 fair_path_global xs ->
 global_valid_pathC xs -> 
 wfg_global_path xs -> 
-head_proj_is_send p q xs ->
+head_proj_is p (ltt_send q lcs) xs ->
 until (head_trans_not_involving_p p) (head_proj_is_recv q p) xs ->
-eventually ( head_proj_is_send p q /1\ head_proj_is_recv q p) xs.
+eventually ( head_proj_is p (ltt_send q lcs) /1\ head_proj_is_recv q p) xs.
 Proof.
     intros * Hfair Hvalid Hwfgp Hprojp Huntil.
 
@@ -1456,11 +1463,14 @@ Proof.
         constructor 2.
         eapply IHHuntil;try solve subtac_tail_solve;
         pinversion Hvalid;try apply valid_path_mon;subst; try solve [easy |pfold; constructor].
+        
         red in Hprojp.
         inversion Huntil;subst;tauto.
+
         destruct l;red in H3;try easy.
         rename y into g, x0 into g'.
-        red in H;red in Hprojp. destruct Hprojp as [xsp Hprojp].
+        red in H;red in Hprojp. 
+        
         simpl in H.
         destruct (Nat.eq_dec n p);
         destruct (Nat.eq_dec n0 p);subst;try tauto.
@@ -1470,18 +1480,18 @@ Proof.
         assert(Hprojable : projectableA g) 
         by (pinversion Hwfgp;subst; red in H4;tauto).
         eapply typ_after_step_r_redux in H3;try exact Hprojp;try easy.
-        red. destr_hyps. exists xsp. subst. easy.
+        red. destr_hyps. subst. easy.
     }
 Qed.
 
 
-Lemma no_trans_implies_same_proj_recv : forall xs p q,
+Lemma no_trans_implies_same_proj_recv : forall xs p lcs q,
 fair_path_global xs ->
 global_valid_pathC xs -> 
 wfg_global_path xs -> 
-head_proj_is_recv p q xs ->
+head_proj_is p (ltt_recv q lcs) xs ->
 until (head_trans_not_involving_p p) (head_proj_is_send q p) xs ->
-eventually ( head_proj_is_recv p q /1\ head_proj_is_send q p) xs.
+eventually ( head_proj_is p (ltt_recv q lcs) /1\ head_proj_is_send q p) xs.
 Proof.
     intros * Hfair Hvalid Hwfgp Hprojp Huntil.
 
@@ -1497,7 +1507,7 @@ Proof.
         inversion Huntil;subst;tauto.
         destruct l;red in H3;try easy.
         rename y into g, x0 into g'.
-        red in H;red in Hprojp. destruct Hprojp as [xsp Hprojp].
+        red in H;red in Hprojp. 
         simpl in H.
         destruct (Nat.eq_dec n p);
         destruct (Nat.eq_dec n0 p);subst;try tauto.
@@ -1507,7 +1517,7 @@ Proof.
         assert(Hprojable : projectableA g) 
         by (pinversion Hwfgp;subst; red in H4;tauto).
         eapply typ_after_step_r_redux in H3;try exact Hprojp;try easy.
-        red. destr_hyps. exists xsp. subst. easy.
+        red. destr_hyps.  subst. easy.
     }
 Qed.
 
@@ -1667,7 +1677,7 @@ Definition head_proj_eventually_takes_step p (xs : global_path) :=
     (fun u => match u with 
         | cocons (g,l) xs' => projectionC g p Tp'
         | _ => False
-    end) (cocons (g,l) xs')) /\  
+    end) xs') /\  
     (forall q lcs, Tp= (ltt_recv q lcs) ->
     exists k s Tp', onth k lcs=Some (s,Tp') /\ eventually 
     (fun u => match u with 
@@ -1849,7 +1859,11 @@ alwaysCG (head_proj_eventually_takes_step p) xs.
 Proof.
     intros p xs.  
     intros * Hfair Hvalid Hwfgp.
-    destruct xs. pfold; constructor; easy.
+    eapply always_P_iff_P_suffix.
+    rename xs into xs_parent.
+    intros xs Hsufxs.
+
+    destruct xs.  constructor; easy.
     
     destruct p0 as [g l].
     
@@ -1926,16 +1940,21 @@ Proof.
                 }
                 exists ys;easy.
             }
-            assert(Headpr: head_proj_is_recv p q (cocons (g, l) xs)) by (red;exists lcs;easy).
+            pcofix CIH.
+            pfold. constructor. admit.
 
-            Check no_trans_until_heads_match_recv.
+            destruct xs. left. pfold. constructor. easy.
+
+            right. destruct p0. eapply CIH.
+            assert(Headpr: head_proj_is_recv p q (cocons (g, l) xs)) by (red;exists lcs;easy).
+            
+
             eapply no_trans_until_heads_match_recv with (p:=p) (q:=q) in Hwfgp as Hnt;try easy.
             eapply weak_untilC_to_until in Hnt;try easy.
 
-            eapply no_trans_implies_same_proj_recv in Hnt;try easy.
-            Lemma eventually_and {A:Type} P Q : forall (xs:coseq A),
-            eventually ( P /1\ Q) xs <-> eventually (Q /1\ P) xs.
-Proof. split;intros; induction H; try solve [constructor; easy | constructor 2; easy].  Qed.
+            eapply no_trans_implies_same_proj_recv with (lcs:=lcs) in Hnt;try easy.
+
+            
             rewrite eventually_and in Hnt.
             eapply matching_head_proj_to_comm in Hnt;try easy.
 
@@ -1952,7 +1971,18 @@ Proof. split;intros; induction H; try solve [constructor; easy | constructor 2; 
 
             red;intros;split;intros;subst;
             eapply proj_inj in H0; try exact Hprojp;try easy; eapply eq_sym in H0; inversion H0;subst;clear H0.
-            inversion Hsuf;subst. admit. 
+            set (xs_suf:= cocons (g0, Some (lcomm q p ell)) xsuf).
+            assert(Hvalid_suf: global_valid_pathC xs_suf).
+            {
+                eapply valid_suffix_valid_global;try exact Hvalid. unfold xs_suf. easy.
+            }
+            pinversion Hvalid_suf;try apply valid_path_mon;try easy;subst. red in H4.
+            clear H2. rename H4 into Hstep, x into g1.
+            Search gttstepC projectionC.
+            eapply typ_after_step_3_helper.
+            Search "matching".
+            exists ell, sint, ltt_end. split. admit.
+            inversion Hsuf. admit. subst. rewrite eventually_P_iff_P_suffix. exists xsuf. 
         }                
 
             
