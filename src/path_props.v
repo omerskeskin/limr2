@@ -120,7 +120,8 @@ Definition to_path_prop {A:Type} (P:A -> Prop) (on_conil : Prop): (coseq (A*opti
 
 Definition headComm (p q: part) (pt: local_path): Prop :=
   match pt with
-    | cocons (g, Some (lcomm a b n)) xs => if Nat.eqb p a then if Nat.eqb q b then True else False else False
+    | cocons (g, Some (lcomm a b n)) xs => 
+    p=a /\ q=b
     | _                          => False 
   end.
 
@@ -238,8 +239,7 @@ Definition global_comm_enabled p q n g := exists g', gttstepC g g' p q n.
 Definition headComm_global (p q: part) (pt: global_path): Prop :=
   match pt with
     | cocons (g, Some (lcomm a b n)) xs =>
-     
-    if Nat.eqb p a then if Nat.eqb q b then True else False else False
+     p=a /\ q=b
     | _                          => False 
   end.
 
