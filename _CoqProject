@@ -33,6 +33,8 @@ lemma/projection.v
 lemma/main_helper.v
 lemma/main.v
 lemma/soundness.v
+lemma/path_assoc.v
+lemma/multigrafting.v
 lemma/completeness.v
 lemma/liveness_helpers.v
 cpdtlib/CpdtTactics.v

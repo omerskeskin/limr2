@@ -3,1175 +3,14 @@ From Paco Require Import paco pacotac.
 From SST Require Import src.expr src.header src.local CpdtTactics src.lcontext.
 From SST Require Import src.global src.projection src.part  src.balanced src.merge src.wfltt src.gttreeh.
 From SST Require Import lemma.projection lemma.projection_helper lemma.decidable lemma.liveness_helpers lemma.soundness.
-From SST Require Import src.step lemma.step src.assoc lemma.completeness src.ltth src.path_props.
+From SST Require Import src.step lemma.step src.assoc lemma.completeness lemma.path_assoc lemma.multigrafting src.ltth src.path_props.
 Require Import List String Coq.Arith.PeanoNat Morphisms Relations Setoid.
 Require Import Coq.Program.Equality.
-Require Import Coq.Init.Logic.
+Require Import Coq.Init.Logic Lia.
 From Coq Require Import IndefiniteDescription.
-
-From Equations Require Import Equations.
 
 
 Import ListNotations.
-
-Inductive gtth_eq: gtth -> gtth -> Prop :=
-    | gtth_eq_hol : forall n m, gtth_eq (gtth_hol n) (gtth_hol m)
-    | gtth_eq_send : forall xs ys p q , 
-    Forall2 (fun u v => (u=None /\ v=None) \/ (exists s g1 g2, u=Some (s,g1) /\ v=Some (s,g2) /\ gtth_eq g1 g2)) 
-    xs ys ->
-    gtth_eq (gtth_send p q xs) (gtth_send p q ys).
-
-
-Lemma projectionH_ishparts: forall gs gx r p ls lx, 
-wfgtth gx ->
-(ishParts p gx -> False) -> projectionH gx gs r lx ls ->
-(ishlParts p lx ->False).
-Proof.
-    intros *. revert gs r p ls lx. generalize dependent gx.
-    induction gx using gtth_ind_ref.
-    {
-        intros. inversion H1;subst;inversion H2.
-    }
-    {
-        intros * Hwfg Hishparts Hproj Hishlparts.
-        inversion Hproj;subst.
-        {
-            assert(Hslist: SList xs) by (inversion Hwfg;try easy).
-            inversion Hishlparts;subst;[exfalso;apply Hishparts;constructor |].
-            eapply Forall2_prop_l in H8;try exact H4;tac_sanitize.
-            eapply Forall_prop in H;try exact H1;tac_sanitize.
-            eapply H0 with (p:=p0);try exact H6;try easy.
-            subtac_wfgth_by_onth. subtac_ishparts_by_onth.
-        }
-        {
-            
-            assert(Hslist: SList xs) by (inversion Hwfg;try easy).
-            inversion Hishlparts;subst;[exfalso;apply Hishparts;constructor |].
-            eapply Forall2_prop_l in H8;try exact H4;tac_sanitize.
-            eapply Forall_prop in H;try exact H1;tac_sanitize.
-            eapply H0 with (p:=p0);try exact H6;try easy.
-            subtac_wfgth_by_onth. subtac_ishparts_by_onth.
-        }
-        {
-            eapply Forall2_prop_l in H6;try exact H11;tac_sanitize.
-            
-            eapply Forall_prop in H;try exact H1;tac_sanitize.
-            eapply H0 with (p:=p0);try exact H6;try easy.
-            subtac_wfgth_by_onth.
-            subtac_ishparts_by_onth.   
-        }   
-    }
-Qed.
-
-Lemma proj_contains_q_implies_part_send : forall g p q xs,
-wfgC g -> projectableA g ->
-projectionC g p (ltt_send q xs) ->
-
-isgPartsC p g/\ isgPartsC q g.
-Proof.
-    intros * Hwfg Hprojable Hproj.
-    assert(Hispartsp : isgPartsC p g ) by
-    (eapply projection_implies_part_send;try exact Hproj).
-    eapply balanced_to_tree in Hispartsp as Hss;try exact Hwfg;destr_hyps.
-    eapply restricted_grafting_send in H1;try exact H;try exact Hproj;try easy.
-    split. eapply projection_implies_part_send;try exact Hproj.
-    Search isgPartsC gttstepRtc.
-    eapply   typ_gtth_means_slist_gs in H as ?Ht;try easy; try eapply typ_gtth_means_wfgtth;try exact H.
-    destr_hyps.
-    eapply gttstep_reflects_part with (g':=x2);try easy.
-    eapply Forall_prop in H1;try exact H3;destruct H1;try easy;destr_hyps;inversion H1;subst.
-    eapply wfg_list_by_grafting in H;try easy;destr_hyps.
-    red in H4. eapply Forall_prop in H4;try exact H3;tac_sanitize.
-    apply decidable_helper.triv_pt_q;easy.
-    eapply grafting_means_path;try exact H;try exact H3;easy.
-Qed.
-
-
-Lemma proj_contains_q_implies_part_recv : forall g p q xs,
-wfgC g -> projectableA g ->
-projectionC g p (ltt_recv q xs) ->
-
-isgPartsC p g/\ isgPartsC q g.
-Proof.
-    intros * Hwfg Hprojable Hproj.
-    assert(Hispartsp : isgPartsC p g ) by
-    (eapply projection_implies_part_recv;try exact Hproj).
-    eapply balanced_to_tree in Hispartsp as Hss;try exact Hwfg;destr_hyps.
-    eapply restricted_grafting_recv in H1;try exact H;try exact Hproj;try easy.
-    split;try easy.
-    Search isgPartsC gttstepRtc.
-    eapply   typ_gtth_means_slist_gs in H as ?Ht;try easy; try eapply typ_gtth_means_wfgtth;try exact H.
-    destr_hyps.
-    eapply gttstep_reflects_part with (g':=x2);try easy.
-    eapply Forall_prop in H1;try exact H3;destruct H1;try easy;destr_hyps;inversion H1;subst.
-    eapply wfg_list_by_grafting in H;try easy;destr_hyps.
-    red in H4. eapply Forall_prop in H4;try exact H3;tac_sanitize.
-    apply decidable_helper.triv_pt_p;easy.
-    eapply grafting_means_path;try exact H;try exact H3;easy.
-Qed.
-
-Lemma multigrafting_lemma_1_send : forall  ctx_q p q g xs Tq gs_p gs_q ctx_p ,
-wfgC g -> projectableA g -> projectionC g p (ltt_send q xs) ->
-projectionC g q Tq -> typ_p_gtth gs_p ctx_p p g -> 
-usedCtx gs_p ctx_p ->
-typ_p_gtth gs_q ctx_q q g ->
-usedCtx gs_q ctx_q -> gtth_eq ctx_p ctx_q -> exists ys, Tq =ltt_recv p ys.
-Proof.
-    induction ctx_q using gtth_ind_ref.
-    {
-        intros * Hwfg Hprojable Hprojp Hprojq Htypp Husedp Htypq Husedq Hgttheq.
-        inversion Hgttheq;subst.
-        destruct Htypp as [?Htypp [?Htypp ?Htypp]].
-        destruct Htypq as [?Htypq [?Htypq ?Htypq]].
-        inversion Htypp;inversion Htypq;subst.
-        eapply restricted_grafting_send in Htypp;try exact Hprojp;try easy.
-        eapply Forall_prop in Htypp;try exact H1;tac_sanitize.
-        pinversion Hprojq;try apply proj_mon;subst;
-        [
-        exfalso;apply H;apply decidable_helper.triv_pt_q |
-        exists ys |
-        eapply wfgC_triv in Hwfg|
-        ];easy.
-    }
-    {
-        
-        intros * Hwfg Hprojable Hprojp Hprojq Htypp Husedp Htypq Husedq Hgttheq.
-        Search projectionC isgPartsC ltt_send.
-        assert (Hispartsp : isgPartsC p0 g) by (eapply proj_contains_q_implies_part_send in Hprojp;try easy).
-        assert (Hispartsq : isgPartsC q0 g) by (eapply proj_contains_q_implies_part_send in Hprojp;try easy).
-        
-        inversion Hgttheq;subst.
-        destruct Htypp as [?Htypp [?Htypp ?Htypp]].
-        destruct Htypq as [?Htypq [?Htypq ?Htypq]].
-        rename H2 into Hgtth_eqfa2, xs into xsq, xs1 into xsp.
-        
-        eapply restricted_grafting_send in Htypp as Hrg;try exact Hprojp;try easy.
-        pinversion Hprojq;try apply proj_mon;subst;try easy.
-        {
-            inversion Htypq;subst.
-            exfalso;apply Htypq0;apply ha_sendq.   
-        }
-        {
-            inversion Htypq;subst. 
-            exfalso;apply Htypq0;apply ha_sendp.     
-        }
-        {
-            inversion Htypq;subst.
-            eapply merge_slist in H5 as Hmergeslist.
-            eapply slist_implies_some in Hmergeslist;destr_hyps.
-            eapply Forall2_prop_l in H4;try exact H6;tac_sanitize.
-            eapply Forall2_prop_l in H14;try exact H7;tac_sanitize.
-            eapply Forall_prop in H;try exact H8;tac_sanitize.
-            eapply Forall2_prop_l in Hgtth_eqfa2;try exact H8;tac_sanitize.
-            eapply merge_inv_ss in H6;try exact H5;try easy;subst.
-            destruct H10;try easy.
-            inversion Husedq;subst.
-            inversion Husedp;subst.
-            eapply Forall2_prop_l in H17;try exact H8;tac_sanitize.
-            eapply Forall2_prop_l in H19;try exact H11;tac_sanitize.
-            rename x1 into gs_q', x3 into gs_p', x4 into ghq, x into k,
-            x8 into ghp, x7 into s, x6 into g'.
-            eapply mergeCtx_onth_subset in H10;try exact H15.
-            eapply mergeCtx_onth_subset in H13;try exact H16.
-            eapply H4 with (p:=p0) (xs:=xs0) (ctx_p:=ghp) (gs_p:=gs_p') (gs_q:=gs_q') in H;try easy.
-            subtac_wfg_by_onth. subtac_projable_by_onth.
-            {
-                pinversion Hprojp;subst;try apply proj_mon.   
-                exfalso;apply Htypq0;apply ha_sendq.
-
-                eapply Forall2_prop_r in H27;try exact H7;tac_sanitize.
-                destruct H25;try easy.
-                eapply merge_inv_ss in H28;try exact H20;subst;easy.
-            }
-            {
-                red;repeat split.   
-                inversion Htypp;subst.
-                eapply Forall2_prop_l in H24;try exact H7;tac_sanitize.
-                rewrite H18 in H11;inversion H11;subst;clear H11.
-                eapply decidable_helper.typh_with_less;try exact H22;try easy.
-                subtac_ishparts_by_onth.
-                eapply Forall_subset;try exact H10;try exact Htypp1;try easy;auto.
-            }
-            {
-                red;repeat split.   
-                inversion Htypq;subst.
-                eapply Forall2_prop_l in H24;try exact H7;tac_sanitize.
-                rewrite H18 in H8;inversion H8;subst;clear H8.
-                eapply decidable_helper.typh_with_less;try exact H22;try easy.
-                subtac_ishparts_by_onth.
-                eapply Forall_subset;try exact H13;try exact Htypq1;try easy;auto.
-            }
-        }
-    }
-Qed.
-
-
-Lemma multigrafting_lemma_1_recv : forall  ctx_q p q g xs Tq gs_p gs_q ctx_p ,
-wfgC g -> projectableA g -> projectionC g p (ltt_recv q xs) ->
-projectionC g q Tq -> typ_p_gtth gs_p ctx_p p g -> 
-usedCtx gs_p ctx_p ->
-typ_p_gtth gs_q ctx_q q g ->
-usedCtx gs_q ctx_q -> gtth_eq ctx_p ctx_q -> exists ys, Tq =ltt_send p ys.
-Proof.
-    induction ctx_q using gtth_ind_ref.
-    {
-        intros * Hwfg Hprojable Hprojp Hprojq Htypp Husedp Htypq Husedq Hgttheq.
-        inversion Hgttheq;subst.
-        destruct Htypp as [?Htypp [?Htypp ?Htypp]].
-        destruct Htypq as [?Htypq [?Htypq ?Htypq]].
-        inversion Htypp;inversion Htypq;subst.
-        eapply restricted_grafting_recv in Htypp;try exact Hprojp;try easy.
-        eapply Forall_prop in Htypp;try exact H1;tac_sanitize.
-        pinversion Hprojq;try apply proj_mon;subst;
-        [
-        exfalso;apply H;apply decidable_helper.triv_pt_p |
-        eapply wfgC_triv in Hwfg | exists ys |
-        
-        ]; try easy. 
-    }
-    {
-        
-        intros * Hwfg Hprojable Hprojp Hprojq Htypp Husedp Htypq Husedq Hgttheq.
-        Search projectionC isgPartsC ltt_send.
-        assert (Hispartsp : isgPartsC p0 g) by (eapply proj_contains_q_implies_part_recv in Hprojp;try easy).
-        assert (Hispartsq : isgPartsC q0 g) by (eapply proj_contains_q_implies_part_recv in Hprojp;try easy).
-        
-        inversion Hgttheq;subst.
-        destruct Htypp as [?Htypp [?Htypp ?Htypp]].
-        destruct Htypq as [?Htypq [?Htypq ?Htypq]].
-        rename H2 into Hgtth_eqfa2, xs into xsq, xs1 into xsp.
-        
-        eapply restricted_grafting_recv in Htypp as Hrg;try exact Hprojp;try easy.
-        pinversion Hprojq;try apply proj_mon;subst;try easy.
-        {
-            inversion Htypq;subst.
-            exfalso;apply Htypq0;apply ha_sendq.   
-        }
-        {
-            inversion Htypq;subst. 
-            exfalso;apply Htypq0;apply ha_sendp.     
-        }
-        {
-            inversion Htypq;subst.
-            eapply merge_slist in H5 as Hmergeslist.
-            eapply slist_implies_some in Hmergeslist;destr_hyps.
-            eapply Forall2_prop_l in H4;try exact H6;tac_sanitize.
-            eapply Forall2_prop_l in H14;try exact H7;tac_sanitize.
-            eapply Forall_prop in H;try exact H8;tac_sanitize.
-            eapply Forall2_prop_l in Hgtth_eqfa2;try exact H8;tac_sanitize.
-            eapply merge_inv_ss in H6;try exact H5;try easy;subst.
-            destruct H10;try easy.
-            inversion Husedq;subst.
-            inversion Husedp;subst.
-            eapply Forall2_prop_l in H17;try exact H8;tac_sanitize.
-            eapply Forall2_prop_l in H19;try exact H11;tac_sanitize.
-            rename x1 into gs_q', x3 into gs_p', x4 into ghq, x into k,
-            x8 into ghp, x7 into s, x6 into g'.
-            eapply mergeCtx_onth_subset in H10;try exact H15.
-            eapply mergeCtx_onth_subset in H13;try exact H16.
-            eapply H4 with (p:=p0) (xs:=xs0) (ctx_p:=ghp) (gs_p:=gs_p') (gs_q:=gs_q') in H;try easy.
-            subtac_wfg_by_onth. subtac_projable_by_onth.
-            {
-                pinversion Hprojp;subst;try apply proj_mon.   
-                exfalso;apply Htypq0;apply ha_sendp.
-
-                eapply Forall2_prop_r in H27;try exact H7;tac_sanitize.
-                destruct H25;try easy.
-                eapply merge_inv_ss in H28;try exact H20;subst;easy.
-            }
-            {
-                red;repeat split.   
-                inversion Htypp;subst.
-                eapply Forall2_prop_l in H24;try exact H7;tac_sanitize.
-                rewrite H18 in H11;inversion H11;subst;clear H11.
-                eapply decidable_helper.typh_with_less;try exact H22;try easy.
-                subtac_ishparts_by_onth.
-                eapply Forall_subset;try exact H10;try exact Htypp1;try easy;auto.
-            }
-            {
-                red;repeat split.   
-                inversion Htypq;subst.
-                eapply Forall2_prop_l in H24;try exact H7;tac_sanitize.
-                rewrite H18 in H8;inversion H8;subst;clear H8.
-                eapply decidable_helper.typh_with_less;try exact H22;try easy.
-                subtac_ishparts_by_onth.
-                eapply Forall_subset;try exact H13;try exact Htypq1;try easy;auto.
-            }
-        }
-    }
-Qed.
-
-Ltac subtac_triv_isparts_false := match goal with 
-    [H: ishParts ?p (gtth_send ?p ?q ?xs) -> False|- _] => exfalso; apply H;apply ha_sendp
-    | [H: ishParts ?q (gtth_send ?p ?q ?xs) -> False|- _] => exfalso; apply H;apply ha_sendq
-    | [H: isgPartsC ?p (gtt_send ?p ?q ?xs) -> False|- _] => exfalso; apply H;apply decidable_helper.triv_pt_p;try easy
-    | [H: isgPartsC ?q (gtt_send ?p ?q ?xs) -> False|- _] => exfalso; apply H;apply decidable_helper.triv_pt_q;try easy
-    end.
-
-Lemma multigrafting_lemma_2 : forall  ctx_p p q g xs ys gs_p gs_q ctx_q ,
-wfgC g -> projectableA g -> projectionC g p (ltt_send q xs) ->
-projectionC g q (ltt_recv p ys) -> typ_p_gtth gs_p ctx_p p g -> 
-usedCtx gs_p ctx_p ->
-typ_p_gtth gs_q ctx_q q g ->
-usedCtx gs_q ctx_q -> gtth_eq ctx_p ctx_q.
-Proof.
-    induction ctx_p using gtth_ind_ref.
-    {
-        intros * Hwfg Hprojable Hprojp Hprojq Htypp Husedp Htypq Husedq.
-        destruct Htypp as [?Htypp [?Htypp ?Htypp]].
-        destruct Htypq as [?Htypq [?Htypq ?Htypq]].
-        inversion Htypp;subst.
-        inversion Htypq;subst.
-        constructor.
-        {   
-            eapply restricted_grafting_send in Htypp as Hrg;try exact Hprojp;try easy.
-            eapply Forall_prop in Hrg;try exact H1;tac_sanitize.
-            exfalso;apply Htypq0;apply ha_sendq.   
-        }
-    }
-    {
-        intros * Hwfg Hprojable Hprojp Hprojq Htypp Husedp Htypq Husedq.
-        destruct Htypp as [?Htypp [?Htypp ?Htypp]].
-        destruct Htypq as [?Htypq [?Htypq ?Htypq]].
-        inversion Htypp;subst.
-        inversion Htypq;subst.
-        eapply Forall_prop in Htypq1;try exact H0;destruct Htypq1;try easy;destr_hyps.
-        destruct H1;[|destruct H1].
-        {
-            inversion H1;subst.
-            pinversion Hprojq;try apply proj_mon;subst;try easy.   
-        }
-        {
-            inversion H1;subst.
-            pinversion Hprojq;try apply proj_mon;subst;try easy; subtac_triv_isparts_false.           
-        }
-        {
-         inversion H1.   
-        }
-        {
-            constructor.
-            eapply Forall2_forall;[tac_forall_to_length|].
-            intros;destruct (onth k xs) eqn:Hyg.
-            right. 
-            eapply Forall_prop in H;try exact Hyg;tac_sanitize.
-            eapply Forall2_prop_r in H6;try exact Hyg; tac_sanitize.
-            eapply Forall2_prop_l in H8;try exact H2;tac_sanitize.
-            exists x0, x3, x1;repeat split;try easy.
-            inversion Husedp;subst.
-            inversion Husedq;subst.
-            eapply Forall2_prop_l in H13;try exact H1;tac_sanitize.
-            eapply Forall2_prop_l in H11;try exact Hyg;tac_sanitize.
-            pinversion Hprojp;try apply proj_mon;subst;try subtac_triv_isparts_false.
-            pinversion Hprojq;try apply proj_mon;subst;try subtac_triv_isparts_false.
-            eapply Forall2_prop_r in H27;try exact H2;tac_sanitize.
-            eapply Forall2_prop_r in H21;try exact H2;tac_sanitize.
-            destruct H25;destruct H26;try easy.
-            eapply merge_inv_ss in H14;try exact H28;subst.
-            eapply merge_inv_ss in H21;try exact H22;subst.
-            eapply H0 with (gs_p:=x0) (gs_q:=x2) (g:=x5);try exact H;try exact H11;try easy.
-            subtac_wfg_by_onth. subtac_projable_by_onth.
-            {
-                red;repeat split;
-                eapply mergeCtx_onth_subset in H8;try exact H9.
-                eapply decidable_helper.typh_with_less;try exact H8;try easy.
-                subtac_ishparts_by_onth.
-                eapply Forall_subset;try exact H8;auto.
-            }
-            {
-                red;repeat split;
-                eapply mergeCtx_onth_subset in H6;try exact H10.
-                eapply decidable_helper.typh_with_less;try exact H7; try easy.
-                subtac_ishparts_by_onth.
-                eapply Forall_subset;try exact H6;auto.
-            }
-            left. split;try easy.
-            destruct (onth k xs1) eqn:Hyg2;try easy.
-            eapply Forall2_prop_r in H8;try exact Hyg2;tac_sanitize.
-            eapply Forall2_prop_l in H6;try exact H2;tac_sanitize.
-            rewrite Hyg in H1;try easy.
-        }
-    }
-Qed.
-
-
-Ltac subtac_onth_typ Honthctxlist Hmerge:=
-red;repeat split;
-eapply mergeCtx_onth_subset in Honthctxlist as Hsubset;try exact Hmerge;
-[
-
-eapply decidable_helper.typh_with_less;try exact Hsubset;try easy
-|
-    subtac_ishparts_by_onth|
-eapply Forall_subset;try exact Hsubset;auto].
-
-Ltac subtac_onth_solver := try solve [subtac_ishparts_by_onth  | subtac_projable_by_onth | subtac_triv_isparts_false | subtac_wfg_by_onth | subtac_wfgth_by_onth].
-
-Lemma multigrafting_lemma_3_send : forall  ctx_p p r q g xs ys gs_p gs_q ctx_q ,
-wfgC g -> projectableA g -> projectionC g p (ltt_send q xs) ->
-(projectionC g q (ltt_send r ys) \/ projectionC g q (ltt_recv r ys) ) -> r <> p -> typ_p_gtth gs_p ctx_p p g -> 
-usedCtx gs_p ctx_p ->
-typ_p_gtth gs_q ctx_q q g ->
-usedCtx gs_q ctx_q -> is_tree_proper_prefix ctx_q ctx_p.
-Proof.
-    induction ctx_p using gtth_ind_ref.
-    {
-        intros * Hwfg Hprojable Hprojp Hprojq Hrnp Htypp Husedp Htypq Husedq.
-        destruct Htypp as [?Htypp [?Htypp ?Htypp]].
-        destruct Htypq as [?Htypq [?Htypq ?Htypq]].
-        inversion Htypp;subst.
-        inversion Htypq;subst.
-        {
-            eapply restricted_grafting_send in Hprojp;try exact Htypp;try easy.
-            eapply Forall_prop in Hprojp;try exact H1.
-            destruct Hprojp;try easy;destr_hyps; inversion H0;subst;clear H0.                
-            destruct Hprojq as [Hprojq | Hprojq];
-            [eapply restricted_grafting_send in Hprojq|
-            eapply restricted_grafting_recv in Hprojq];
-            try exact Htypq;try easy;
-                eapply Forall_prop in Hprojq;try exact H;
-                destruct Hprojq;try easy;destr_hyps;inversion H0;subst;clear H0;easy.
-        }
-        {
-            eapply restricted_grafting_send in Hprojp;try exact Htypp;try easy.
-            eapply Forall_prop in Hprojp;try exact H1.
-            destruct Hprojp;try easy;destr_hyps; inversion H2;subst;clear H2.
-            subtac_triv_isparts_false.                
-        }
-    }
-    {
-        intros * Hwfg Hprojable Hprojp Hprojq Hrnp Htypp Husedp Htypq Husedq.
-        destruct Htypp as [?Htypp [?Htypp ?Htypp]].
-        destruct Htypq as [?Htypq [?Htypq ?Htypq]].
-        inversion Htypp;inversion Htypq;subst;[constructor |].
-        inversion H11;subst;clear H11.
-        constructor.
-        eapply Forall2_forall.
-        tac_forall_to_length.
-        intros.
-        destruct (onth k xs) eqn:Hyg.
-        {
-            right.
-            eapply Forall2_prop_r in H6;try exact Hyg;tac_sanitize.   
-            eapply Forall2_prop_l in H8;try exact H2;tac_sanitize.
-            exists x3, x4, x1.
-            repeat split;try easy.
-            inversion Husedp;subst.
-            inversion Husedq;subst.
-            eapply Forall2_prop_l in H13;try exact H1;tac_sanitize.
-
-            eapply Forall2_prop_l in H11;try exact Hyg;tac_sanitize.
-            
-            rename xs2 into ghsq,xs into ghsp, ys0 into gcs, x4 into s, x5 into g',
-            x7 into ghp, x6 into ghq, x0 into gs_q', x3 into gs_p'.
-            rename Hyg into Honthghsp, H2 into Honthgcs, H1 into Honthghsq.
-            eapply Forall_prop in H as IH;try exact Honthghsp;tac_sanitize.
-            rename x into s, x0 into ghp.
-            eapply H1 with (g:=g') (gs_p:=gs_p') (gs_q:=gs_q') (p:=p0) (q:=q0)
-            (xs:=xs0) (ys:=ys) (r:=r);try easy;
-            try solve [subtac_onth_solver | subtac_onth_typ H9 H8 | subtac_onth_typ H4 H10]. 
-            {
-                pinversion Hprojp;try apply proj_mon;subst.  subtac_triv_isparts_false.
-                eapply Forall2_prop_r in H20;try exact Honthgcs;tac_sanitize.
-                destruct H18;try easy.
-                eapply merge_inv_ss in H11;try exact H21;subst;easy. 
-            }
-            {
-                destruct Hprojq as [Hprojq | Hprojq];
-                 pinversion Hprojq;try apply proj_mon;subst;  try subtac_triv_isparts_false;
-                eapply Forall2_prop_r in H20;try exact Honthgcs;tac_sanitize;
-                destruct H18;try easy;
-                eapply merge_inv_ss in H11;try exact H21;subst;auto.
-                
-            }
-        }
-        {
-            left. destruct (onth k xs2) eqn:Hyg2;try auto.
-            eapply Forall2_prop_r in H8;try exact Hyg2;tac_sanitize.
-            eapply Forall2_prop_l in H6;try exact H2;tac_sanitize.
-            rewrite H1 in Hyg;inversion Hyg;subst;easy.   
-        }
-    }
-Qed.    
-
-Lemma multigrafting_lemma_3_recv : forall  ctx_p p r q g xs ys gs_p gs_q ctx_q ,
-wfgC g -> projectableA g -> projectionC g p (ltt_recv q xs) ->
-(projectionC g q (ltt_send r ys) \/ projectionC g q (ltt_recv r ys) ) -> r <> p -> typ_p_gtth gs_p ctx_p p g -> 
-usedCtx gs_p ctx_p ->
-typ_p_gtth gs_q ctx_q q g ->
-usedCtx gs_q ctx_q -> is_tree_proper_prefix ctx_q ctx_p.
-Proof.
-    induction ctx_p using gtth_ind_ref.
-    {
-        intros * Hwfg Hprojable Hprojp Hprojq Hrnp Htypp Husedp Htypq Husedq.
-        destruct Htypp as [?Htypp [?Htypp ?Htypp]].
-        destruct Htypq as [?Htypq [?Htypq ?Htypq]].
-        inversion Htypp;subst.
-        inversion Htypq;subst.
-        {
-            eapply restricted_grafting_recv in Hprojp;try exact Htypp;try easy.
-            eapply Forall_prop in Hprojp;try exact H1.
-            destruct Hprojp;try easy;destr_hyps; inversion H0;subst;clear H0.                
-            destruct Hprojq as [Hprojq | Hprojq];
-            [eapply restricted_grafting_send in Hprojq|
-            eapply restricted_grafting_recv in Hprojq];
-            try exact Htypq;try easy;
-                eapply Forall_prop in Hprojq;try exact H;
-                destruct Hprojq;try easy;destr_hyps;inversion H0;subst;clear H0;easy.
-        }
-        {
-            eapply restricted_grafting_recv in Hprojp;try exact Htypp;try easy.
-            eapply Forall_prop in Hprojp;try exact H1.
-            destruct Hprojp;try easy;destr_hyps; inversion H2;subst;clear H2.
-            subtac_triv_isparts_false.                
-        }
-    }
-    {
-        intros * Hwfg Hprojable Hprojp Hprojq Hrnp Htypp Husedp Htypq Husedq.
-        destruct Htypp as [?Htypp [?Htypp ?Htypp]].
-        destruct Htypq as [?Htypq [?Htypq ?Htypq]].
-        inversion Htypp;inversion Htypq;subst;[constructor |].
-        inversion H11;subst;clear H11.
-        constructor.
-        eapply Forall2_forall.
-        tac_forall_to_length.
-        intros.
-        destruct (onth k xs) eqn:Hyg.
-        {
-            right.
-            eapply Forall2_prop_r in H6;try exact Hyg;tac_sanitize.   
-            eapply Forall2_prop_l in H8;try exact H2;tac_sanitize.
-            exists x3, x4, x1.
-            repeat split;try easy.
-            inversion Husedp;subst.
-            inversion Husedq;subst.
-            eapply Forall2_prop_l in H13;try exact H1;tac_sanitize.
-
-            eapply Forall2_prop_l in H11;try exact Hyg;tac_sanitize.
-            
-            rename xs2 into ghsq,xs into ghsp, ys0 into gcs, x4 into s, x5 into g',
-            x7 into ghp, x6 into ghq, x0 into gs_q', x3 into gs_p'.
-            rename Hyg into Honthghsp, H2 into Honthgcs, H1 into Honthghsq.
-            eapply Forall_prop in H as IH;try exact Honthghsp;tac_sanitize.
-            rename x into s, x0 into ghp.
-            eapply H1 with (g:=g') (gs_p:=gs_p') (gs_q:=gs_q') (p:=p0) (q:=q0)
-            (xs:=xs0) (ys:=ys) (r:=r);try easy;
-            try solve [subtac_onth_solver | subtac_onth_typ H9 H8 | subtac_onth_typ H4 H10]. 
-            {
-                pinversion Hprojp;try apply proj_mon;subst.  subtac_triv_isparts_false.
-                eapply Forall2_prop_r in H20;try exact Honthgcs;tac_sanitize.
-                destruct H18;try easy.
-                eapply merge_inv_ss in H11;try exact H21;subst;easy. 
-            }
-            {
-                destruct Hprojq as [Hprojq | Hprojq];
-                 pinversion Hprojq;try apply proj_mon;subst;  try subtac_triv_isparts_false;
-                eapply Forall2_prop_r in H20;try exact Honthgcs;tac_sanitize;
-                destruct H18;try easy;
-                eapply merge_inv_ss in H11;try exact H21;subst;auto.
-                
-            }
-        }
-        {
-            left. destruct (onth k xs2) eqn:Hyg2;try auto.
-            eapply Forall2_prop_r in H8;try exact Hyg2;tac_sanitize.
-            eapply Forall2_prop_l in H6;try exact H2;tac_sanitize.
-            rewrite H1 in Hyg;inversion Hyg;subst;easy.   
-        }
-    }
-Qed.    
-
-Lemma two_send_proj_impossible: forall   p q g xs ys ,
-wfgC g -> projectableA g -> projectionC g p (ltt_send q xs) ->
-projectionC g q (ltt_send p ys) -> False.
-Proof.
-Admitted.
-
-Lemma two_recv_proj_impossible: forall   p q g xs ys ,
-wfgC g -> projectableA g -> projectionC g p (ltt_recv q xs) ->
-projectionC g q (ltt_recv p ys) -> False.
-Proof.
-Admitted.
-
-Lemma multigrafting_lemma_send : forall  ctx_q p q g xs Tq gs_p gs_q ctx_p ,
-wfgC g -> projectableA g -> projectionC g p (ltt_send q xs) ->
-projectionC g q Tq -> typ_p_gtth gs_p ctx_p p g -> 
-usedCtx gs_p ctx_p ->
-typ_p_gtth gs_q ctx_q q g ->
-usedCtx gs_q ctx_q ->
-(is_tree_proper_prefix ctx_q ctx_p) \/ (gtth_eq ctx_p ctx_q).
-Proof.
-    intros. destruct Tq.
-    {
-        Search projectionC ltt_end isgPartsC. 
-        eapply proj_contains_q_implies_part_send in H1;try easy;eapply pmergeCR in H2;
-        try easy.
-    }
-    {
-        destruct (Nat.eq_dec n p);subst.
-        right.
-        eapply multigrafting_lemma_2 with (gs_p:=gs_p) (gs_q:=gs_q) (p:=p) (q:=q); try exact H1;try exact H2;try easy.
-        
-        left.
-        eapply multigrafting_lemma_3_send with (gs_p:=gs_p) (gs_q:=gs_q) (r:=n) (p:=p) (q:=q) (ys:=l);try exact H1;try easy.
-        auto.
-    }
-    {
-        destruct (Nat.eq_dec n p);subst.
-        exfalso; eapply two_send_proj_impossible;try exact H1;try exact H2;try easy.
-        
-        left.
-        eapply multigrafting_lemma_3_send with (gs_p:=gs_p) (gs_q:=gs_q) (r:=n) (p:=p) (q:=q) (ys:=l);try exact H1;try easy.
-        auto.
-    }
-Qed.
-
-
-Lemma gtth_eq_sym : forall a b, gtth_eq a b -> gtth_eq b a.
-Proof.
-    intros a. induction a using gtth_ind_ref.
-    {
-        intros. inversion H;subst;constructor.   
-    }
-    {
-        intros. inversion H0;subst.
-        constructor. eapply Forall2_forall. eapply Forall2_length in H5;try easy.
-        intros.
-        destruct (onth k ys) eqn:Hyg1. right.
-        destruct p0. 
-        eapply Forall2_prop_l in H5;try exact Hyg1;tac_sanitize. exists x0 , x2, x1.
-        repeat split;try easy.
-        eapply Forall_prop in H;try exact H2;tac_sanitize. eapply H1;easy.
-        
-        left. split;try easy.
-        destruct (onth k xs) eqn:Hyg2. eapply Forall2_prop_r in H5;try exact Hyg2;tac_sanitize.
-        rewrite Hyg1 in H3. easy. easy.
-    }
-Qed.
-
-Lemma multigrafting_lemma_recv : forall  ctx_q p q g xs Tq gs_p gs_q ctx_p ,
-wfgC g -> projectableA g -> projectionC g p (ltt_recv q xs) ->
-projectionC g q Tq -> typ_p_gtth gs_p ctx_p p g -> 
-usedCtx gs_p ctx_p ->
-typ_p_gtth gs_q ctx_q q g ->
-usedCtx gs_q ctx_q ->
-(is_tree_proper_prefix ctx_q ctx_p) \/ (gtth_eq ctx_p ctx_q).
-Proof.
-    intros. destruct Tq.
-    {
-        eapply proj_contains_q_implies_part_recv in H1;try easy;eapply pmergeCR in H2;
-        try easy.
-    }
-    {
-        destruct (Nat.eq_dec n p);subst.
-        
-        exfalso; eapply two_recv_proj_impossible;try exact H1;try exact H2;try easy.
-
-        left. 
-        eapply multigrafting_lemma_3_recv with (gs_p:=gs_p) (gs_q:=gs_q) (r:=n) (p:=p) (q:=q) (ys:=l);try exact H1;try easy.
-        auto.
-
-    
-    }
-    {
-        destruct (Nat.eq_dec n p);subst.
-        right.
-        eapply gtth_eq_sym.
-        eapply multigrafting_lemma_2 with (gs_p:=gs_q) (gs_q:=gs_p) (p:=q) (q:=p); try exact H1;try exact H2;try easy.
-        
-        left.
-        eapply multigrafting_lemma_3_recv with (gs_p:=gs_p) (gs_q:=gs_q) (r:=n) (p:=p) (q:=q) (ys:=l);try exact H1;try easy.
-        auto.
-    }
-Qed.
-
-
-
-Lemma eventually_if {A:Type}: 
-forall (P Q : coseq A -> Prop) (xs:coseq A), eventually P xs -> 
-(forall ys, P ys -> eventually Q ys) -> eventually Q xs.
-Proof.
-    intros.
-    induction H;[crush|].
-
-    constructor 2. easy.
-Qed.
-
-
-Definition xs_height_map_fn := fun u : option (sort * gtth) =>
-match u with
-| Some (_, x) => gtth_height x
-| None => 0
-end.
-Lemma gtth_height_fold : forall p q xs, 
-gtth_height (gtth_send p q xs) =
-seq.foldr ( fun g a => Init.Nat.max (xs_height_map_fn g + 1) a) 1 xs.
-Proof.
-    intros * .
-    induction xs.
-    { 
-        simpl;easy.   
-    }
-    {
-        destruct a. 
-        destruct p0. rewrite gtth_height_unfold_once_some.
-        simpl seq.foldr. rewrite IHxs;easy.
-        rewrite gtth_height_unfold_once_none. simpl seq.foldr.
-        rewrite <- IHxs.
-        rewrite Nat.max_0_l.
-        
-        destruct (gtth_height (gtth_send p q xs)) eqn:Hyg;try easy.
-        eapply gtth_height_0_means_hol_general in Hyg;destr_hyps;easy.
-    }
-Qed.
-
-
-Variant coseq_bisimI {A:Type} (R: coseq A -> coseq A -> Prop): 
-coseq A -> coseq A -> Prop :=
-    | coseq_bis_nil : coseq_bisimI R conil conil
-    | coseq_bis_cons: forall xs ys x y, 
-    R xs ys -> coseq_bisimI R (cocons x xs) (cocons y ys).
-
-Definition coseq_bisimC {A:Type}:= paco2 ( @coseq_bisimI A) bot2.
-
-
-
-Variant path_assoc (R:local_path -> global_path -> Prop): local_path -> global_path -> Prop :=
-   | path_assoc_nil : path_assoc R conil conil
-   | path_assoc_xs : forall g gamma l xs ys, assoc gamma g ->
-    R xs ys ->
-   path_assoc R (cocons (gamma, l) xs) (cocons (g, l) ys)
-   .
-
-Lemma path_assoc_mon : monotone2 path_assoc.
-Proof. red;intros. inversion IN;subst;constructor;try tauto. apply LE;easy. Qed.
-   
-Definition path_assocC := paco2 path_assoc bot2.
-
-Definition conj_props (P:tctx -> Prop) (Q: gtt -> Prop) := forall gamma g,
-
-assoc gamma g -> (P gamma <-> Q g).
-
-Definition tctxREN_comm p q g := exists n, (tctxRE (lcomm p q n) g). 
-
-
-Definition tctxREN_send p q g := exists n s, (tctxRE (lsend p q s n) g).
-
-Definition tctxREN_recv p q g := exists n s, (tctxRE (lrecv p q s n) g).
-
-Print alwaysG.
-
-Definition wfg_global_path := alwaysCG (to_path_prop (fun a=> wfgC a /\ projectableA a) True).
-Definition wf_local_path := alwaysCG (to_path_prop tctx_wf True).
-Lemma global_path_always_wf : forall g l xs, wfgC g -> projectableA g -> global_valid_pathC (cocons (g,l) xs) -> 
-wfg_global_path (cocons (g,l) xs).
-Proof.
-    pcofix CIH.
-    intros * Hwfg Hprojable Hvalid.
-    pfold. constructor. simpl;easy.
-    destruct xs. left. pfold. constructor. easy.
-    right. destruct p.  pinversion Hvalid;subst;try apply valid_path_mon;try easy.
-    eapply CIH;
-    
-    red in H5; destruct l0;try tauto.
-    inversion Hvalid;subst.
-    eapply wfgC_after_step;try exact H5;try easy. eapply projectable_after_step;try exact H5;try easy.
-Qed.
-
-
-Lemma local_path_always_wf : forall g l xs, tctx_wf g -> local_valid_pathC (cocons (g,l) xs) -> 
-wf_local_path (cocons (g,l) xs).
-Proof.
-    pcofix CIH.
-    intros * Hwfg  Hvalid.
-    pfold. constructor. simpl;easy.
-    destruct xs. left. pfold. constructor. easy.
-    right. destruct p.  pinversion Hvalid;subst;try apply valid_path_mon;try easy.
-    eapply CIH;
-    
-    red in H5; destruct l0;try tauto.
-    inversion Hvalid;subst.
-    eapply tctx_wf_after_red_comm;try exact H5;try easy.
-Qed.
-
-Lemma eventually_and {A:Type} P Q : forall (xs:coseq A),
-            eventually ( P /1\ Q) xs <-> eventually (Q /1\ P) xs.
-            Proof. split;intros; induction H; 
-            try solve [constructor; easy | constructor 2; easy].  Qed.
-            
-Lemma path_assoc_eventually_enabled : forall xs ys P Q, wfg_global_path ys -> wf_local_path xs -> path_assocC xs ys -> 
-conj_props P Q -> eventually (to_path_prop  P False) xs -> eventually (to_path_prop  Q False) ys.
-Proof.
-    intros * Hwfgp Hwfgl Hpassoc Hconj Hevp.
-    generalize dependent ys.
-    induction Hevp.
-    {
-        intros. constructor. red in H. destruct xs;try easy.
-        pinversion Hpassoc;try apply path_assoc_mon;subst.
-        red.
-        eapply Hconj with (gamma:=gamma); easy. 
-    }
-    {
-     intros.
-     pinversion Hpassoc;try apply path_assoc_mon;subst.
-     constructor 2.
-     eapply IHHevp.
-     pinversion Hwfgl;try apply always_mon;subst;easy.
-     pinversion Hwfgp;try apply always_mon;subst;easy.
-     easy.   
-    }
-Qed.
-Lemma path_assoc_preserves_fairness_helper : forall xs p q ys, path_assocC xs ys ->
-eventually (headComm p q) xs -> eventually (headComm_global p q) ys.
-Proof.
-    intros * Hpassoc Hevp.
-    generalize dependent ys. induction Hevp.
-    {
-        intros. red in H. destruct xs as [ | [t l]];try easy.
-        destruct l;try tauto;destruct l;try tauto.
-        destruct (Nat.eq_dec p n);destruct (Nat.eq_dec q n0);try tauto;subst;clear H.
-        pinversion Hpassoc;try apply path_assoc_mon;subst. constructor.  simpl. tauto.
-    }
-    {
-        intros * Hpassoc. pinversion Hpassoc;try apply path_assoc_mon;subst.
-        constructor 2.
-        eapply IHHevp. easy.  
-    }
-Qed.
-
-
-Lemma global_comm_enabled_assoc_local_comm_enabled: forall p q n gamma g, wfgC g ->
-tctx_wf gamma -> global_comm_enabled p q n g -> 
-assoc gamma g -> exists n', tctxRE (lcomm p q n') gamma.
-Proof.
-    intros * Hwfg Hwft Hgce Hassoc. 
-    red in Hgce. destr_hyps. eapply assoc_soundness with (gamma:=gamma) in H;try easy.
-    destr_hyps. exists x2. red. exists x0;easy.
-    pinversion H;subst;try apply step_mon;easy.
-Qed.
-
-Lemma wfg_global_path_head: forall g l ys, wfg_global_path (cocons (g,l) ys) -> wfgC g.
-Proof.
-    intros. pinversion H;try apply always_mon;subst. red in H2. tauto.
-Qed.
-
-Lemma projable_global_path_head: forall g l ys, wfg_global_path (cocons (g,l) ys) -> projectableA g.
-Proof.
-    intros. pinversion H;try apply always_mon;subst. red in H2. tauto.
-Qed.
-
-Lemma wf_local_path_head: forall g l ys, wf_local_path (cocons (g,l) ys) -> tctx_wf g.
-Proof.
-    intros. pinversion H;try apply always_mon;subst. red in H2. tauto.
-Qed.
-
-Lemma always_tail {A:Type}: forall (g:A) (l:option label) xs P, alwaysCG P (cocons (g,l) xs) -> alwaysCG P xs.
-Proof. intros. pinversion H;try apply always_mon;subst. easy. Qed.
-
-
-    
-Lemma path_assoc_preserves_fairness : forall lp gp, wfg_global_path gp -> wf_local_path lp ->
-path_assocC lp gp ->
-fair_path lp -> fair_path_global gp.
-Proof.
-    pcofix CIH.
-    intros * Hwfgp Hwflp Hpassoc Hfairl.
-    pfold.
-    pinversion Hpassoc;try apply path_assoc_mon;subst.
-    {
-        constructor. red. intros. simpl in H. easy.
-    }
-    constructor.
-    { 
-        red. intros.
-        pinversion Hfairl;subst;try apply always_mon.
-        red in H4.
-        simpl in H1.
-        
-        eapply global_comm_enabled_assoc_local_comm_enabled in H1 as Hlc;try exact Hassoc;try easy;
-        try solve [
-        apply wfg_global_path_head in Hwfgp;easy | apply wf_local_path_head in Hwflp;easy].
-        destruct Hlc as [n' Hr].
-        
-        specialize (H4 p q n').
-        simpl in H4. 
-        specialize (H4 Hr). inversion H4;subst.
-        {  
-            simpl in H2.
-            destruct l;try tauto.
-            destruct l; destruct (Nat.eq_dec p n0);destruct (Nat.eq_dec q n1);subst;try tauto.
-            constructor 1. simpl. tauto.
-        }
-        {
-            constructor 2. eapply path_assoc_preserves_fairness_helper;try exact H3;try easy.
-        }   
-    }
-    {
-        right. eapply CIH with (lp := xs);
-        eapply always_tail in Hwfgp, Hwflp, Hfairl;try easy.
-    }
-Qed.
-
-Lemma local_send_enabled_global_send_enabled : forall g p q s n gamma, wfgC g -> tctx_wf gamma ->
-        assoc gamma g -> tctxRE (lsend p q (Some s) n) gamma ->
-        exists s' n', global_label_enabled (lsend p q (Some s') n') g.
-Proof.
-    intros * Hwfg Hwf Hassoc Hre.
-    destruct Hre as [t' Hre].
-    eapply lem_6_11a_tctx_send_invert in Hre. destr_hyps. 
-    
-    eapply assoc_inv_find in H as Hinvf;try exact Hassoc;try easy.
-    red in Hinvf. destr_hyps. eapply subtype_send_inv1 in H3 as Hst. destr_hyps;subst. 
-    eapply subtype_send_inv in H3. eapply Forall2R_prop in H3;try exact H0;tac_sanitize.
-    exists x4, n.
-    red. exists x2, x6. tauto.
-Qed.
-
-Lemma local_recv_enabled_global_recv_enabled : forall g p q s n gamma, wfgC g -> tctx_wf gamma ->
-    assoc gamma g -> tctxRE (lrecv p q (Some s) n) gamma ->
-    exists s' n', global_label_enabled (lrecv p q (Some s') n') g.
-Proof.
-    intros * Hwfg Hwf Hassoc Hre.
-    destruct Hre as [t' Hre].
-    eapply lem_6_11b_tctx_recv_invert in Hre. destr_hyps. 
-    
-    eapply assoc_inv_find in H as Hinvf;try exact Hassoc;try easy.
-    red in Hinvf. destr_hyps. eapply subtype_recv_inv1 in H3 as Hst. destr_hyps;subst.
-    
-    eapply projection_implies_wf in H2 as Hwfp;try easy.
-    eapply wfltt_slist_recv in Hwfp as Hslist. eapply slist_implies_some in Hslist.
-    destr_hyps. destruct x3. exists s0,x1.
-    red. exists x2, l. tauto.
-Qed.
-
-Lemma path_assoc_reflects_liveness_helper : forall xs p q ys, path_assocC xs ys ->
-eventually (headComm_global p q) ys -> eventually (headComm p q) xs.
-Proof.
-    intros * Hpassoc Hevp.
-    generalize dependent xs. induction Hevp.
-    {
-        intros. red in H. destruct xs as [ | [t l]];try easy.
-        destruct l;try tauto;destruct l;try tauto.
-        destruct (Nat.eq_dec p n) ;destruct (Nat.eq_dec q n0);try tauto;subst;clear H.
-        pinversion Hpassoc;try apply path_assoc_mon;subst. constructor. simpl. tauto.
-    }
-    {
-        intros * Hpassoc. pinversion Hpassoc;try apply path_assoc_mon;subst.
-        constructor 2.
-        eapply IHHevp. easy.  
-    }
-Qed.
-
-Lemma path_assoc_reflects_liveness : forall lp gp, wfg_global_path gp -> wf_local_path lp ->
-path_assocC lp gp ->
-live_path_global gp -> live_path lp.
-Proof.
-    pcofix CIH.
-    intros * Hwfgp Hwflp Hpassoc Hfairl.
-    pfold.
-    pinversion Hpassoc;try apply path_assoc_mon;subst.
-    {
-        constructor. red;split; intros; simpl in H; easy.
-    }
-    constructor.
-    { 
-        red;split; intros;
-        pinversion Hfairl;subst;try apply always_mon;
-        red in H4;
-        simpl in H1;
-
-        [eapply local_send_enabled_global_send_enabled in H1 as Hlc 
-        | eapply local_recv_enabled_global_recv_enabled in H1 as Hlc];
-        try exact Hassoc;try easy;
-        try solve [
-        apply wfg_global_path_head in Hwfgp;easy | apply wf_local_path_head in Hwflp;easy];
-        destruct Hlc as [s' [n' Hr]];
-        
-        specialize (H4 p q s' n'); destruct H4 as [Hlv1 Hlv2];
-        [
-        assert(Hevg: eventually (headComm_global p q) (cocons (g,l) ys)) by (eapply Hlv1;easy)
-        |
-        assert(Hevg: eventually (headComm_global p q) (cocons (g,l) ys)) by (eapply Hlv2;easy)];
-        eapply path_assoc_reflects_liveness_helper with (ys:=(cocons (g,l) ys));try easy;
-        pfold;easy.
-    }
-    {
-        right. eapply CIH with (gp := ys);
-        eapply always_tail in Hwfgp, Hwflp, Hfairl;try easy.
-    }
-Qed.
-
-(*
-Definition g_by_gamma_trans : forall t p q ell g t', wfgC g -> tctx_wf t -> assoc t g ->
-tctxR t (lcomm p q ell) t' ->
-{g' | assoc t' g' /\ gttstepC g g' p q ell}.
-Proof.
-    intros. eapply assoc_completeness with (g:=g) in H0;try exact H2;try easy.
-    destruct (constructive_indefinite_description _ H0) as [g' Hg'].
-    exists g'. easy.
-Defined.
-
-
-Lemma valid_local_path_valid_trans: forall t p q ell xs,
-valid_local_path (cocons (t, Some (lcomm p q ell)) xs) ->
-{s| match s with (t',l,ys) => 
-xs= cocons (t',l) ys /\ tctxR t (lcomm p q ell) t' end}.
-Proof.
-    intros. 
-    refine (
-        (match xs as m return xs =m -> {s| match s with (t',l,ys) => 
-xs= cocons (t',l) ys /\ tctxR t (lcomm p q ell) t' end} with 
-    |conil => _
-    | cocons (t',l) ys => _ end
-) (eq_refl)).
-    {
-        intros. subst.
-        assert(False).
-        {
-            pinversion H;try apply valid_path_mon.   
-        }
-        exists (M.empty, None, conil). easy.   
-    }
-    {
-        intros. subst. exists (t', l, ys).
-        split. easy.
-        pinversion H;subst;try apply valid_path_mon. easy.   
-    }
-Defined.
-
-
-Lemma valid_local_path_dilemma: forall t l xs, valid_local_path (cocons (t,l) xs) ->
-{ s & match s with (p,q,ell) => {l=Some (lcomm p q ell)} + {l=None} end }.
-Proof.
-    intros.
-    destruct l;try tauto.
-    {
-        assert(Hrec: { s | match s with (p,q,ell) => l=lcomm p q ell end}).
-        {
-                refine ((match l as m return 
-                (l=m -> { s | match s with (p,q,ell) => l=lcomm p q ell end}) with 
-                | lsend a b c d => _
-                | lrecv a b c d => _
-                
-                | lcomm p q ell => _ end) (eq_refl));intros;subst;
-                try (
-                assert(False) by
-                (
-                    pinversion H;subst;try apply valid_path_mon; inversion H4  
-                );
-                exists (0,0,0); easy).
-                exists (p,q,ell). reflexivity.
-        }
-        destruct Hrec. destruct x as [[p q] ell]. subst. exists (p,q,ell). tauto.
-    }
-    {
-        exists (0,0,0). right. easy.   
-    }
-Defined.
-(*
-Ltac indef_destruct H := let tth := type of H in match tth with 
-     | ex _  => let nx := fresh "x" in let nh:= fresh "H" in  
-    destruct (constructive_indefinite_description _ H) as [nx nh];try indef_destruct nh;clear H end.
-*)   
-CoFixpoint conj_path : forall t g l  xs, wfgC g -> tctx_wf t -> assoc t g ->
-    valid_local_path (cocons (t, l) xs) ->
-    global_path.
-Proof.
-    intros * Hwfg Htxt Hassoc Hvalid.
-    eapply valid_local_path_dilemma in Hvalid as Hdl.
-    destruct Hdl as [[[p q] ell] Hdd].
-    destruct Hdd.
-    {
-        subst.
-        eapply valid_local_path_valid_trans in Hvalid as Htrans.
-        destruct Htrans as [[[t' l] ys] H1].
-        
-        destruct H1;subst. 
-        set (seq_hd := (g,Some (lcomm p q ell))).
-        eapply g_by_gamma_trans with (g:=g) in H0 as Ht2;try easy.
-        destruct Ht2.
-        rename  x into g'.
-        destruct a as [Ha0 Ha1].
-        assert(Hwft': tctx_wf t').
-        {
-            eapply tctx_wf_after_red_comm;try exact H0;try easy.   
-        }
-        assert(Hwfg': wfgC g').
-        {
-
-            eapply wfgC_after_step;try exact Ha1;try easy.
-            eapply assoc_implies_projectable;try exact Hassoc;try easy.   
-        }
-        assert(Hvlxs: valid_local_path (cocons (t', l) ys)).
-        {
-            pinversion Hvalid;try apply valid_path_mon;tauto.   
-        }
-        
-        specialize (conj_path t' g' l ys Hwfg' Hwft' Ha0 Hvlxs) as vxs.
-        exact (cocons seq_hd vxs).
-    }
-    subst. exact (cocons (g, None) conil).
-Defined.
-
-
-Lemma conj_path_recur : forall (t:tctx) (g:gtt) (l:option label) (xs:local_path) 
- (Hwfg : wfgC g) (Htxwf : tctx_wf t) (Hassoc: assoc t g) 
-(Hvalid : valid_local_path (cocons (t,l) xs)), exists ys,
-(conj_path _ _ _ _ Hwfg Htxwf Hassoc Hvalid) = cocons (g,l) ys.
-Proof.
-    intros.
-    destruct l.
-    {
-           destruct l;
-        pose proof Hvalid as Hvalid'; pinversion Hvalid'; try apply valid_path_mon;try tauto;subst.
-        rewrite (coseq_eq (conj_path _ _ _ _ _ _ _ _   )). simpl.
-
-        destruct (g_by_gamma_trans t n n0 n1 g x Hwfg Htxwf Hassoc) (eqn:Hyg).
-        Check eq_rec_r.
-
-    }
-    {
-        rewrite (coseq_eq (conj_path _ _ _ _ _ _ _ _   )). simpl. exists conil;easy.
-    }
-    
-
-Lemma conj_path_path_assoc : forall (t:tctx) (g:gtt) (l:option label) (xs:local_path) 
- (Hwfg : wfgC g) (Htxwf : tctx_wf t) (Hassoc: assoc t g) 
-(Hvalid : valid_local_path (cocons (t,l) xs)),
-
-path_assocC (cocons (t,l) xs) 
-(conj_path _ _ _ _ Hwfg Htxwf Hassoc Hvalid).
-Proof.
-    pcofix CIH.
-    intros.
-    destruct l.
-    {
-        destruct l;
-        pose proof Hvalid as Hvalid'; pinversion Hvalid'; try apply valid_path_mon;try tauto;subst.
-
-        rewrite (coseq_eq (conj_path _ _ _ _ _ _ _ _   )).
-        pfold.
-           
-            
-    }
-    {
-        Search valid_path_GC conil.
-        eapply valid_path_none_next_nil in Hvalid as Hv2;subst.
-        pfold.
-        assert(conj_path t g None conil Hwfg Htxwf Hassoc Hvalid = cocons (g,None) conil).
-        {
-            rewrite (coseq_eq (conj_path _ _ _ _ _ _ _ _   )).
-            simpl. reflexivity.
-        }
-        rewrite H. constructor;try tauto.
-        left. pfold. constructor.     
-    }
-*)
-
-Lemma conj_path_exists: forall g gamma xs l, wfgC g -> tctx_wf gamma -> assoc gamma g ->
-    exists ys, path_assocC (cocons (gamma,l) xs) (cocons (g, l) ys).
-Proof.
-Admitted.
-
 
 Definition head_proj_is_recv p q:=(
     fun (pt:global_path) => match pt with 
@@ -1187,41 +26,6 @@ Definition head_proj_is_send p q:=(
         | _ => False end
         ).
 
-Check eventually_if.
-(*
-Lemma assoc_live_helper_send_helper : typ_ltth lx ls Tq ->
-
-*)
-Search "typ_p".
-Print typ_p_send_ltth.
-
-(*
-Definition weak_until {A:Type} F G := fun (u:coseq A) => until F G u \/ alwaysCG F u.
-
-Definition weak_untilC_eq_weak_until {A:Type}: forall F G (xs : coseq A), 
-    weak_untilC F G xs <-> weak_until F G xs. 
-Proof.
-    split.
-    {  
-        admit.
-    }
-    {
-        generalize dependent xs.
-        pcofix CIH.
-        intros * Hweak.
-        destruct Hweak.
-        {
-            inversion H;subst. pfold. constructor;easy.
-            
-            pfold;constructor 2;try easy. right. eapply CIH;left;easy.
-        }
-        {
-            destruct xs. pfold. constructor 3. pinversion H;try apply always_mon;subst;easy. 
-            pfold. constructor 2. pinversion H;try apply always_mon;subst;easy.
-            right. eapply CIH. right. pinversion H;try apply always_mon;subst;easy.
-        }
-    }
-Admitted.*)
 
 Lemma weak_untilC_to_until {T:Type} A B (xs: coseq T): weak_untilC A B xs -> 
     eventually B xs -> until A B xs.
@@ -1237,21 +41,18 @@ Proof.
             constructor 2;try easy. eapply IHeventually;easy.   
         }
 Qed.
-(*
-Lemma weak_until_to_until {T:Type} A B (xs: coseq T): weak_until A B xs -> 
-    eventually B xs -> until A B xs.
-Proof.
-    intros. red in H.
-    destruct H;try easy.
-    generalize dependent H. induction H0.
-    {
-        intros. constructor 1;easy.   
-    }
-    {
-        intros. constructor 2;
-        pinversion H;try apply always_mon;subst;try easy. eapply IHeventually;easy.   
-    }
-Qed.*)
+
+
+Lemma part_after_step_r_redux: forall g g' p q  ell r, wfgC g -> 
+    projectableA g ->
+    gttstepC g g' p q ell -> r <> p -> r <> q -> isgPartsC r g -> isgPartsC r g'.
+    Proof.
+        intros * Hwfg Hprojable Hstep Hne1 Hne2 Hisparts.
+        specialize (Hprojable r) as Hprojr;destr_hyps. 
+        eapply part_after_step_r;try exact Hisparts;try exact Hstep;try exact H;try easy.
+        eapply wfgC_after_step;try exact Hstep;try easy.
+    Qed.
+
 
 Definition trans_involves_p l r :=
     match l with 
@@ -1259,8 +60,6 @@ Definition trans_involves_p l r :=
         | lrecv p q _ _ => p=r \/ q=r
         | lcomm p q  _ => p=r \/ q=r
     end.
-
-Search True False.
 
 Definition head_trans_not_involving_p {A:Type} p (xs:coseq (A * option label)) := match xs with 
     | conil => True
@@ -1434,9 +233,419 @@ Proof.
     }
 Qed.
 
-Search typ_gtth gttstepC.
+
+Inductive gttstepH : gtth -> part -> part -> 
+nat -> gtth ->  Prop :=
+    | stepH_hol : forall n m p q ell, 
+    gttstepH (gtth_hol n)  p q ell (gtth_hol m) 
+    | stepH_send : forall ell p q srt ghs gh',
+    p <> q ->
+    onth ell ghs = Some (srt, gh') -> gttstepH (gtth_send p q ghs) p q ell gh' 
+    | stepH_cont : forall ell p q s t ghs ghs' ,
+    s <> p -> 
+    s <> q ->
+    t <> p ->
+    t <> q ->
+    p <> q ->
+    Forall2
+(fun u v : option (sort * gtth) =>
+u = None /\ v = None \/
+(exists (s0 : sort) gh gh',
+u = Some (s0, gh) /\ v = Some (s0, gh') /\ gttstepH gh  p q ell gh'))
+ghs ghs' ->
+    gttstepH (gtth_send s t ghs)
+    p q ell 
+    (gtth_send s t ghs').
+(*non-constructive
+Lemma gttstepH_consistent: forall gx gs r p q ell g g' gx' gs', 
+    r <> p ->
+    r <> q ->
+    wfgC g ->
+    typ_p_gtth gs gx r g -> 
+    usedCtx gs gx ->
+    wfgC g' ->
+    gttstepC g g' p q ell ->
+    typ_p_gtth gs' gx' r g' -> 
+    usedCtx gs' gx' -> gttstepH gx  p q ell gx'.
+Proof.
+    induction gx using gtth_ind_ref.
+    {
+        intros * Hner1 Hner2 Hwfg Htyp Hused Hwfg' Hstep Htyp' Hused'.
+        destruct gx';try constructor.
+        destruct Htyp as [?Htyp [?Htyp ?Htyp]].
+        inversion Htyp;subst.
+        eapply Forall_prop in Htyp1;try exact H1. destruct Htyp1;try easy.
+        destr_hyps.
+        destruct H;[|destruct H];inversion H;subst;
+        try solve
+        [
+            pinversion Hstep;try apply step_mon;subst;try easy;
+            destruct Htyp' as [?Htyp' [?Htyp' ?Htyp']];
+            inversion Htyp';subst;
+            subtac_triv_isparts_false |
+            inversion H;subst;
+            eapply no_step_from_end in Hstep;try easy
+        ].
+    }
+    {
+        intros * Hner1 Hner2 Hwfg Htyp Hused Hwfg' Hstep Htyp' Hused'.
+        destruct Htyp as [?Htyp [?Htyp ?Htyp]].
+        destruct Htyp' as [?Htyp' [?Htyp' ?Htyp']].
+        inversion Htyp;subst.
+        rename xs into ghs, ys into gcs.
+        pinversion Hstep;subst;try easy;try apply step_mon.
+        {
+            symmetry in H10.
+            eapply Forall2_prop_l in H6;try exact H10;tac_sanitize.
+            econstructor 2;try easy.
+
+        }
+    } 
+*)    
+
+Lemma Forall3_prop1 {A:Type} {B:Type} {C:Type}: forall P ell (xs : list (option A))
+(ys : list (option B)) 
+(zs : list (option C)) a, onth ell xs= Some a -> Forall3 P xs ys zs ->
+exists b c, onth ell ys = b /\ onth ell zs = c /\ P (Some a) b c.
+Proof.
+    intros P ell xs.
+    revert ell.
+    induction xs.
+    {  
+        intros. rewrite onth_nil in H. easy.
+    }
+    {
+        intros.
+        destruct ell.
+        {
+            simpl in H;subst.
+            inversion H0;subst. exists b ,c. repeat split;simpl;easy.
+        }
+        {
+            simpl in H.
+            inversion H0;subst.
+            eapply IHxs in H7;try exact H.
+            destruct H7 as [b' [c' [Honb [Honc Pbc]]]].
+            exists b', c'.
+            repeat split;simpl;try easy.   
+        }
+    }
+Qed.
 
 
+Lemma Forall3_prop2 {A:Type} {B:Type} {C:Type}: forall P ell (xs : list (option A))
+(ys : list (option B)) 
+(zs : list (option C)) b, onth ell ys= Some b -> Forall3 P xs ys zs ->
+exists a c, onth ell xs = a /\ onth ell zs = c /\ P a (Some b) c.
+Proof.
+    intros P ell xs ys.
+    revert ell xs.
+    induction ys.
+    {  
+        intros. rewrite onth_nil in H. easy.
+    }
+    {
+        intros.
+        destruct ell.
+        {
+            simpl in H;subst.
+            inversion H0;subst. exists a ,c. repeat split;simpl;easy.
+        }
+        {
+            simpl in H.
+            inversion H0;subst.
+            eapply IHys in H7;try exact H.
+            destruct H7 as [b' [c' [Honb [Honc Pbc]]]].
+            exists b', c'.
+            repeat split;simpl;try easy.   
+        }
+    }
+Qed.
+
+Lemma Forall3_prop3 {A:Type} {B:Type} {C:Type}: forall P ell (xs : list (option A))
+(ys : list (option B)) 
+(zs : list (option C)) c, onth ell zs= Some c -> Forall3 P xs ys zs ->
+exists a b, onth ell xs = a /\ onth ell ys = b /\ P a b (Some c).
+Proof.
+    intros P ell xs ys zs.
+    revert ell xs ys.
+    induction zs.
+    {  
+        intros. rewrite onth_nil in H. easy.
+    }
+    {
+        intros.
+        destruct ell.
+        {
+            simpl in H;subst.
+            inversion H0;subst. exists a ,b. repeat split;simpl;easy.
+        }
+        {
+            simpl in H.
+            inversion H0;subst.
+            eapply IHzs in H7;try exact H.
+            destruct H7 as [b' [c' [Honb [Honc Pbc]]]].
+            exists b', c'.
+            repeat split;simpl;try easy.   
+        }
+    }
+Qed.
+
+
+                Lemma Forall3_length {A B C : Type}: forall P (xs : list (option A)) 
+                (ys : list (option B)) (zs : list (option C)), Forall3 P xs ys zs -> Datatypes.length xs = Datatypes.length ys /\
+                Datatypes.length ys = Datatypes.length zs.
+                Proof.
+                    intros P;
+                    induction xs;intros;inversion H;subst;[simpl | split;eapply IHxs in H6;destr_hyps;simpl];lia.
+                Qed.
+
+(*constructive*)
+ Lemma gttstepH_consistent: forall gx gs r p q ell g g', 
+    r <> p ->
+    r <> q ->
+    wfgC g ->
+    projectableA g ->
+    typ_p_gtth gs gx r g -> 
+    usedCtx gs gx ->
+    wfgC g' ->
+    gttstepC g g' p q ell ->
+    exists gs' gx',
+    typ_p_gtth gs' gx' r g' /\ 
+    usedCtx gs' gx' /\ gttstepH gx  p q ell gx'.
+Proof.
+    induction gx using gtth_ind_ref.
+    {
+        intros * Hner1 Hner2 Hwfg Hprojable Htyp Hused Hwfg' Hstep.
+        assert(Hispartsr: isgPartsC r g).
+        {
+            destruct Htyp as [?Htyp [?Htyp ?Htyp]].
+            inversion Htyp;subst;
+            eapply Forall_prop in Htyp1;try exact H1;
+            destruct Htyp1;try easy;destr_hyps.
+            destruct H;[| destruct H];inversion H;subst;try solve [
+            try eapply decidable_helper.triv_pt_p; try eapply decidable_helper.triv_pt_q;
+            easy]. eapply no_step_from_end in Hstep;try easy.
+        }
+        eapply part_after_step_r_redux in Hstep as Hprt;try exact Hispartsr;try easy.
+        eapply balanced_to_tree in Hprt;try easy.
+        destr_hyps.
+        exists x0 , x.
+        repeat split;try easy.
+        rename x into gx', x0 into gs'.
+        destruct gx';try constructor.
+
+        destruct Htyp as [?Htyp [?Htyp ?Htyp]].
+        inversion Htyp;subst.
+        eapply Forall_prop in Htyp1;try exact H5. destruct Htyp1;try easy.
+        destr_hyps.
+        destruct H3;[|destruct H3];inversion H3;subst;
+        try solve
+        [
+            pinversion Hstep;try apply step_mon;subst;try easy;
+            inversion H;subst;
+            subtac_triv_isparts_false |
+            inversion H;subst;
+            eapply no_step_from_end in Hstep;try easy
+        ].
+    }
+    {
+        intros * Hner1 Hner2 Hwfg Hprojable Htyp Hused Hwfg' Hstep .
+        destruct Htyp as [?Htyp [?Htyp ?Htyp]].
+        inversion Htyp;subst.
+        rename xs into ghs, ys into gcs.
+        pinversion Hstep;subst;try easy;try apply step_mon.
+        {
+            symmetry in H10.
+            eapply Forall2_prop_l in H6;try exact H10;tac_sanitize.
+            inversion Hused;subst.
+            eapply Forall2_prop_l in H8;try exact H1;tac_sanitize.
+            eapply mergeCtx_onth_subset in H6;try exact H2.
+            eapply decidable_helper.typh_with_less in H3 as Htyp2;try exact H7;try easy.
+            exists x3, x5.
+            repeat split;try easy.
+            intros. eapply Htyp0. eapply ha_sendr;try exact H1;try easy.
+            eapply Forall_subset;try exact H6;try easy;try tauto.
+            econstructor 2;try easy;try exact H1.   
+        }
+        {
+            rename ys into gcs'.
+            eapply decidable_helper.ctx_back in Htyp as Hgss.
+            destr_hyps.
+            rename H0 into Hgss3,x into gss, H1 into Hishmerge.
+            assert(create_ghs: forall ghs_sbs gcs'_sbs
+        
+        (Hsubset: Forall2 (fun u v=> u=None /\ v=None \/ (exists k, onth k ghs=u /\ onth k gcs' =v)) 
+        ghs_sbs gcs'_sbs),
+        
+        exists ghs' gss' gs', 
+        (isMergeCtx gs' gss' \/ (gs'=[] /\ gss' =[])) /\
+         Forall3
+        (fun (u : option (list (option gtt)))
+        (v : option (sort * gtth))
+        (w : option (sort * gtt)) =>
+        u = None /\ v = None /\ w = None \/
+        (exists
+        (ct : list (option gtt)) (s0 : sort) (g : gtth) (g' : gtt),
+        u = Some ct /\
+        v = Some (s0, g) /\
+        w = Some (s0, g') /\
+        typ_gtth ct g g' /\ usedCtx ct g)) gss' ghs' gcs'_sbs 
+        /\
+        Forall (fun u=> u=None \/ exists s g, u=Some (s,g) /\ (ishParts r g -> False)) ghs' 
+        /\
+        Forall
+(fun u : option gtt =>
+u = None \/
+(exists (q1 : opt_lbl) (lsg : list (option (sort * gtt))),
+u = Some (gtt_send r q1 lsg) \/
+u = Some (gtt_send q1 r lsg) \/ u = Some gtt_end)) gs'
+        /\
+        Forall2 (fun u v => u=None /\ v=None \/ 
+        (exists s g g', u=Some (s,g) /\ v=Some (s,g') /\ gttstepH g p0 q0 ell g')) ghs_sbs ghs').
+            {
+                induction ghs_sbs.
+                intros. 
+                {
+                    exists [], [], [].
+                    inversion Hsubset;subst.
+                    repeat split;try tauto;try constructor.
+                }
+                intros.
+                destruct a.
+                destruct p1 as [s gh].
+                
+                assert(exists n,  onth n ghs = Some (s,gh)).
+                {
+                    assert(Hzero: onth 0 (Some (s,gh)::ghs_sbs)=(Some (s,gh))) by crush.
+                    eapply Forall2_prop_r   in Hsubset;try exact Hzero.
+                    destr_hyps. destruct H1;try easy.
+                    destruct H1 as [k [Honthk_ghs Honthk_gcs']].
+                    exists k;easy.
+                }
+                Search Forall3.
+                destruct H0 as [n Honth_ghs].
+                eapply Forall2_prop_r in H6;try exact Honth_ghs;tac_sanitize.
+                rename x0 into s, x1 into gh, x2 into gc, H2 into Honth_gcs.
+                eapply Forall_prop in H;try exact Honth_ghs.
+                destruct H;try easy.
+                destr_hyps.
+                symmetry in H;inversion H;subst;clear H.
+                eapply Forall2_prop_r in H16;try exact Honth_gcs;tac_sanitize.
+                rename x0 into s, x1 into gc, x2 into gc'.
+                destruct H11;try easy.
+                eapply Forall3_prop2 in Hgss3;try exact Honth_ghs;tac_sanitize.
+                rewrite Honth_gcs in H14;symmetry in H14;inversion H14;subst.
+                rename x1 into gs_n, x2 into s, x3 into gh; clear H14.  
+                eapply H0 with (r:=r) (gs:=gs_n) in H;try easy;
+                try solve [subtac_wfg_by_onth | subtac_projable_by_onth |
+
+                repeat split;try easy;try solve [subtac_ishparts_by_onth |
+                    eapply mergeCtx_onth_subset in Hishmerge;try exact H12;
+                    eapply Forall_subset;try exact Hishmerge;try easy;tauto]
+                ].
+
+                inversion Hsubset;subst.
+                destruct H13;try easy. clear H1.
+                specialize (IHghs_sbs _ H18). 
+                destruct IHghs_sbs as [ghs'_r [gss'_r [gs'_r ]]].
+                destruct H as [gs' [gh' [?Htyp' [?Htyp' ?Htyp]]]].
+                
+                exists (Some (s,gh')::ghs'_r), (Some (gs') :: gss'_r).
+                assert (exists gs'_m, isMergeCtx gs'_m (Some gs' :: gss'_r)).
+                {
+                 Search isMergeCtx.   
+                 (* isMergeCtx gs'_m (Some gs' :: gss'_r)
+                 given ismergectx gs gss
+                 gs' derived from gs_n
+                 *)
+                }
+                evar (gmerge: list (option gtt)).
+                exists gmerge.
+                (*
+                repeat split. admit.
+                constructor;try tauto.
+                right. exists gs', s, gh', gc'.
+                repeat split;try easy. admit.
+                unfold typ_p_gtth in Htyp';try tauto.
+                constructor. right. exists s, gh'. split;try easy. red in Htyp';tauto.
+                tauto. admit.
+                constructor;try easy. right.*)
+            }
+            assert (Hsubs : Forall2
+(fun (u : option (sort * gtth))
+(v : option (sort * gtt)) =>
+u = None /\ v = None \/
+(exists k : opt_lbl, onth k ghs = u /\
+onth k gcs' = v)) ghs
+gcs'). admit.
+
+            specialize (create_ghs _ _ Hsubs).
+            destruct create_ghs as [ghs' [gss [gs' [Hishmerge [Hfa3 [Hfa [Hfa_shape Hfa2]]]]]]].
+            exists gs', (gtth_send p q ghs').
+
+            repeat split.
+            {
+                constructor.
+                admit.
+                eapply Forall2_forall. 
+                eapply Forall2_length in Hfa2, Hsubs;lia.
+                intros.
+                destruct (onth k ghs') eqn:Hyg.
+                {
+                    right.
+                    eapply Forall3_prop2 in Hfa3;try exact Hyg;tac_sanitize.
+                    exists x2, x3, x4.
+                    repeat split;try easy.
+                    eapply decidable_helper.typh_with_more;try exact H13.
+                    eapply mergeCtx_onth_subset;try exact Hishmerge;try easy;try exact H2.
+                }
+                {
+                    left.
+                    repeat split;try easy.
+                    destruct (onth k gcs') eqn:Hyg';try easy.
+                    eapply Forall3_prop3 in Hfa3;try exact Hyg'; tac_sanitize.
+                    rewrite Hyg in H11;easy.   
+                } 
+            }
+            {
+                intros.
+                inversion H0;subst;try easy;
+                try 
+                subtac_triv_isparts_false.
+                eapply Forall_prop in Hfa;try exact H17.
+                destruct Hfa;try easy;destr_hyps. 
+                inversion H1;subst;tauto.
+            }
+            {
+                easy.
+            }
+            {
+                econstructor;try exact Hishmerge.
+                eapply Forall2_forall.
+                eapply Forall3_length in Hfa3. lia.
+                intros.
+                destruct (onth k ghs') eqn:Hyg.
+                {
+                    right.
+                    eapply Forall3_prop2 in Hfa3;try exact Hyg;tac_sanitize.
+                    exists x1, x2, x3.
+                    repeat split;try easy.
+                }
+                {
+                    destruct (onth k gss) eqn:Hyg'. 
+                    eapply Forall3_prop1 in Hfa3;try exact Hyg';tac_sanitize.
+                    rewrite Hyg in H11;try easy.
+                    tauto.   
+                }
+            }
+            {
+                constructor;try easy.
+            }   
+        }
+    } 
+  
+(*
 Lemma graft_height_after_step: forall gs gx p g' g s t ell, 
 p <> s ->
 p <> t ->
@@ -1497,7 +706,97 @@ Proof.
             eapply gtth_height_ge_children  with (p:=s) (q:=t) (k :=gtth_height gx') in H3 as Hge;crush.
             
         }
-        admit.
+        {
+            inversion Htypg;subst.
+            rename xs into ghs, xs0 into gcs.
+            evar (gx':list (option (sort * gtth))). evar  (gs':list (list (option gtt))).
+            Search isMergeCtx.
+            exists  
+             assert(create_ghs' : forall ghs1,
+             (Hsubset: Forall (fun u=> u=None \/ exists k, onth k ghs=u) ghs1), 
+        }
+    }
+Admitted.
+*)
+
+Lemma graft_height_after_step: forall gs gx gs' gx' p g' g s t ell, 
+p <> s ->
+p <> t ->
+wfgC g ->
+projectableA g ->
+isgPartsC p g ->
+typ_p_gtth gs gx p g ->
+usedCtx gs gx -> gttstepC g g' s t ell ->
+typ_p_gtth gs' gx' p g' ->
+usedCtx gs' gx' -> (gtth_height gx' <= gtth_height gx).
+Proof.
+    intros * Hps Hpt Hwfg Hprojable Hispartsp [?Htypg [?Htypg ?Htypg]] Husedp Hstep
+    [?Htypg' [?Htypg' ?Htypg']] Husedq.
+    
+    
+    eapply part_after_step_r_redux in Hstep as Hisparts';try exact Hispartsp;try easy.
+    assert (wfgC g') by (eapply wfgC_after_step;try exact Hstep;try easy).
+    eapply balanced_to_tree in Hisparts';try easy. 
+        
+    generalize dependent gs. revert Hps Hpt Hstep. 
+    generalize dependent g'.
+    generalize dependent g.
+    generalize dependent gx.
+    induction gx using gtth_ind_ref.
+    {
+        intros.
+        inversion Htypg;subst.
+        exists (gtth_hol n). exists (extendLis n (Some g')). 
+        repeat split;try easy.
+        constructor. rewrite extendExtract;easy.
+        eapply Forall_forall.
+        intros.
+        destruct x;try tauto. right.
+
+        apply in_some_implies_onth in H. destr_hyps.
+        
+        eapply extend_onth_inv in H as ?Ht;subst. rewrite extendExtract in H.
+        inversion H;subst.
+        eapply Forall_prop in Htypg1;try exact H1;tac_sanitize.
+        destruct H0 as [?Htr | [?Htr | ?Htr]];
+        inversion Htr;subst;
+        pinversion Hstep;try apply step_mon;subst;try tauto;
+        exists x, ys;tauto.
+        constructor.
+    }
+    {
+        intros.   
+        pinversion Hstep;try apply step_mon;subst.
+        {
+            apply eq_sym in H1.
+            inversion Htypg;subst.
+            rename xs0 into gcs, xs into ghs.
+            eapply Forall2_prop_l in H10;try exact H1;tac_sanitize.
+            rename x1 into gh', x2 into g', x0 into s0.
+
+            inversion Husedp;subst.
+            eapply Forall2_prop_l in H10;try exact H3;tac_sanitize.
+            rename x1 into s0, x2 into gx'.
+            exists gx',x0.
+            repeat split;
+            eapply mergeCtx_onth_subset in H8;try exact H4;
+            eapply decidable_helper.typh_with_less in H6;try exact H9;try tauto.
+            rename x0 into gs'.
+            intros. eapply Htypg0. econstructor 3;try exact H3;try easy.
+            eapply Forall_subset with (gs:=gs);try tauto.
+            Search gtth_height.
+            eapply gtth_height_ge_children  with (p:=s) (q:=t) (k :=gtth_height gx') in H3 as Hge;crush.
+            
+        }
+        {
+            inversion Htypg;subst.
+            rename xs into ghs, xs0 into gcs.
+            evar (gx':list (option (sort * gtth))). evar  (gs':list (list (option gtt))).
+            Search isMergeCtx.
+            exists  
+             assert(create_ghs' : forall ghs1,
+             (Hsubset: Forall (fun u=> u=None \/ exists k, onth k ghs=u) ghs1), 
+        }
     }
 Admitted.
 
@@ -1819,7 +1118,6 @@ Definition head_grafting_proper_prefix p q (xs:global_path) := match xs with
     | cocons (g,l) xs => exists ctx_p gs_p ctx_q gs_q, typ_p_gtth  gs_p ctx_p p g /\
         typ_p_gtth gs_q ctx_q  q g /\ usedCtx gs_p ctx_p /\ usedCtx gs_q ctx_q /\ is_tree_proper_prefix ctx_p ctx_q end.
     
-
 Definition head_grafting_eq p q (xs:global_path) := match xs with 
     | conil => False
     | cocons (g,l) xs => exists ctx_p gs_p ctx_q gs_q, typ_p_gtth  gs_p ctx_p p g /\
@@ -1828,108 +1126,6 @@ Definition head_grafting_eq p q (xs:global_path) := match xs with
 
 Definition all_fair_paths P:= forall xs, fair_path_global xs -> 
 global_valid_pathC xs ->  wfg_global_path xs -> P xs.
-
-(*
-Definition always_local_step_implies_ev_grafting : forall lx g p q l xs ls Tp ,
-let full_pt := cocons (g,l) xs in
-fair_path_global full_pt -> 
-global_valid_pathC full_pt ->  wfg_global_path full_pt ->
-alwaysCG (head_proj_eventually_takes_step p) full_pt -> 
-projectionC g p Tp -> 
-(typ_p_send_ltth ls lx q Tp -> eventually (head_proj_is_send p q) full_pt) /\ 
-(typ_p_recv_ltth ls lx q Tp -> eventually (head_proj_is_recv p q) full_pt).
-Proof.
-    induction lx using ltth_ind_ref.
-    {
-        intros * Hfair Hvalid Hwfgp Halways Hproj;split;intros Htypp;
-        destruct Htypp as [?Htypp [?Htypp ?Htypp]];
-        constructor 1; simpl;  inversion Htypp;subst;
-        assert (used_in_ltth n (ltth_hol n)) by constructor;
-        
-        specialize (Htypp1 n H); destr_hyps; rewrite H1 in H0; inversion H0;subst; 
-        exists x; easy.
-    }
-    {
-        intros * Hfair Hvalid Hwfgp Halways Hproj;split;intros Htypp;
-        destruct Htypp as [?Htypp [?Htypp ?Htypp]];
-        
-        pose proof Halways as Halways';
-        pinversion Halways;subst;rename H2 into Hev_step, H3 into Haw1;
-        red in Hev_step;
-        inversion Htypp;subst;rename H4 into HFa2_ltg;
-        specialize (Hev_step _ Hproj);
-        destruct Hev_step as [Hevs_rel _];
-        assert (Hstupid1 : ltt_send q ys = ltt_send q ys) by reflexivity;
-        specialize (Hevs_rel q ys Hstupid1); 
-        destruct Hevs_rel as [k [s [Tp' [Honthk Hev2]]]];
-        eapply Forall2_prop_l in HFa2_ltg;try exact Honthk;try easy;tac_sanitize;
-        eapply Forall_prop in H;try exact H1;try easy;tac_sanitize;
-
-        rename x into s, x3 into lg, x2 into Tp', H1 into Honthk2, H0 into IHs, H3 into Hlgraft;
-        rewrite eventually_P_iff_P_suffix in Hev2;
-        destruct Hev2 as [xs1 [Hsuf Hp]];
-        destruct xs1;try destruct p0;try easy;
-        rewrite eventually_idemp;
-
-        rewrite eventually_P_iff_P_suffix;
-        exists (cocons (g0,o) xs1);split;try solve [ 
-            unfold full_pt; constructor; easy   
-        ];
-        assert (Hsuf' : is_suffix (cocons (g0,o) xs1) full_pt) by (unfold full_pt;constructor;easy);
-        eapply IHs with (ls:=ls) (Tp:=Tp');try easy;
-        try solve [
-
-        eapply always_P_implies_P_suffix with (xs:=full_pt);easy | 
-        eapply valid_suffix_valid_global with (xs:=full_pt);easy];
-        red; repeat split;try easy;
-        assert (Hqq0: q <> q0) by (red;intros; eapply Htypp0;subst;constructor);
-        try solve
-        [
-        intros; eapply Htypp0; econstructor 3 with (g:=lg);try exact Honthk2;easy |
-        intros;
-        eapply Htypp1; econstructor;try exact Honthk2;easy].
-    }
-    {
-        intros * Hfair Hvalid Hwfgp Halways Hproj;split;intros Htypp;
-        destruct Htypp as [?Htypp [?Htypp ?Htypp]];
-        
-        pose proof Halways as Halways';
-        pinversion Halways;subst;rename H2 into Hev_step, H3 into Haw1;
-        red in Hev_step;
-        inversion Htypp;subst;rename H4 into HFa2_ltg;
-        specialize (Hev_step _ Hproj);
-        destruct Hev_step as [_ Hevs_rel];
-        assert (Hstupid1 : ltt_recv q ys = ltt_recv q ys) by reflexivity;
-        specialize (Hevs_rel q ys Hstupid1); 
-        destruct Hevs_rel as [k [s [Tp' [Honthk Hev2]]]];
-        eapply Forall2_prop_l in HFa2_ltg;try exact Honthk;try easy;tac_sanitize;
-        eapply Forall_prop in H;try exact H1;try easy;tac_sanitize;
-
-        rename x into s, x3 into lg, x2 into Tp', H1 into Honthk2, H0 into IHs, H3 into Hlgraft;
-        rewrite eventually_P_iff_P_suffix in Hev2;
-        destruct Hev2 as [xs1 [Hsuf Hp]];
-        destruct xs1;try destruct p0;try easy;
-        rewrite eventually_idemp;
-
-        rewrite eventually_P_iff_P_suffix;
-        exists (cocons (g0,o) xs1);split;try solve [ 
-            unfold full_pt; constructor; easy   
-        ];
-        assert (Hsuf' : is_suffix (cocons (g0,o) xs1) full_pt) by (unfold full_pt;constructor;easy);
-        eapply IHs with (ls:=ls) (Tp:=Tp');try easy;
-        try solve [
-
-        eapply always_P_implies_P_suffix with (xs:=full_pt);easy | 
-        eapply valid_suffix_valid_global with (xs:=full_pt);easy];
-        red; repeat split;try easy;
-        assert (Hqq0: q <> q0) by (red;intros; eapply Htypp0;subst;constructor);
-        try solve
-        [
-        intros; eapply Htypp0; econstructor 4 with (g:=lg);try exact Honthk2;easy |
-        intros;
-        eapply Htypp1; econstructor;try exact Honthk2;easy].
-    }    
-Qed.*)
 
 Lemma head_gtt_send_not_fair : forall p q xs, wfgC (gtt_send p q xs) ->
 fair_path_global (cocons (gtt_send p q xs, None) conil) -> False.
@@ -2095,7 +1291,7 @@ Definition head_helper_prop p q hgt_bound (u :global_path) :=   match u with
     | _ => True end.
 
 
-Lemma grafting_height_decreases_until :  forall ctx_p p lcs q gs_p xs hgt_bound, 
+Lemma head_trans_preconds :  forall ctx_p p lcs q gs_p xs hgt_bound, 
 fair_path_global xs -> 
 global_valid_pathC xs ->  wfg_global_path  xs ->
 head_grafting_is p ctx_p gs_p xs -> 
@@ -2261,7 +1457,7 @@ Proof.
                     exists (cocons (g0, Some (lcomm n n0 n1)) xsuf).
                     split;try easy. simpl;tauto.
                 }
-                eapply grafting_height_decreases_until with (ctx_p:=ctx_p)
+                eapply head_trans_preconds with (ctx_p:=ctx_p)
                 (gs_p:=gs_p) (p:=p) (q:=q) (lcs:=lcs) in Hfair as Hwft;try easy;
                 try solve [simpl; exists lcs; easy |
                 eapply grafting_contains_prefix;try exact H;
