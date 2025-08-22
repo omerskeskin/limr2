@@ -432,348 +432,105 @@ Proof.
     }
 Qed. 
 
-
-Lemma Forall3_prop1 {A:Type} {B:Type} {C:Type}: forall P ell (xs : list (option A))
-(ys : list (option B)) 
-(zs : list (option C)) a, onth ell xs= Some a -> Forall3 P xs ys zs ->
-exists b c, onth ell ys = b /\ onth ell zs = c /\ P (Some a) b c.
+Lemma gtth_height_eq_by_forall2 : forall gxs p q p' q' gxs',
+Forall2 (fun u v => u=None /\ v=None \/ 
+exists s g g', u=Some (s,g) /\ v= Some (s,g') /\ gtth_height g = gtth_height g') gxs gxs' ->
+gtth_height (gtth_send p q gxs) = gtth_height (gtth_send p' q' gxs').
 Proof.
-    intros P ell xs.
-    revert ell.
-    induction xs.
-    {  
-        intros. rewrite onth_nil in H. easy.
-    }
-    {
-        intros.
-        destruct ell.
-        {
-            simpl in H;subst.
-            inversion H0;subst. exists b ,c. repeat split;simpl;easy.
-        }
-        {
-            simpl in H.
-            inversion H0;subst.
-            eapply IHxs in H7;try exact H.
-            destruct H7 as [b' [c' [Honb [Honc Pbc]]]].
-            exists b', c'.
-            repeat split;simpl;try easy.   
-        }
-    }
+    induction gxs.
+    intros. inversion H;subst;crush.
+    intros. inversion H;subst.
+    destruct a. destruct H2;try easy. destr_hyps. inversion H0;subst;clear H0.
+    rewrite gtth_height_unfold_once_some.
+    rewrite gtth_height_unfold_once_some.
+    
+    specialize (IHgxs p q p' q' _ H4). rewrite IHgxs. rewrite H2. simpl. lia.
+
+    destruct H2;destr_hyps;subst. do 2 
+    (rewrite gtth_height_unfold_once_none). 
+    specialize (IHgxs p q p' q' _ H4). lia.
+    inversion H0.
 Qed.
 
-
-Lemma Forall3_prop2 {A:Type} {B:Type} {C:Type}: forall P ell (xs : list (option A))
-(ys : list (option B)) 
-(zs : list (option C)) b, onth ell ys= Some b -> Forall3 P xs ys zs ->
-exists a c, onth ell xs = a /\ onth ell zs = c /\ P a (Some b) c.
+Lemma gtth_eq_mon_gtth_height: forall gx gx', gtth_eq gx gx' -> gtth_height gx =gtth_height gx'.
 Proof.
-    intros P ell xs ys.
-    revert ell xs.
-    induction ys.
-    {  
-        intros. rewrite onth_nil in H. easy.
+    induction gx using gtth_ind_ref;
+    intros * Heq.
+    {
+        inversion Heq;subst;try easy.   
     }
     {
+        inversion Heq;subst. 
+        eapply gtth_height_eq_by_forall2.
+        eapply Forall2_forall. eapply Forall2_length in H4;try easy.
         intros.
-        destruct ell.
-        {
-            simpl in H;subst.
-            inversion H0;subst. exists a ,c. repeat split;simpl;easy.
-        }
-        {
-            simpl in H.
-            inversion H0;subst.
-            eapply IHys in H7;try exact H.
-            destruct H7 as [b' [c' [Honb [Honc Pbc]]]].
-            exists b', c'.
-            repeat split;simpl;try easy.   
-        }
+        destruct (onth k xs) eqn:Hyg. right.
+        eapply Forall2_prop_r in H4;try exact Hyg;tac_sanitize. 
+        exists x0, x1, x2. repeat split;try easy.
+        eapply Forall_prop in H;try exact Hyg. destruct H;try easy.
+        destr_hyps. inversion H;subst. eapply H0;easy.
+        destruct (onth k ys) eqn:Hyg';try tauto.
+        right. eapply Forall2_prop_l in H4;try exact Hyg';tac_sanitize. rewrite Hyg in H1;try easy.       
     }
-Qed.
+Qed.    
 
-Lemma Forall3_prop3 {A:Type} {B:Type} {C:Type}: forall P ell (xs : list (option A))
-(ys : list (option B)) 
-(zs : list (option C)) c, onth ell zs= Some c -> Forall3 P xs ys zs ->
-exists a b, onth ell xs = a /\ onth ell ys = b /\ P a b (Some c).
-Proof.
-    intros P ell xs ys zs.
-    revert ell xs ys.
-    induction zs.
-    {  
-        intros. rewrite onth_nil in H. easy.
-    }
+
+Section gttstepH_ind_ref.
+
+Variable P : gtth -> gtth -> Prop.
+Hypotheses P_base: forall n m, P (gtth_hol n) (gtth_hol m).
+Hypotheses P_onth : forall p q xs n s g, 
+onth n xs = Some (s,g) -> P (gtth_send p q xs) g.
+
+Hypothesis P_send_cont : forall p q xs ys,
+List.Forall2 (fun u v => (u = None /\ v = None) \/ 
+(exists s g g', u = Some(s, g) /\ v = Some(s, g') /\ P g g')) xs ys -> 
+P (gtth_send p q xs) (gtth_send p q ys).
+  
+Hypothesis P_eq: forall a b b' c, gtth_eq a b -> gtth_eq b' c -> P b b' -> P a c.
+Print gttstepH.
+
+Fixpoint gttstepH_ind_ref p q ell G G' (Hstep : gttstepH  G p q ell G') {struct Hstep} : P G G'.
+  Proof.
+    refine (match Hstep with
+      | stepH_hol a b p q ell=> P_base b a
+      | stepH_send ell p q srt ghs gh' Hpeq Honth => P_onth p q ghs ell srt gh' Honth
+      | stepH_cont ell p q s t ghs ghs' _ _ _ _ _ _ => P_send_cont s t ghs ghs'  _
+      | stepH_eq a b b' c p q ell Heq1 Heq2 _ => _ 
+    end); try easy.
     {
+        revert f. eapply Forall2_mono.
         intros.
-        destruct ell.
-        {
-            simpl in H;subst.
-            inversion H0;subst. exists a ,b. repeat split;simpl;easy.
-        }
-        {
-            simpl in H.
-            inversion H0;subst.
-            eapply IHzs in H7;try exact H.
-            destruct H7 as [b' [c' [Honb [Honc Pbc]]]].
-            exists b', c'.
-            repeat split;simpl;try easy.   
-        }
+        destruct H;destr_hyps;subst. left;tauto.
+
+        right. exists x0, x1, x2. repeat split;try easy.
+        eapply gttstepH_ind_ref;try exact H1.
     }
-Qed.
+    {
+        eapply P_eq;try exact Heq1;try exact Heq2. eapply gttstepH_ind_ref;try exact g.
+    }
+    Guarded.
+  Qed.
+
+End gttstepH_ind_ref.
 
 
-                Lemma Forall3_length {A B C : Type}: forall P (xs : list (option A)) 
-                (ys : list (option B)) (zs : list (option C)), Forall3 P xs ys zs -> Datatypes.length xs = Datatypes.length ys /\
-                Datatypes.length ys = Datatypes.length zs.
-                Proof.
-                    intros P;
-                    induction xs;intros;inversion H;subst;[simpl | split;eapply IHxs in H6;destr_hyps;simpl];lia.
-                Qed.
-
-(*constructive*)
- Lemma gttstepH_consistent: forall gx gs r p q ell g g', 
-    r <> p ->
-    r <> q ->
-    wfgC g ->
-    projectableA g ->
-    typ_p_gtth gs gx r g -> 
-    usedCtx gs gx ->
-    wfgC g' ->
-    gttstepC g g' p q ell ->
-    exists gs' gx',
-    typ_p_gtth gs' gx' r g' /\ 
-    usedCtx gs' gx' /\ gttstepH gx  p q ell gx'.
+Lemma gttstepH_height_le: forall gx gx' p q ell, gttstepH gx p q ell gx' ->
+    gtth_height gx' <= gtth_height gx.
 Proof.
-    induction gx using gtth_ind_ref.
-    {
-        intros * Hner1 Hner2 Hwfg Hprojable Htyp Hused Hwfg' Hstep.
-        assert(Hispartsr: isgPartsC r g).
-        {
-            destruct Htyp as [?Htyp [?Htyp ?Htyp]].
-            inversion Htyp;subst;
-            eapply Forall_prop in Htyp1;try exact H1;
-            destruct Htyp1;try easy;destr_hyps.
-            destruct H;[| destruct H];inversion H;subst;try solve [
-            try eapply decidable_helper.triv_pt_p; try eapply decidable_helper.triv_pt_q;
-            easy]. eapply no_step_from_end in Hstep;try easy.
-        }
-        eapply part_after_step_r_redux in Hstep as Hprt;try exact Hispartsr;try easy.
-        eapply balanced_to_tree in Hprt;try easy.
-        destr_hyps.
-        exists x0 , x.
-        repeat split;try easy.
-        rename x into gx', x0 into gs'.
-        destruct gx';try constructor.
-
-        destruct Htyp as [?Htyp [?Htyp ?Htyp]].
-        inversion Htyp;subst.
-        eapply Forall_prop in Htyp1;try exact H5. destruct Htyp1;try easy.
-        destr_hyps.
-        destruct H3;[|destruct H3];inversion H3;subst;
-        try solve
-        [
-            pinversion Hstep;try apply step_mon;subst;try easy;
-            inversion H;subst;
-            subtac_triv_isparts_false |
-            inversion H;subst;
-            eapply no_step_from_end in Hstep;try easy
-        ].
-    }
-    {
-        intros * Hner1 Hner2 Hwfg Hprojable Htyp Hused Hwfg' Hstep .
-        destruct Htyp as [?Htyp [?Htyp ?Htyp]].
-        inversion Htyp;subst.
-        rename xs into ghs, ys into gcs.
-        pinversion Hstep;subst;try easy;try apply step_mon.
-        {
-            symmetry in H10.
-            eapply Forall2_prop_l in H6;try exact H10;tac_sanitize.
-            inversion Hused;subst.
-            eapply Forall2_prop_l in H8;try exact H1;tac_sanitize.
-            eapply mergeCtx_onth_subset in H6;try exact H2.
-            eapply decidable_helper.typh_with_less in H3 as Htyp2;try exact H7;try easy.
-            exists x3, x5.
-            repeat split;try easy.
-            intros. eapply Htyp0. eapply ha_sendr;try exact H1;try easy.
-            eapply Forall_subset;try exact H6;try easy;try tauto.
-            econstructor 2;try easy;try exact H1.   
-        }
-        {
-            rename ys into gcs'.
-            eapply decidable_helper.ctx_back in Htyp as Hgss.
-            destr_hyps.
-            rename H0 into Hgss3,x into gss, H1 into Hishmerge.
-            assert(create_ghs: forall ghs_sbs gcs'_sbs
-        
-        (Hsubset: Forall2 (fun u v=> u=None /\ v=None \/ (exists k, onth k ghs=u /\ onth k gcs' =v)) 
-        ghs_sbs gcs'_sbs),
-        
-        exists ghs' gss' gs', 
-        (isMergeCtx gs' gss' \/ (gs'=[] /\ gss' =[])) /\
-         Forall3
-        (fun (u : option (list (option gtt)))
-        (v : option (sort * gtth))
-        (w : option (sort * gtt)) =>
-        u = None /\ v = None /\ w = None \/
-        (exists
-        (ct : list (option gtt)) (s0 : sort) (g : gtth) (g' : gtt),
-        u = Some ct /\
-        v = Some (s0, g) /\
-        w = Some (s0, g') /\
-        typ_gtth ct g g' /\ usedCtx ct g)) gss' ghs' gcs'_sbs 
-        /\
-        Forall (fun u=> u=None \/ exists s g, u=Some (s,g) /\ (ishParts r g -> False)) ghs' 
-        /\
-        Forall
-(fun u : option gtt =>
-u = None \/
-(exists (q1 : opt_lbl) (lsg : list (option (sort * gtt))),
-u = Some (gtt_send r q1 lsg) \/
-u = Some (gtt_send q1 r lsg) \/ u = Some gtt_end)) gs'
-        /\
-        Forall2 (fun u v => u=None /\ v=None \/ 
-        (exists s g g', u=Some (s,g) /\ v=Some (s,g') /\ gttstepH g p0 q0 ell g')) ghs_sbs ghs').
-            {
-                induction ghs_sbs.
-                intros. 
-                {
-                    exists [], [], [].
-                    inversion Hsubset;subst.
-                    repeat split;try tauto;try constructor.
-                }
-                intros.
-                destruct a.
-                destruct p1 as [s gh].
-                
-                assert(exists n,  onth n ghs = Some (s,gh)).
-                {
-                    assert(Hzero: onth 0 (Some (s,gh)::ghs_sbs)=(Some (s,gh))) by crush.
-                    eapply Forall2_prop_r   in Hsubset;try exact Hzero.
-                    destr_hyps. destruct H1;try easy.
-                    destruct H1 as [k [Honthk_ghs Honthk_gcs']].
-                    exists k;easy.
-                }
-                Search Forall3.
-                destruct H0 as [n Honth_ghs].
-                eapply Forall2_prop_r in H6;try exact Honth_ghs;tac_sanitize.
-                rename x0 into s, x1 into gh, x2 into gc, H2 into Honth_gcs.
-                eapply Forall_prop in H;try exact Honth_ghs.
-                destruct H;try easy.
-                destr_hyps.
-                symmetry in H;inversion H;subst;clear H.
-                eapply Forall2_prop_r in H16;try exact Honth_gcs;tac_sanitize.
-                rename x0 into s, x1 into gc, x2 into gc'.
-                destruct H11;try easy.
-                eapply Forall3_prop2 in Hgss3;try exact Honth_ghs;tac_sanitize.
-                rewrite Honth_gcs in H14;symmetry in H14;inversion H14;subst.
-                rename x1 into gs_n, x2 into s, x3 into gh; clear H14.  
-                eapply H0 with (r:=r) (gs:=gs_n) in H;try easy;
-                try solve [subtac_wfg_by_onth | subtac_projable_by_onth |
-
-                repeat split;try easy;try solve [subtac_ishparts_by_onth |
-                    eapply mergeCtx_onth_subset in Hishmerge;try exact H12;
-                    eapply Forall_subset;try exact Hishmerge;try easy;tauto]
-                ].
-
-                inversion Hsubset;subst.
-                destruct H13;try easy. clear H1.
-                specialize (IHghs_sbs _ H18). 
-                destruct IHghs_sbs as [ghs'_r [gss'_r [gs'_r ]]].
-                destruct H as [gs' [gh' [?Htyp' [?Htyp' ?Htyp]]]].
-                
-                exists (Some (s,gh')::ghs'_r), (Some (gs') :: gss'_r).
-                assert (exists gs'_m, isMergeCtx gs'_m (Some gs' :: gss'_r)).
-                {
-                 Search isMergeCtx.   
-                 (* isMergeCtx gs'_m (Some gs' :: gss'_r)
-                 given ismergectx gs gss
-                 gs' derived from
-                 *)
-                }
-                evar (gmerge: list (option gtt)).
-                exists gmerge.
-                (*
-                repeat split. admit.
-                constructor;try tauto.
-                right. exists gs', s, gh', gc'.
-                repeat split;try easy. admit.
-                unfold typ_p_gtth in Htyp';try tauto.
-                constructor. right. exists s, gh'. split;try easy. red in Htyp';tauto.
-                tauto. admit.
-                constructor;try easy. right.*)
-            }
-            assert (Hsubs : Forall2
-(fun (u : option (sort * gtth))
-(v : option (sort * gtt)) =>
-u = None /\ v = None \/
-(exists k : opt_lbl, onth k ghs = u /\
-onth k gcs' = v)) ghs
-gcs'). admit.
-
-            specialize (create_ghs _ _ Hsubs).
-            destruct create_ghs as [ghs' [gss [gs' [Hishmerge [Hfa3 [Hfa [Hfa_shape Hfa2]]]]]]].
-            exists gs', (gtth_send p q ghs').
-
-            repeat split.
-            {
-                constructor.
-                admit.
-                eapply Forall2_forall. 
-                eapply Forall2_length in Hfa2, Hsubs;lia.
-                intros.
-                destruct (onth k ghs') eqn:Hyg.
-                {
-                    right.
-                    eapply Forall3_prop2 in Hfa3;try exact Hyg;tac_sanitize.
-                    exists x2, x3, x4.
-                    repeat split;try easy.
-                    eapply decidable_helper.typh_with_more;try exact H13.
-                    eapply mergeCtx_onth_subset;try exact Hishmerge;try easy;try exact H2.
-                }
-                {
-                    left.
-                    repeat split;try easy.
-                    destruct (onth k gcs') eqn:Hyg';try easy.
-                    eapply Forall3_prop3 in Hfa3;try exact Hyg'; tac_sanitize.
-                    rewrite Hyg in H11;easy.   
-                } 
-            }
-            {
-                intros.
-                inversion H0;subst;try easy;
-                try 
-                subtac_triv_isparts_false.
-                eapply Forall_prop in Hfa;try exact H17.
-                destruct Hfa;try easy;destr_hyps. 
-                inversion H1;subst;tauto.
-            }
-            {
-                easy.
-            }
-            {
-                econstructor;try exact Hishmerge.
-                eapply Forall2_forall.
-                eapply Forall3_length in Hfa3. lia.
-                intros.
-                destruct (onth k ghs') eqn:Hyg.
-                {
-                    right.
-                    eapply Forall3_prop2 in Hfa3;try exact Hyg;tac_sanitize.
-                    exists x1, x2, x3.
-                    repeat split;try easy.
-                }
-                {
-                    destruct (onth k gss) eqn:Hyg'. 
-                    eapply Forall3_prop1 in Hfa3;try exact Hyg';tac_sanitize.
-                    rewrite Hyg in H11;try easy.
-                    tauto.   
-                }
-            }
-            {
-                constructor;try easy.
-            }   
-        }
-    } 
+    intros * Hstep.
+    Check gttstepH_ind_ref.
+    induction Hstep using (gttstepH_ind_ref). try (simpl;lia).
+    Search gtth_height onth.
+    eapply gtth_height_ge_children with (k:=gtth_height gh') (p:=p) (q:=q) in H0;lia.
+    admit.
+    eapply gtth_eq_sym in H0.
+    erewrite gtth_eq_mon_gtth_height;try exact H0.
+    assert (gtth_height a =gtth_height b) by
+    (
+    eapply gtth_eq_mon_gtth_height in H;easy).
+    eapply gtth_eq_mon_gtth_height in H0. lia.
+Admitted.
   
 (*
 Lemma graft_height_after_step: forall gs gx p g' g s t ell, 
@@ -860,75 +617,13 @@ usedCtx gs gx -> gttstepC g g' s t ell ->
 typ_p_gtth gs' gx' p g' ->
 usedCtx gs' gx' -> (gtth_height gx' <= gtth_height gx).
 Proof.
-    intros * Hps Hpt Hwfg Hprojable Hispartsp [?Htypg [?Htypg ?Htypg]] Husedp Hstep
-    [?Htypg' [?Htypg' ?Htypg']] Husedq.
-    
-    
-    eapply part_after_step_r_redux in Hstep as Hisparts';try exact Hispartsp;try easy.
-    assert (wfgC g') by (eapply wfgC_after_step;try exact Hstep;try easy).
-    eapply balanced_to_tree in Hisparts';try easy. 
-        
-    generalize dependent gs. revert Hps Hpt Hstep. 
-    generalize dependent g'.
-    generalize dependent g.
-    generalize dependent gx.
-    induction gx using gtth_ind_ref.
-    {
-        intros.
-        inversion Htypg;subst.
-        exists (gtth_hol n). exists (extendLis n (Some g')). 
-        repeat split;try easy.
-        constructor. rewrite extendExtract;easy.
-        eapply Forall_forall.
-        intros.
-        destruct x;try tauto. right.
+    intros * Hps Hpt Hwfg Hprojable Hispartsp Htypg Husedp Hstep
+    Htypg' Husedq.
 
-        apply in_some_implies_onth in H. destr_hyps.
-        
-        eapply extend_onth_inv in H as ?Ht;subst. rewrite extendExtract in H.
-        inversion H;subst.
-        eapply Forall_prop in Htypg1;try exact H1;tac_sanitize.
-        destruct H0 as [?Htr | [?Htr | ?Htr]];
-        inversion Htr;subst;
-        pinversion Hstep;try apply step_mon;subst;try tauto;
-        exists x, ys;tauto.
-        constructor.
-    }
-    {
-        intros.   
-        pinversion Hstep;try apply step_mon;subst.
-        {
-            apply eq_sym in H1.
-            inversion Htypg;subst.
-            rename xs0 into gcs, xs into ghs.
-            eapply Forall2_prop_l in H10;try exact H1;tac_sanitize.
-            rename x1 into gh', x2 into g', x0 into s0.
-
-            inversion Husedp;subst.
-            eapply Forall2_prop_l in H10;try exact H3;tac_sanitize.
-            rename x1 into s0, x2 into gx'.
-            exists gx',x0.
-            repeat split;
-            eapply mergeCtx_onth_subset in H8;try exact H4;
-            eapply decidable_helper.typh_with_less in H6;try exact H9;try tauto.
-            rename x0 into gs'.
-            intros. eapply Htypg0. econstructor 3;try exact H3;try easy.
-            eapply Forall_subset with (gs:=gs);try tauto.
-            Search gtth_height.
-            eapply gtth_height_ge_children  with (p:=s) (q:=t) (k :=gtth_height gx') in H3 as Hge;crush.
-            
-        }
-        {
-            inversion Htypg;subst.
-            rename xs into ghs, xs0 into gcs.
-            evar (gx':list (option (sort * gtth))). evar  (gs':list (list (option gtt))).
-            Search isMergeCtx.
-            exists  
-             assert(create_ghs' : forall ghs1,
-             (Hsubset: Forall (fun u=> u=None \/ exists k, onth k ghs=u) ghs1), 
-        }
-    }
-Admitted.
+    eapply gttstepH_consistent in Hstep; try exact Htypg;try exact Htypg';try easy.
+    eapply gttstepH_height in Hstep;try easy.
+    eapply wfgC_after_step;try exact Hstep;try easy.
+Qed.
 
 Definition head_proj_is p lt (xs:global_path) := match xs with | conil => False
     | cocons (g,l) xs => projectionC g p lt end.
