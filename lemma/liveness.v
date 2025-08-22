@@ -236,8 +236,7 @@ Qed.
 
 Inductive gttstepH : gtth -> part -> part -> 
 nat -> gtth ->  Prop :=
-    | stepH_hol : forall n m p q ell, 
-    gttstepH (gtth_hol n)  p q ell (gtth_hol m) 
+    | stepH_hol : forall m n p q ell, gttstepH (gtth_hol n) p q ell (gtth_hol m)
     | stepH_send : forall ell p q srt ghs gh',
     p <> q ->
     onth ell ghs = Some (srt, gh') -> gttstepH (gtth_send p q ghs) p q ell gh' 
@@ -255,22 +254,99 @@ u = Some (s0, gh) /\ v = Some (s0, gh') /\ gttstepH gh  p q ell gh'))
 ghs ghs' ->
     gttstepH (gtth_send s t ghs)
     p q ell 
-    (gtth_send s t ghs').
-(*non-constructive
+    (gtth_send s t ghs')
+    | stepH_eq : forall a b b' c p q ell, gtth_eq a b ->
+gtth_eq b' c -> gttstepH b p q ell b' -> gttstepH a p q ell c.
+
+Lemma typ_p_gtth_unique : forall gx gs gx' gs' r g, typ_p_gtth gs gx r g -> 
+typ_p_gtth gs' gx' r g -> gtth_eq gx gx'.
+Proof.
+    induction gx using gtth_ind_ref.
+    {
+        intros * Htyp1 Htyp2.
+        destruct Htyp1 as [?Htyp [?Htyp ?Htyp]].   
+        destruct Htyp2 as [?Htyp' [?Htyp' ?Htyp']].
+        destruct gx'. constructor.
+
+        inversion Htyp';subst.
+        inversion Htyp;subst.
+        eapply Forall_prop in Htyp1;try exact H1.
+        destruct Htyp1;try easy.
+        destr_hyps.
+        destruct H ;[| destruct H];inversion H;subst;subtac_triv_isparts_false.
+    }
+    {
+        intros * Htyp1 Htyp2.
+        
+        destruct Htyp1 as [?Htyp [?Htyp ?Htyp]].   
+        destruct Htyp2 as [?Htyp' [?Htyp' ?Htyp']].
+        inversion Htyp;subst.
+        destruct gx'. 
+        {
+            inversion Htyp';subst.
+            eapply Forall_prop in Htyp'1;try exact H2.
+            destruct Htyp'1;try easy.
+            destr_hyps.
+            destruct H0;[|destruct H0];inversion H0;subst;subtac_triv_isparts_false.   
+        }
+        inversion Htyp';subst.
+        constructor.
+        eapply Forall2_forall. eapply Forall2_length in H6,H10. lia.
+        intros.
+        destruct (onth k xs) eqn:Hyg.
+        {
+            right. eapply Forall_prop in H;try exact Hyg. destruct H;try easy.
+            destr_hyps. inversion H;subst. clear H.
+            eapply Forall2_prop_r in H6;try exact Hyg;tac_sanitize.
+            eapply Forall2_prop_l in H10;try exact H2;tac_sanitize.
+            exists x0, x3, x1.
+            repeat split;try easy.
+            eapply H0 with (gs:=gs) (r:=r) (g:=x5) (gs':=gs');repeat split;try easy.
+            intros. apply Htyp0. 
+            econstructor;try exact Hyg;try easy;red;intros;subst; subtac_triv_isparts_false.
+            intros. apply Htyp'0. 
+            econstructor;try exact H1;try easy; red;intros;subst; subtac_triv_isparts_false.
+        
+        }
+        {
+            left. split;try easy.    
+            destruct (onth k l) eqn:Hyg'.
+            eapply Forall2_prop_r in H10;try exact Hyg';tac_sanitize.
+            eapply Forall2_prop_l in H6;try exact H2; tac_sanitize.
+            rewrite Hyg in H1;easy.
+            easy.
+        }   
+    }
+Qed.
+
+Lemma gtth_eq_refl : forall gx, gtth_eq gx gx.
+            Proof.
+                induction gx using gtth_ind_ref.
+                {
+                    constructor.   
+                }
+                {
+                    constructor. eapply Forall2_forall;try easy;intros.
+                    destruct (onth k xs) eqn: Hyg;try tauto.
+                    right. destruct p0. exists s, g, g. repeat split;try tauto.
+                    eapply Forall_prop in H;try exact Hyg. destruct H;try easy.
+                    destr_hyps. inversion H;subst;easy.   
+                }
+            Qed.
+
 Lemma gttstepH_consistent: forall gx gs r p q ell g g' gx' gs', 
     r <> p ->
     r <> q ->
     wfgC g ->
     typ_p_gtth gs gx r g -> 
-    usedCtx gs gx ->
     wfgC g' ->
     gttstepC g g' p q ell ->
     typ_p_gtth gs' gx' r g' -> 
-    usedCtx gs' gx' -> gttstepH gx  p q ell gx'.
+     gttstepH gx  p q ell gx'.
 Proof.
     induction gx using gtth_ind_ref.
     {
-        intros * Hner1 Hner2 Hwfg Htyp Hused Hwfg' Hstep Htyp' Hused'.
+        intros * Hner1 Hner2 Hwfg Htyp  Hwfg' Hstep Htyp'.
         destruct gx';try constructor.
         destruct Htyp as [?Htyp [?Htyp ?Htyp]].
         inversion Htyp;subst.
@@ -288,7 +364,7 @@ Proof.
         ].
     }
     {
-        intros * Hner1 Hner2 Hwfg Htyp Hused Hwfg' Hstep Htyp' Hused'.
+        intros * Hner1 Hner2 Hwfg Htyp  Hwfg' Hstep Htyp' .
         destruct Htyp as [?Htyp [?Htyp ?Htyp]].
         destruct Htyp' as [?Htyp' [?Htyp' ?Htyp']].
         inversion Htyp;subst.
@@ -297,11 +373,65 @@ Proof.
         {
             symmetry in H10.
             eapply Forall2_prop_l in H6;try exact H10;tac_sanitize.
-            econstructor 2;try easy.
-
+            assert(typ_p_gtth gs x1 r x2).
+            {
+                repeat split;try easy. intros. eapply Htyp0. econstructor;try exact H1;try easy.   
+            }
+            Search gtth_eq.
+            
+            assert (typ_p_gtth gs' gx' r x2) by (repeat split;easy).
+            eapply typ_p_gtth_unique in H0;try exact H2.
+            apply gtth_eq_sym in H0.
+            econstructor 4;try exact H0. apply gtth_eq_refl. 
+            econstructor 2 with (srt:=x0);try easy.
         }
-    } 
-*)    
+        {
+            destruct gx'. 
+            {
+                inversion Htyp';subst.
+                eapply Forall_prop in Htyp'1;try exact H2.
+                destruct Htyp'1;try easy.
+                destr_hyps.
+                destruct H0;[|destruct H0];
+                inversion H0;subst;subtac_triv_isparts_false.   
+            }
+            inversion Htyp';subst. constructor;try easy.
+            eapply Forall2_forall. eapply Forall2_length in H16,H18, H6;lia. 
+            intros.
+            destruct (onth k ghs) eqn:Hyg.
+            {
+                right.
+                eapply Forall2_prop_r in H6;try exact Hyg;tac_sanitize.
+                eapply Forall2_prop_r in H16;try exact H2;tac_sanitize.
+                eapply Forall2_prop_l in H18;try exact H12;tac_sanitize.
+                exists x0, x1, x2.
+                repeat split;try easy.
+                eapply Forall_prop in H;try exact Hyg;destruct H;try easy.
+                destr_hyps;inversion H;subst.
+                eapply H0 with (g:=x4) (r:=r) (gs:=gs) (gs':=gs') (g':=x6);try easy;
+                try solve subtac_wfg_by_onth.
+                repeat split;try easy. intros. eapply Htyp0. 
+                econstructor;try exact Hyg;try easy;
+                red;intros;subst;subtac_triv_isparts_false.
+                destruct H13;try easy.
+                repeat split;try easy.
+               
+                intros. eapply Htyp'0. 
+                econstructor;try exact H1;try easy;
+                red;intros;subst;subtac_triv_isparts_false.
+            }  
+            {
+                left. split;try easy.
+                destruct (onth k l) eqn:Hyg';try easy.
+                eapply Forall2_prop_r in H18;try exact Hyg';tac_sanitize.
+                eapply Forall2_prop_l in H16;try exact H2;tac_sanitize.  
+                eapply Forall2_prop_l in H6;try exact H1;tac_sanitize.
+                rewrite Hyg in H6;easy. 
+            }
+        }
+    }
+Qed. 
+
 
 Lemma Forall3_prop1 {A:Type} {B:Type} {C:Type}: forall P ell (xs : list (option A))
 (ys : list (option B)) 
@@ -557,7 +687,7 @@ u = Some (gtt_send q1 r lsg) \/ u = Some gtt_end)) gs'
                  Search isMergeCtx.   
                  (* isMergeCtx gs'_m (Some gs' :: gss'_r)
                  given ismergectx gs gss
-                 gs' derived from gs_n
+                 gs' derived from
                  *)
                 }
                 evar (gmerge: list (option gtt)).
