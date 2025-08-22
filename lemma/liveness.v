@@ -513,98 +513,60 @@ Fixpoint gttstepH_ind_ref p q ell G G' (Hstep : gttstepH  G p q ell G') {struct 
   Qed.
 
 End gttstepH_ind_ref.
-
+ Lemma gtth_height_le_by_forall2 : forall  xs p q s t ys ,  
+        Forall2
+(fun u v : option (sort * gtth) =>
+u = None /\ v = None \/
+(exists (s : sort) (g g' : gtth),
+u = Some (s, g) /\
+v = Some (s, g') /\ gtth_height g' <= gtth_height g))
+xs ys -> gtth_height (gtth_send p q ys) <= gtth_height (gtth_send s t xs).
+    Proof.
+        induction xs. intros. inversion H;subst;simpl;lia.
+        intros. inversion H;subst.
+        destruct H2.
+        {
+            destr_hyps;subst.
+            do 2 rewrite gtth_height_unfold_once_none. specialize (IHxs p q s t _ H4). lia.   
+        }
+        {
+            destr_hyps;subst.
+            do 2 rewrite gtth_height_unfold_once_some. specialize (IHxs p q s t _ H4). lia.   
+            
+        }
+        
+    Qed.
 
 Lemma gttstepH_height_le: forall gx gx' p q ell, gttstepH gx p q ell gx' ->
     gtth_height gx' <= gtth_height gx.
 Proof.
-    intros * Hstep.
+    intros *.
+    revert gx gx'.
     Check gttstepH_ind_ref.
-    induction Hstep using (gttstepH_ind_ref). try (simpl;lia).
-    Search gtth_height onth.
-    eapply gtth_height_ge_children with (k:=gtth_height gh') (p:=p) (q:=q) in H0;lia.
-    admit.
-    eapply gtth_eq_sym in H0.
-    erewrite gtth_eq_mon_gtth_height;try exact H0.
-    assert (gtth_height a =gtth_height b) by
-    (
-    eapply gtth_eq_mon_gtth_height in H;easy).
-    eapply gtth_eq_mon_gtth_height in H0. lia.
-Admitted.
-  
-(*
-Lemma graft_height_after_step: forall gs gx p g' g s t ell, 
-p <> s ->
-p <> t ->
-typ_p_gtth gs gx p g ->
-usedCtx gs gx -> gttstepC g g' s t ell ->
-exists  gx' gs',
-typ_p_gtth gs' gx' p g' /\
-usedCtx gs' gx' /\ (gtth_height gx' <= gtth_height gx).
-Proof.
-    intros * Hps Hpt [?Htypg [?Htypg ?Htypg]] Husedp Hstep.
-    generalize dependent gs. revert Hps Hpt Hstep. 
-    generalize dependent g'.
-    generalize dependent g.
-    generalize dependent gx.
-    induction gx using gtth_ind_ref.
+    Check typ_gtth_ind_ref.
+    eapply gttstepH_ind_ref.
     {
-        intros.
-        inversion Htypg;subst.
-        exists (gtth_hol n). exists (extendLis n (Some g')). 
-        repeat split;try easy.
-        constructor. rewrite extendExtract;easy.
-        eapply Forall_forall.
-        intros.
-        destruct x;try tauto. right.
-
-        apply in_some_implies_onth in H. destr_hyps.
-        
-        eapply extend_onth_inv in H as ?Ht;subst. rewrite extendExtract in H.
-        inversion H;subst.
-        eapply Forall_prop in Htypg1;try exact H1;tac_sanitize.
-        destruct H0 as [?Htr | [?Htr | ?Htr]];
-        inversion Htr;subst;
-        pinversion Hstep;try apply step_mon;subst;try tauto;
-        exists x, ys;tauto.
-        constructor.
+        intros. simpl;lia.   
     }
     {
         intros.   
-        pinversion Hstep;try apply step_mon;subst.
-        {
-            apply eq_sym in H1.
-            inversion Htypg;subst.
-            rename xs0 into gcs, xs into ghs.
-            eapply Forall2_prop_l in H10;try exact H1;tac_sanitize.
-            rename x1 into gh', x2 into g', x0 into s0.
-
-            inversion Husedp;subst.
-            eapply Forall2_prop_l in H10;try exact H3;tac_sanitize.
-            rename x1 into s0, x2 into gx'.
-            exists gx',x0.
-            repeat split;
-            eapply mergeCtx_onth_subset in H8;try exact H4;
-            eapply decidable_helper.typh_with_less in H6;try exact H9;try tauto.
-            rename x0 into gs'.
-            intros. eapply Htypg0. econstructor 3;try exact H3;try easy.
-            eapply Forall_subset with (gs:=gs);try tauto.
-            Search gtth_height.
-            eapply gtth_height_ge_children  with (p:=s) (q:=t) (k :=gtth_height gx') in H3 as Hge;crush.
-            
-        }
-        {
-            inversion Htypg;subst.
-            rename xs into ghs, xs0 into gcs.
-            evar (gx':list (option (sort * gtth))). evar  (gs':list (list (option gtt))).
-            Search isMergeCtx.
-            exists  
-             assert(create_ghs' : forall ghs1,
-             (Hsubset: Forall (fun u=> u=None \/ exists k, onth k ghs=u) ghs1), 
-        }
+        apply gtth_height_ge_children with (k:=gtth_height g) (p:=p0) (q:=q0) in H;lia. 
     }
-Admitted.
-*)
+    {
+        intros.
+        eapply gtth_height_le_by_forall2;try exact H.
+    }
+    {
+        intros.
+        eapply gtth_eq_sym in H0.
+        erewrite gtth_eq_mon_gtth_height;try exact H0.
+        assert (gtth_height a =gtth_height b) by
+        (
+        eapply gtth_eq_mon_gtth_height in H;easy).
+        eapply gtth_eq_mon_gtth_height in H0. lia.
+    }
+Qed.
+
 
 Lemma graft_height_after_step: forall gs gx gs' gx' p g' g s t ell, 
 p <> s ->
