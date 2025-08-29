@@ -494,3 +494,58 @@ Lemma conj_path_exists: forall g gamma xs l, wfgC g -> tctx_wf gamma -> assoc ga
     exists ys, path_assocC (cocons (gamma,l) xs) (cocons (g, l) ys).
 Proof.
 Admitted.
+
+Lemma assoc_completeness_multistep: forall gamma gamma' g, wfgC g ->
+projectableA g ->
+tctx_wf gamma ->
+assoc gamma g -> 
+tctxRtc gamma gamma' -> exists g', gttstepRtc g g' /\ assoc gamma' g'.
+Proof.
+    intros * Hwfg Hprojable Hwft Hassoc Hrtc.
+    generalize dependent g.
+    induction Hrtc;intros.
+    {
+        red in H. destr_hyps.
+        eapply assoc_completeness in H;try exact Hassoc;try easy.
+        destr_hyps. exists x3. split;try easy. constructor. 
+        red. exists x0, x1, x2. easy.
+    }
+    {
+        exists g. split;try easy. constructor 2.   
+    }
+    {
+        assert (Hwtf2: tctx_wf y) by 
+        (eapply tctx_wf_after_rtc in Hrtc1;try easy).
+        specialize (IHHrtc1 Hwft g Hwfg Hprojable Hassoc).
+        destr_hyps.
+        assert (Hwfg2: wfgC x0 /\ projectableA x0) by
+        (eapply gttstep_preserves_wfg in H; try easy).  destr_hyps.
+        specialize (IHHrtc2 Hwtf2 _ H1 H2 H0). destr_hyps.
+        exists x1;split;try tauto.
+        econstructor 3;try exact H;try exact H3.
+    }
+Qed. 
+
+Lemma live_global_type_assoc_live_context : forall gamma g, 
+wfgC g -> projectableA g -> tctx_wf gamma ->
+live_type_global g -> assoc gamma g -> 
+liveCtx gamma.
+Proof.
+    intros * Hwfg Hprojable Htwf Hlivet Hassoc.
+    red;intros;red;intros. 
+    eapply assoc_completeness_multistep with (g:=g) in H;try easy.
+    rename g' into gamma'.
+    destruct H as [g' [Hstep' Hassoc']].
+    eapply gttstep_preserves_wfg in Hstep' as Hwfg';try easy.
+    destruct Hwfg' as [Hwfg' Hprojable'].
+    eapply conj_path_exists with (xs:=xs) (l:=l) in Hwfg' as Hconj_path;
+    try exact Hassoc;try easy.
+    2:admit.
+    destruct Hconj_path as [ys Hconj_path].
+    eapply path_assoc_reflects_liveness with (gp:=(cocons (g',l) ys));try easy.
+    1-2:admit.
+    red in Hlivet. specialize (Hlivet g' Hstep'). red in Hlivet.
+    eapply Hlivet. admit.
+    eapply path_assoc_preserves_fairness;try exact Hconj_path;try easy.
+    all:admit.
+Admitted.
