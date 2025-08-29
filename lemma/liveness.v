@@ -1297,9 +1297,52 @@ Proof.
     intros. eapply IHHev. eapply suffix_tail;try exact H.
 Qed.
 
+Lemma gtth_eq_preserves_gtth_normal_l : forall p gx gx', gtth_eq gx gx' 
+-> gtth_normal_l p gx -> gtth_normal_l p gx'.
+Proof.
+    intros * Heq Hnorm.
+    inversion Hnorm;subst. constructor. intros. eapply gtth_eq_preserves_ishparts in H0;try exact Heq;tauto.
+
+    destruct H;subst;inversion Heq;subst;constructor 2;tauto.
+
+    inversion Heq;subst.
+    constructor 3;try easy. eapply Forall_forall;intros;destruct x;try tauto.
+    eapply in_some_implies_onth in H2;destr_hyps.
+    right. eapply Forall2_prop_l in H6;try exact H2;tac_sanitize.
+    eapply Forall_prop in H1;try exact H4;tac_sanitize.
+    exists x0, x3. split;try tauto. eapply gtth_eq_preserves_ishparts;try exact H3.
+    eapply gtth_eq_sym;try easy.
+Qed.
+
+
+Lemma gtth_eq_preserves_gtth_normal1 :  forall p gx gx', gtth_eq gx gx' 
+-> gtth_normal_p p gx -> gtth_normal_p p gx'.
+Proof.
+    intros p. induction gx using gtth_ind_ref.
+    {
+        intros. inversion H;subst. constructor.   
+    }
+    {
+        intros * Heq Hnormal.
+        inversion Heq;subst. constructor.
+        inversion Hnormal;subst.   
+        eapply gtth_eq_preserves_gtth_normal_l;try exact H2;try easy.
+        eapply Forall_forall;intros;destruct x;try tauto;destr_hyps;right.
+        eapply in_some_implies_onth in H0;try easy;destr_hyps.
+        eapply Forall2_prop_l in H4;try exact H0;tac_sanitize.
+        eapply Forall_prop in H;try exact H2;tac_sanitize.
+        exists x0, x3;split;try easy.
+        eapply H1;try easy.
+        inversion Hnormal;subst.
+        eapply Forall_prop in H7;try exact H2;tac_sanitize; easy.
+    }
+Qed.
+
 Lemma gtth_eq_preserves_gtth_normal :  forall p gx gx', gtth_eq gx gx' -> gtth_normal_p p gx <-> gtth_normal_p p gx'.
 Proof.
-Admitted.
+    intros;split;intros;eapply gtth_eq_preserves_gtth_normal1;try exact H0;
+    try easy;eapply gtth_eq_sym;try easy.
+Qed.
 
 Lemma gtth_normal_l_gtth_eq : forall gx_p gx_q  g gs_p gs_q p q,
 typ_p_gtth gs_p gx_p p g ->
@@ -1914,7 +1957,7 @@ Proof.
         subtac_triv_isparts_false.   
     }
     {
-            destruct Htypp as [?Htypp [?Htypp ?Htypp]].
+        destruct Htypp as [?Htypp [?Htypp ?Htypp]].
         inversion Htypp;subst.
         inversion Hishparts;subst;try easy.
         eapply Forall2_prop_r in H16;try exact H15;tac_sanitize.
