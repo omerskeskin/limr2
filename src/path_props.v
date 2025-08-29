@@ -132,7 +132,7 @@ Definition fair_path := alwaysCG fair_path_local_inner.
 
 Definition live_path_inner (pt: local_path) : Prop := forall p q s n, 
 (to_path_prop (tctxRE (lsend p q (Some s) n)) False pt -> eventually (headComm p q) pt) /\
-(to_path_prop (tctxRE (lrecv p q (Some s) n)) False pt -> eventually (headComm p q) pt).
+(to_path_prop (tctxRE (lrecv p q (Some s) n)) False pt -> eventually (headComm q p) pt).
 Definition live_path := alwaysCG live_path_inner.
 
 Definition weak_safety (c: tctx ) :=
@@ -263,7 +263,7 @@ Definition live_path_inner_global (pt: global_path) : Prop := forall p q s n,
 (to_path_prop (global_label_enabled (lsend p q (Some s) n)) False pt -> 
 eventually (headComm_global p q) pt) /\
 (to_path_prop (global_label_enabled (lrecv p q (Some s) n)) False pt -> 
-eventually (headComm_global p q) pt).
+eventually (headComm_global q p) pt).
 
 Definition live_path_global := alwaysCG live_path_inner_global.
 

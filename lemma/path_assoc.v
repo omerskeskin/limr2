@@ -313,7 +313,7 @@ Proof.
         [
         assert(Hevg: eventually (headComm_global p q) (cocons (g,l) ys)) by (eapply Hlv1;easy)
         |
-        assert(Hevg: eventually (headComm_global p q) (cocons (g,l) ys)) by (eapply Hlv2;easy)];
+        assert(Hevg: eventually (headComm_global q p) (cocons (g,l) ys)) by (eapply Hlv2;easy)];
         eapply path_assoc_reflects_liveness_helper with (ys:=(cocons (g,l) ys));try easy;
         pfold;easy.
     }
