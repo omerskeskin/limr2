@@ -295,6 +295,18 @@ Proof.
     }
 Qed.
 
+
+Lemma part_after_step_r_redux: forall g g' p q  ell r, wfgC g -> 
+    projectableA g ->
+    gttstepC g g' p q ell -> r <> p -> r <> q -> isgPartsC r g -> isgPartsC r g'.
+    Proof.
+        intros * Hwfg Hprojable Hstep Hne1 Hne2 Hisparts.
+        specialize (Hprojable r) as Hprojr;destr_hyps. 
+        eapply part_after_step_r;try exact Hisparts;try exact Hstep;try exact H;try easy.
+        eapply wfgC_after_step;try exact Hstep;try easy.
+    Qed.
+
+
 Ltac subtac_triv_isparts_false := match goal with 
     [H: ishParts ?p (gtth_send ?p ?q ?xs) -> False|- _] => exfalso; apply H;apply ha_sendp
     | [H: ishParts ?q (gtth_send ?p ?q ?xs) -> False|- _] => exfalso; apply H;apply ha_sendq
@@ -578,13 +590,109 @@ Lemma two_send_proj_impossible: forall   p q g xs ys ,
 wfgC g -> projectableA g -> projectionC g p (ltt_send q xs) ->
 projectionC g q (ltt_send p ys) -> False.
 Proof.
-Admitted.
+    intros * Hwfg Hprojable Hprojp Hprojq.
+    eapply proj_contains_q_implies_part_send in Hprojp as Hisparts;try easy;
+    destruct Hisparts as [Hispartsp Hispartsq].
+    eapply balanced_to_tree in Hispartsp as Hgraft;try easy.
+    destruct Hgraft as [ctx_p [gs_p [Htyp [Hishparts [Hfa Hused]]]]].
+    generalize dependent g.
+    revert Hused Hfa Hishparts xs ys.
+    generalize dependent gs_p.
+    induction ctx_p using gtth_ind_ref.
+    {
+        intros. inversion Htyp;subst. eapply Forall_prop in Hfa;try exact H1.
+        destruct Hfa;try easy.
+        destr_hyps.
+        destruct H;[| destruct H];inversion H;subst;
+        pinversion Hprojp;pinversion Hprojq;subst;try apply proj_mon;try easy.
+    }
+    {
+        rename H into IH.
+        intros.
+        pinversion Hprojp;try apply proj_mon;subst;try easy;inversion Htyp;subst.
+        subtac_triv_isparts_false.
+        eapply slist_implies_some in H8;destr_hyps.
+        eapply Forall_prop in IH;try exact H5;tac_sanitize.
+        eapply Forall2_prop_r in H13;try exact H5;tac_sanitize.
+        eapply Forall2_prop_r in H3;try exact H9;tac_sanitize.
+        destruct H11;try easy.
+        inversion Hused;subst.
+        eapply Forall2_prop_l in H15;try exact H5;tac_sanitize.
+        eapply mergeCtx_onth_subset in H13 as Hsubset;try exact H11;try easy.
+        eapply merge_inv_ss in H8 as Hminv;try exact H4;subst.
+        
+        pinversion Hprojq;subst;try apply proj_mon;try easy.
+        eapply Forall2_prop_r in H22;try exact H9;tac_sanitize.
+        destruct H20;try easy.
+        eapply merge_inv_ss in H23;try exact H15;subst. 
+        
+        assert (Hstep:gttstepC (gtt_send p1 q1 xs1) x4 p1 q1 x).
+        {
+            pfold. econstructor;try easy;try exact (eq_sym H9).   
+        }
+        eapply H7 with (g:=x4) (gs_p:=x3) (xs:=xs0) (ys:=ys);try easy;
+        try subtac_onth_solver.
+        eapply Forall_subset;try exact Hsubset;try easy;try tauto.
+        
+        eapply part_after_step_r_redux;try exact Hstep;try easy.
+        eapply part_after_step_r_redux;try exact Hstep;try easy.
+        eapply decidable_helper.typh_with_less;try exact Hsubset;try easy.
+    }
+Qed.
 
 Lemma two_recv_proj_impossible: forall   p q g xs ys ,
 wfgC g -> projectableA g -> projectionC g p (ltt_recv q xs) ->
 projectionC g q (ltt_recv p ys) -> False.
 Proof.
-Admitted.
+    intros * Hwfg Hprojable Hprojp Hprojq.
+    eapply proj_contains_q_implies_part_recv in Hprojp as Hisparts;try easy;
+    destruct Hisparts as [Hispartsp Hispartsq].
+    eapply balanced_to_tree in Hispartsp as Hgraft;try easy.
+    destruct Hgraft as [ctx_p [gs_p [Htyp [Hishparts [Hfa Hused]]]]].
+    generalize dependent g.
+    revert Hused Hfa Hishparts xs ys.
+    generalize dependent gs_p.
+    induction ctx_p using gtth_ind_ref.
+    {
+        intros. inversion Htyp;subst. eapply Forall_prop in Hfa;try exact H1.
+        destruct Hfa;try easy.
+        destr_hyps.
+        destruct H;[| destruct H];inversion H;subst;
+        pinversion Hprojp;pinversion Hprojq;subst;try apply proj_mon;try easy.
+    }
+    {
+        rename H into IH.
+        intros.
+        pinversion Hprojp;try apply proj_mon;subst;try easy;inversion Htyp;subst.
+        subtac_triv_isparts_false.
+        eapply slist_implies_some in H8;destr_hyps.
+        eapply Forall_prop in IH;try exact H5;tac_sanitize.
+        eapply Forall2_prop_r in H13;try exact H5;tac_sanitize.
+        eapply Forall2_prop_r in H3;try exact H9;tac_sanitize.
+        destruct H11;try easy.
+        inversion Hused;subst.
+        eapply Forall2_prop_l in H15;try exact H5;tac_sanitize.
+        eapply mergeCtx_onth_subset in H13 as Hsubset;try exact H11;try easy.
+        eapply merge_inv_ss in H8 as Hminv;try exact H4;subst.
+        
+        pinversion Hprojq;subst;try apply proj_mon;try easy.
+        eapply Forall2_prop_r in H22;try exact H9;tac_sanitize.
+        destruct H20;try easy.
+        eapply merge_inv_ss in H23;try exact H15;subst. 
+        
+        assert (Hstep:gttstepC (gtt_send p1 q1 xs1) x4 p1 q1 x).
+        {
+            pfold. econstructor;try easy;try exact (eq_sym H9).   
+        }
+        eapply H7 with (g:=x4) (gs_p:=x3) (xs:=xs0) (ys:=ys);try easy;
+        try subtac_onth_solver.
+        eapply Forall_subset;try exact Hsubset;try easy;try tauto.
+        
+        eapply part_after_step_r_redux;try exact Hstep;try easy.
+        eapply part_after_step_r_redux;try exact Hstep;try easy.
+        eapply decidable_helper.typh_with_less;try exact Hsubset;try easy.
+    }
+Qed.
 
 Lemma multigrafting_lemma_send : forall  ctx_q p q g xs Tq gs_p gs_q ctx_p ,
 wfgC g -> projectableA g -> projectionC g p (ltt_send q xs) ->

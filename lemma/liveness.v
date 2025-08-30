@@ -43,16 +43,6 @@ Proof.
 Qed.
 
 
-Lemma part_after_step_r_redux: forall g g' p q  ell r, wfgC g -> 
-    projectableA g ->
-    gttstepC g g' p q ell -> r <> p -> r <> q -> isgPartsC r g -> isgPartsC r g'.
-    Proof.
-        intros * Hwfg Hprojable Hstep Hne1 Hne2 Hisparts.
-        specialize (Hprojable r) as Hprojr;destr_hyps. 
-        eapply part_after_step_r;try exact Hisparts;try exact Hstep;try exact H;try easy.
-        eapply wfgC_after_step;try exact Hstep;try easy.
-    Qed.
-
 
 Definition trans_involves_p l r :=
     match l with 
