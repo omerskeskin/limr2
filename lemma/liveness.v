@@ -3150,3 +3150,12 @@ Proof.
         eapply Hrec with (lcs:=x);try easy.
     }
 Qed.
+
+Lemma liveness : forall gamma g, 
+wfgC g -> projectableA g -> tctx_wf gamma ->
+ assoc gamma g -> 
+liveCtx gamma.
+Proof.
+    intros. eapply live_global_type_assoc_live_context with (g:=g);try easy.
+    eapply liveness_global;try easy.
+Qed.
