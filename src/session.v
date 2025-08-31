@@ -4,7 +4,8 @@ Import ListNotations.
 Open Scope list_scope.
 From Paco Require Import paco.
 Import ListNotations. 
-From SST Require Import src.header src.sim src.expr src.process src.local src.global src.balanced src.typecheck src.part src.gttreeh src.step src.merge src.projection. 
+From SST Require Import src.header src.sim src.expr src.process src.local src.global src.balanced src.typecheck 
+src.part src.gttreeh src.step src.merge src.projection src.lcontext src.wfltt. 
 
 Inductive session: Type :=
   | s_ind : part   -> process -> session
@@ -26,6 +27,8 @@ Fixpoint flattenT (M : session) : (list part) :=
 Definition InT (pt : part) (M : session) : Prop :=
   In pt (flattenT M).
 
+Definition in_not_end (pt:part) (gamma: tctx) := exists x, M.find pt gamma=Some x /\ x <> ltt_end.  
+
 Inductive unfoldP : relation session := 
   | pc_sub   : forall p P Q M, substitutionP 0 0 0 (p_rec P) P Q -> unfoldP (p <-- (p_rec P) ||| M) (p <-- Q ||| M)
   | pc_subm  : forall p P Q, substitutionP 0 0 0 (p_rec P) P Q -> unfoldP (p <-- (p_rec P)) (p <-- Q)
@@ -36,12 +39,14 @@ Inductive unfoldP : relation session :=
   | pc_par1m : forall M M' M'', unfoldP ((M ||| M') ||| M'') ((M' ||| M) ||| M'')
   | pc_par2m : forall M M' M'' M''', unfoldP (((M ||| M') ||| M'') ||| M''') ((M ||| (M' ||| M'')) ||| M''').
 
-Inductive typ_sess : session -> gtt -> Prop := 
-  | t_sess : forall M G, wfgC G ->
-                         (forall pt, isgPartsC pt G -> InT pt M) ->
+
+Inductive typ_sess : session -> tctx -> Prop := 
+  | t_sess : forall M gamma, tctx_wf gamma ->
+                         (forall pt, in_not_end pt gamma -> InT pt M) ->
                          NoDup (flattenT M) ->
-                         ForallT (fun u P => exists T, projectionC G u T /\ typ_proc nil nil P T /\ (forall n, exists m, guardP n m P)) M ->
-                         typ_sess M G.
+                         ForallT (fun u P => exists T, M.find u gamma = Some T /\
+                        typ_proc nil nil P T /\ (forall n, exists m, guardP n m P)) M ->
+                         typ_sess M gamma.
 
 Inductive betaP: relation session :=
   | r_comm  : forall p q xs y l e v Q M, 
