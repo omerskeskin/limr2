@@ -4,7 +4,7 @@ Import ListNotations.
 Open Scope list_scope.
 From Paco Require Import paco.
 Import ListNotations. 
-From SST Require Import src.header src.sim src.expr src.process src.local src.global src.balanced src.typecheck 
+From SST Require Import src.header src.assoc src.sim src.expr src.process src.local src.global src.balanced src.typecheck 
 src.part src.gttreeh src.step src.merge src.projection src.lcontext src.wfltt. 
 
 Inductive session: Type :=
@@ -41,7 +41,7 @@ Inductive unfoldP : relation session :=
 
 
 Inductive typ_sess : session -> tctx -> Prop := 
-  | t_sess : forall M gamma, tctx_wf gamma ->
+  | t_sess : forall M gamma (Hassocable: exists g, wfgC g /\ assoc gamma g), tctx_wf gamma ->
                          (forall pt, in_not_end pt gamma -> InT pt M) ->
                          NoDup (flattenT M) ->
                          ForallT (fun u P => exists T, M.find u gamma = Some T /\

@@ -9,7 +9,6 @@ Require Import Coq.Program.Equality.
 Require Import Coq.Init.Logic Lia.
 From Coq Require Import IndefiniteDescription.
 
-
 Import ListNotations.
 
 Definition head_proj_is_recv p q:=(

@@ -6,7 +6,7 @@ From Paco Require Import paco.
 Import ListNotations. 
 From SST Require Import src.header src.sim src.expr src.process src.local
  src.global src.balanced src.typecheck src.part src.gttreeh src.step src.merge 
- src.projection src.session src.lcontext.  
+ src.projection src.session src.lcontext src.wfltt.  
 From SST Require Import lemma.inversion lemma.inversion_expr lemma.substitution_helper lemma.substitution lemma.decidable_helper lemma.decidable lemma.expr lemma.part lemma.step lemma.projection_helper lemma.projection.
 
 Lemma typ_after_unfold : forall M M' G, typ_sess M G -> unfoldP M M' -> typ_sess M' G.
@@ -112,6 +112,48 @@ Proof.
   - destruct x1; try easy. destruct xs; try easy.
     simpl in *. apply IHl with (x1 := x1) (xs := xs); try easy.
     inversion H1; try easy.
+Qed.
+
+Print typ_sess.
+
+Lemma typ_after_step_not_in_label: forall M p q gamma gamma' ell,
+    tctx_wf gamma ->
+    tctxR gamma (lcomm p q ell) gamma' ->
+    ForallT
+  (fun (u : part) (P : process) =>
+   exists T : ltt,
+     M.find u gamma = Some T /\ typ_proc nil nil P T /\ (forall n : fin, exists m : fin, guardP n m P)) M ->
+    ~ InT q M ->
+    ~ InT p M ->
+    ForallT
+  (fun (u : part) (P : process) =>
+   exists T : ltt,
+     M.find u gamma' = Some T /\ typ_proc nil nil P T /\ (forall n : fin, exists m : fin, guardP n m P)) M.
+Proof.
+  induction M.
+  {
+    intros * Hwf Hstep Hfat Hinq Hinp0. constructor. cbv in Hinq, Hinp0.
+    assert(Hnq: n=q -> False ) by (intros;tauto).
+    assert(Hnp: n=p0 -> False ) by (intros;tauto).
+    eapply lem_6_10 with (r:=n) in Hstep;
+    try solve [red;intros;simpl in H;destruct H;subst;tauto].
+    inversion Hfat;subst. destr_hyps. exists x. repeat split;try congruence;try easy. 
+  }
+  {
+    
+    intros * Hwf Hstep Hfat Hinq Hinp0. constructor.
+    + eapply IHM1;try exact Hstep;try easy;
+    try solve [
+    inversion Hfat;subst;easy]; unfold InT in *;simpl in *;
+
+    red;intros;subst; [eapply Hinq | eapply Hinp0]; eapply in_or_app;tauto.
+
+    eapply IHM2;try exact Hstep;try easy;
+    try solve [
+    inversion Hfat;subst;easy]; unfold InT in *;simpl in *;
+
+    red;intros;subst; [eapply Hinq | eapply Hinp0]; eapply in_or_app;tauto.
+  }
 Qed.
 
 Lemma typ_after_step_3_helper_s: forall M p q G G' l L1 L2,
@@ -332,7 +374,7 @@ Lemma move_forward : forall p M G,
 Proof.
   intros. inversion H. subst. clear H1 H3 H4 H.
   specialize(H2 p H0). clear H0.
-  revert H2. revert p. clear G.
+  revert H2. revert p. 
   apply move_forward_h.
 Qed.
 
