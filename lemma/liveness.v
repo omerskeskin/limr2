@@ -11,6 +11,8 @@ From Coq Require Import IndefiniteDescription.
 
 Import ListNotations.
 
+
+Locate no_step_from_end.
 Definition head_proj_is_recv p q:=(
     fun (pt:global_path) => match pt with 
         | cocons (hd,l) tl => exists xs, 

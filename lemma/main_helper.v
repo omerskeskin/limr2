@@ -404,14 +404,14 @@ Lemma canonical_glob_nt : forall M p q xsp xsq gamma,
     p <> q ->
     typ_sess M gamma ->
     M.find p gamma = Some (ltt_send q xsp) ->
-    M.find q gamma = Some (ltt_send p xsq) ->
+    M.find q gamma = Some (ltt_recv p xsq) ->
     (exists M' P Q, unfoldP M ((p <-- P) ||| (q <-- Q) ||| M')) \/ (exists P Q, unfoldP M ((p <-- P) ||| (q <-- Q))).
 Proof.
   intros * Hneq Hsess Hfindp Hfindq.
   inversion Hsess. subst.
   assert(InT p M /\ InT q M) by
   (split;apply H0;red; 
-  [exists (ltt_send q xsp) | exists (ltt_send p xsq)];split;try easy).
+  [exists (ltt_send q xsp) | exists (ltt_recv p xsq)];split;try easy).
   destruct H3 as [Hinp Hinq].
   specialize(move_forward_h M p Hinp) as Hmf.
   destruct Hmf.

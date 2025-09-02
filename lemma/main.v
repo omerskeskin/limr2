@@ -344,228 +344,422 @@ Proof.
   }
 Qed.
 
-Theorem sub_red : forall M M' G, typ_sess M G -> betaP M M' -> exists G', typ_sess M' G' /\ tctxRtc G G'.
+Lemma gtt_end_not_part : forall p, ~ isgPartsC p gtt_end.
 Proof.
-  intros. revert H. revert G.
-  induction H0; intros; try easy.
-  (* R-COMM *)
-  inversion H1. subst.
-  - inversion H5. subst. clear H5. inversion H8. subst. clear H8. 
-    inversion H7. subst. clear H7. inversion H10. subst. clear H10. clear H1.
-    destruct H6. destruct H1. destruct H7. destruct H6. rename x into T. rename x0 into T'.
-    destruct H7 as (H7, Ht). destruct H5 as (H5, Htt).
-    - specialize(inv_proc_recv q xs (p_recv q xs) nil nil T H5 (erefl (p_recv q xs))); intros. 
-      destruct H8. destruct H8. destruct H10. destruct H11.
-    - specialize(inv_proc_send p l e Q (p_send p l e Q) nil nil T' H7 (erefl (p_send p l e Q))); intros.
-      destruct H13. destruct H13. destruct H13. destruct H14. rename x0 into S. rename x1 into LT.
-    
-    specialize(typ_after_step_h q p l); intros.
-    specialize(subtype_recv T q x H10); intros. destruct H17. subst.
-    specialize(subtype_send T' p (extendLis l (Some (S, LT))) H15); intros. destruct H17. subst.
-    rename x0 into LQ. rename x1 into LP.
-    specialize(H16 G LP LQ S LT).
-    specialize(sub_red_helper l xs x y H H11); intros. destruct H17. destruct H17. destruct H17.
-    specialize(H16 x (x0, x1)). 
-    assert(exists G' : gtt, gttstepC G G' q p l).
-    apply H16; try easy. destruct H19. subst. rename x2 into G'. 
-    assert(multiC G G').
-    specialize(multiC_step G G' G' q p l); intros. apply H20; try easy. constructor.
-    exists G'. split; try easy. clear H20.
-    clear H16.
-    specialize(wfgC_after_step G G' q p l H2 H19); intros. 
-    assert(wfgC G').
-    intros. apply H16.
-    unfold projectableA. intros.
-    specialize(decidable_isgPartsC G pt H2); intros. unfold Decidable.decidable in H20.
-    destruct H20.
-    specialize(H3 pt H20).
-    - unfold InT in H3. simpl in H3.
-      - destruct H3. subst. exists (ltt_recv q LQ). easy.
-      - destruct H3. subst. exists (ltt_send p LP). easy.
-      - specialize(sub_red_helper_3 M G pt); intros. apply H21; try easy.
-    - unfold not in H20. exists ltt_end. pfold. constructor; try easy.
-    constructor; try easy.
-    - intros.
-      apply H3; try easy.
-      - specialize(part_after_step G G' q p pt l LP LQ); intros. 
-        apply H22; try easy.
-    specialize(projection_step_label G G' q p l LP LQ); intros.
-    assert(exists (LS LS' : sort) (LT LT' : ltt), onth l LP = Some (LS, LT) /\ onth l LQ = Some (LS', LT')).
-    apply H21; try easy.
-    destruct H22 as (SL,(SL',(TL,(TL',(H22,H23))))).
-    
-    specialize(canon_rep_w G q p LP LQ SL TL SL' TL' l H2 H6 H22 H1 H23); intros. subst.
+  red;intros.
+  eapply part_break in H;destr_hyps. destruct H2;subst. inversion H0. destr_hyps;subst.
+  
+  pinversion H;try apply gttT_mon.
+  red. exists g_end. split. pfold;constructor. split;try constructor.
+  intros. exists 0.  eapply gg_end.
 
-    specialize(sub_red_helper_1 H23 H17 H10); intros.
-    specialize(sub_red_helper_2 H15 H22); intros. 
-    constructor. constructor.
-    - constructor.
-      specialize(typ_after_step_12_helper q p l G G' LP LQ SL' TL SL' TL'); intros.
-      assert(projectionC G' p TL'). apply H26; try easy. clear H26. 
-      exists TL'. split; try easy.
-      split.
-      apply _subst_expr_var with (S := x0); try easy.
-      - apply tc_sub with (t := x1); try easy.
-        specialize(typable_implies_wfC H5); intros.
-        specialize(wfC_recv H26 H23); try easy.
-      - apply sc_sub with (s := S); try easy.
-        apply expr_typ_step with (e := e); try easy.
-        apply sstrans with (s2 := SL'); try easy.
-      - specialize(guardP_cont_recv_n l xs y q Htt H); intros.
-        specialize(guardP_subst_expr y (e_val v) 0 0); intros. apply H28; try easy.
-    - constructor.
-      specialize(typ_after_step_12_helper q p l G G' LP LQ SL' TL SL' TL'); intros.
-      assert(projectionC G' q TL). apply H26; try easy. clear H26.
-      exists TL. split; try easy. split.
-      - apply tc_sub with (t := LT); try easy.
-        specialize(typable_implies_wfC H7); intros.
-        specialize(wfC_send H26 H22); try easy.
-      - intros. specialize(Ht (Nat.succ n)). destruct Ht. inversion H26.
-        subst. exists x2. easy.
-    - specialize(typ_after_step_3_helper_s M q p G G' l LP LQ); intros.
-      inversion H4. subst. inversion H30. subst.
-      specialize(Classical_Prop.not_or_and (q = p) (In p (flattenT M)) H29); intros. destruct H27.
-      apply H26; try easy.
-
-  (* T-COND *)
-  inversion H0. subst. inversion H4. subst. clear H4. inversion H7. subst. clear H7.
-  destruct H5. destruct H4. destruct H5 as (H5, Ha).
-  specialize(inv_proc_ite (p_ite e P Q) e P Q x nil nil H5 (erefl (p_ite e P Q))); intros.
-  destruct H6. destruct H6. destruct H6. destruct H7. destruct H9. destruct H10. 
-  exists G. split.
-  apply t_sess; try easy. apply ForallT_par; try easy.
-  apply ForallT_mono; try easy. exists x.
-  split; try easy. split.
-  apply tc_sub with (t := x0); try easy.
-  specialize(typable_implies_wfC H5); try easy.
-  - intros. specialize(Ha n). destruct Ha. inversion H12. subst. exists 0. constructor.
-    subst. exists m. easy.
-  apply multiC_refl.
-  
-  (* F-COND *)
-  inversion H0. subst. inversion H4. subst. clear H4. inversion H7. subst. clear H7.
-  destruct H5. destruct H4. destruct H5 as (H5, Ha).
-  specialize(inv_proc_ite (p_ite e P Q) e P Q x nil nil H5 (erefl (p_ite e P Q))); intros.
-  destruct H6. destruct H6. destruct H6. destruct H7. destruct H9. destruct H10. 
-  exists G. split.
-  apply t_sess; try easy. apply ForallT_par; try easy.
-  apply ForallT_mono; try easy. exists x.
-  split; try easy. split.
-  apply tc_sub with (t := x1); try easy.
-  specialize(typable_implies_wfC H5); try easy.
-  - intros. specialize(Ha n). destruct Ha. inversion H12. subst. exists 0. constructor.
-    subst. exists m. easy.
-  apply multiC_refl.
-  
-  (* R-COMM *)
-  inversion H1. subst.
-  - inversion H5. subst. clear H5. inversion H8. subst. clear H8. 
-    inversion H9. subst. clear H9.
-    destruct H6 as (T,(Ha,(Hb,Hc))). destruct H7 as (T1,(Hd,(He,Hf))).
-    - specialize(inv_proc_recv q xs (p_recv q xs) nil nil T Hb (erefl (p_recv q xs))); intros. 
-      destruct H5 as (STT,(Hg,(Hh,(Hi,Hj)))).
-    - specialize(inv_proc_send p l e Q (p_send p l e Q) nil nil T1 He (erefl (p_send p l e Q))); intros.
-      destruct H5 as (S,(T',(Hk,(Hl,Hm)))).
-    
-    specialize(typ_after_step_h q p l); intros.
-    specialize(subtype_recv T q STT Hh); intros. destruct H6. subst.
-    specialize(subtype_send T1 p (extendLis l (Some (S, T'))) Hm); intros. destruct H6. subst.
-    rename x into LQ. rename x0 into LP.
-    specialize(H5 G LP LQ S T').
-    specialize(sub_red_helper l xs STT y H Hi); intros. destruct H6. destruct H6. destruct H6.
-    specialize(H5 STT (x, x0)). 
-    assert(exists G' : gtt, gttstepC G G' q p l).
-    apply H5; try easy. destruct H8. subst. rename x1 into G'. 
-    assert(multiC G G').
-    specialize(multiC_step G G' G' q p l); intros. apply H9; try easy. constructor.
-    exists G'. split; try easy.
-    specialize(wfgC_after_step G G' q p l H2 H8); intros. 
-    assert(wfgC G').
-    intros. apply H10.
-    unfold projectableA. intros.
-    specialize(decidable_isgPartsC G pt H2); intros. unfold Decidable.decidable in H11.
-    destruct H11.
-    specialize(H3 pt H11).
-    - unfold InT in H3. simpl in H3.
-      - destruct H3. subst. exists (ltt_recv q LQ). easy.
-      - destruct H3. subst. exists (ltt_send p LP). easy.
-      - easy.
-    - unfold not in H11. exists ltt_end. pfold. constructor; try easy.
-    constructor; try easy.
-    - intros.
-      apply H3; try easy.
-      - specialize(part_after_step G G' q p pt l LP LQ); intros. 
-        apply H13; try easy.
-    specialize(projection_step_label G G' q p l LP LQ); intros.
-    assert(exists (LS LS' : sort) (LT LT' : ltt), onth l LP = Some (LS, LT) /\ onth l LQ = Some (LS', LT')).
-    apply H12; try easy.
-    destruct H13 as (SL,(SL',(TL,(TL',(H22,H23))))).
-    
-    specialize(canon_rep_s G q p LP LQ SL TL SL' TL' l H2 Hd H22 Ha H23); intros.
-    destruct H13 as (Gl,(ctxG,(SI,(Sn,(Hta,(Htb,(Htc,(Htd,(Hte,(Htf,Htg)))))))))).
-    specialize(sub_red_helper_1 H23 H6 Hh); intros.
-    specialize(sub_red_helper_2 Hm H22); intros. 
-    constructor. constructor.
-    - specialize(typ_after_step_12_helper q p l G G' LP LQ SL TL SL' TL'); intros.
-      assert(projectionC G' p TL'). apply H15; try easy. clear H15. 
-      exists TL'. split; try easy.
-      split.
-      apply _subst_expr_var with (S := x); try easy.
-      - apply tc_sub with (t := x0); try easy.
-        specialize(typable_implies_wfC Hb); intros.
-        specialize(wfC_recv H15 H23); try easy.
-      - apply sc_sub with (s := S); try easy.
-        apply expr_typ_step with (e := e); try easy.
-        apply sstrans with (s2 := SL'); try easy.
-        apply sstrans with (s2 := Sn); try easy. 
-        apply sstrans with (s2 := SL); try easy.
-      - specialize(guardP_cont_recv_n l xs y q Hc H); intros.
-        specialize(guardP_subst_expr y (e_val v) 0 0); intros. apply H17; try easy.
-    - constructor.
-      specialize(typ_after_step_12_helper q p l G G' LP LQ SL TL SL' TL'); intros.
-      assert(projectionC G' q TL). apply H15; try easy. clear H15.
-      exists TL. split; try easy. split.
-      - apply tc_sub with (t := T'); try easy.
-        specialize(typable_implies_wfC He); intros.
-        specialize(wfC_send H15 H22); try easy.
-      - intros. specialize(Hf (Nat.succ n)). destruct Hf. inversion H15.
-        subst. exists x1. easy.
-
-  (* T-COND *)
-  inversion H0. subst. inversion H4. subst. clear H4.
-  destruct H6. destruct H4. destruct H5 as (H5, Ha).
-  specialize(inv_proc_ite (p_ite e P Q) e P Q x nil nil H5 (erefl (p_ite e P Q))); intros.
-  destruct H6. destruct H6. destruct H6. destruct H7. destruct H8. destruct H9. 
-  exists G. split.
-  apply t_sess; try easy. constructor. exists x.
-  split; try easy. split.
-  apply tc_sub with (t := x0); try easy.
-  specialize(typable_implies_wfC H5); try easy.
-  - intros. specialize(Ha n). destruct Ha. inversion H11. subst. exists 0. constructor.
-    subst. exists m. easy.
-  apply multiC_refl.
-  
-  (* F-COND *)
-  inversion H0. subst. inversion H4. subst. clear H4.
-  destruct H6. destruct H4. destruct H5 as (H5, Ha).
-  specialize(inv_proc_ite (p_ite e P Q) e P Q x nil nil H5 (erefl (p_ite e P Q))); intros.
-  destruct H6. destruct H6. destruct H6. destruct H7. destruct H8. destruct H9. 
-  exists G. split.
-  apply t_sess; try easy. constructor. exists x.
-  split; try easy. split.
-  apply tc_sub with (t := x1); try easy.
-  specialize(typable_implies_wfC H5); try easy.
-  - intros. specialize(Ha n). destruct Ha. inversion H11. subst. exists 0. constructor.
-    subst. exists m. easy.
-  apply multiC_refl.
-  
-  (* R-STRUCT *)
-  specialize(typ_after_unfold M1 M1' G H2 H); intros.
-  specialize(IHbetaP G H3); intros. destruct IHbetaP. exists x. 
-  destruct H4. split; try easy.
-  specialize(typ_after_unfold M2' M2 x H4 H0); intros. easy.
+   red;intros.  inversion H0;subst.
+  destruct H1; inversion H1.
 Qed.
 
+Lemma assoc_implies_end_or_atleast_send : forall gamma g, wfgC g -> wfltt.tctx_wf gamma ->
+  assoc.assoc gamma g ->
+  is_end_tctx gamma \/ exists p q xsp xsq, M.find p gamma = Some (ltt_send q xsp) /\
+  M.find q gamma = Some (ltt_recv p xsq).
+Proof.
+  intros * Hwf Htwf Hassoc.
+  destruct g.
+  {
+    left. red;intros. assert (~ isgPartsC pt gtt_end) by (eapply gtt_end_not_part).
+    tac_use_assoc Hassoc pt H0. eapply Hassoc_u. easy.
+  }
+  {
+    rename n into p, n0 into q.
+    right. exists p, q.
+    assert(Hispartsp : isgPartsC p (gtt_send p q l)) by (eapply decidable_helper.triv_pt_p;easy).
+    assert(Hispartsq : isgPartsC q (gtt_send p q l)) by (eapply decidable_helper.triv_pt_q;easy).
+    tac_use_assoc Hassoc p Hispartsp.
+    tac_use_assoc Hassoc q Hispartsq. destr_hyps. red in H1, H2;destr_hyps.
+    pinversion H2;subst;try apply proj_mon;try easy.
+    pinversion H1;subst;try apply proj_mon;try easy.
+    eapply subtype_recv_inv2 in H3. eapply subtype_send_inv2 in H4. destr_hyps. subst. exists x2,x1. split;easy.
+  }
+Qed.
+
+Create HintDb procs.
+Hint Constructors unfoldP :procs.
+Search unfoldP.
+Hint Resolve unf_cont_r unf_cont_l betaPr_unfold_h betaPr_unfold:procs.
+Print HintDb procs.
+Lemma ForallT_or_all_or_some P Q: forall M,  
+ForallT (fun u v => P u v \/ Q u v) M -> ForallT (fun u v => P u v) M \/ 
+(exists M' p T, unfoldP M ((p <-- T) |||M') /\ Q p T) \/ 
+(exists p T, unfoldP M ((p <-- T)) /\ Q p T)
+.
+Proof.
+  induction M.
+  {
+    intros. inversion H;subst. destruct H1. left. constructor. easy.
+
+    right. right. exists n, p.  split. constructor. tauto. 
+  }
+  {
+    intros * HPvQ.
+    inversion HPvQ;subst.
+    specialize (IHM1 H1).
+    specialize (IHM2 H2).
+    destruct (IHM1).
+    {
+      destruct (IHM2).
+      left. constructor;easy. 
+      right. destruct H0.
+      {
+         destruct H0 as [M' [p [T Hpt]]]. left. exists (M1 ||| M'), p, T.
+         split;try tauto.
+        
+        destruct Hpt.
+        
+        eapply unf_cont_r with (M1:=M1) in H0.
+
+        eauto with procs.
+      } 
+      {
+       destruct H0 as [p [T Hpt]]. left. exists  M1, p, T.
+       split;try tauto. destr_hyps.
+       eauto with procs.
+      }
+    }
+    destruct H;admit.
+  }
+Admitted.
+
+  
+Theorem prog : forall M G, typ_sess M G -> (exists M', unfoldP M M' /\ (ForallT (fun _ P => P = p_inact) M')) \/ exists M', betaP M M'.
+Proof.
+	intros * Hsess.
+
+	inversion Hsess;subst. 
+	rename H into Htwf, H1 into Hnodup, H0 into Hinend, H2 into Hfa.
+	destruct Hassocable as [g [Hwfg Hassoc]].
+	eapply assoc_implies_end_or_atleast_send in Hassoc as Hdil;try easy.
+	destruct Hdil as [Hdil | Hdil].
+	{
+		eapply canonical_glob_n in Hdil;try exact Hsess.
+		destruct Hdil as [M' [Hunf Hfat]]. 
+		eapply ForallT_or_all_or_some in Hfat. destruct Hfat. left; exists M'. split;tauto.
+		
+		destruct H. 
+		+ destr_hyps;subst.
+		assert(exists M2, betaP (x0 <-- (p_ite x2 x3 x4) ||| x) M2).
+		{
+		eapply inv_proc_ite in H1;try reflexivity;destr_hyps.
+		Search sbool.
+		eapply expr_eval_b in H4.
+		destruct H4.
+		eapply rt_ite with (p:=x0) (P:=x3) (Q:=x4) (M:=x) in H4; exists ((x0 <-- x3) ||| x); easy.      
+		eapply rf_ite with (p:=x0) (P:=x3) (Q:=x4) (M:=x) in H4; exists ((x0 <-- x4) ||| x); easy.
+		}
+		destr_hyps.
+		right. exists x1. 
+		eapply pc_trans in H;try exact Hunf.
+		eapply r_struct with (M2':=x1);try exact H;try easy.
+		constructor.
+
+		+ destr_hyps;subst.
+		assert(exists M2, betaP (x <-- (p_ite x1 x2 x3))  M2).
+		{
+		eapply inv_proc_ite in H1;try reflexivity;destr_hyps.
+		Search sbool.
+		eapply expr_eval_b in H4.
+		destruct H4.
+		eapply rt_iteu with (p:=x) (P:=x2) (Q:=x3) in H4; exists ((x <-- x2)); easy.      
+		
+		eapply rf_iteu with (p:=x) (P:=x2) (Q:=x3) in H4; exists ((x <-- x3)); easy.
+		}
+		destr_hyps.
+		right. exists x0. eapply pc_trans in H;try exact Hunf.
+		eapply r_struct with (M2':=x0);try exact H;try easy. constructor.
+	}
+	{
+		destruct Hdil as [p [q [xsp [xsq [Hfindp Hfindq]]]]].
+		right.
+		assert (Hinp: InT p M).
+		{
+			eapply Hinend. red.  exists (ltt_send q xsp). split;try easy. 
+		}
+		assert (Hinq: InT q M).
+		{
+			eapply Hinend. red.  exists (ltt_recv p xsq). split;try easy. 
+		} 
+		assert(Hpq: p <> q) by (red;intros;subst;congruence).
+		eapply canonical_glob_nt in Hsess as Hcanon;try exact Hfindq;try exact Hfindp;try easy.
+		destruct Hcanon.
+		{
+			destruct H as [M' [P [Q Hunf]]].
+			eapply typ_after_unfold in Hunf as Hsess';try exact Hsess.
+			inversion Hsess';subst. rename H1 into Hdup, H2 into Hfat. 
+			
+			clear Hassocable H.
+			inversion Hfat;subst. inversion H2;subst. inversion H4;subst. inversion H5;subst.
+			clear H4 H5 H2.
+			destr_hyps.
+			rewrite Hfindp in H1;inversion H1;subst;clear H1. 
+			rewrite Hfindq in H;inversion H;subst;clear H.
+			eapply guardP_break in H6 as Hgb. destruct Hgb as [P' [Hrec_unf Htr]].
+			Search typ_proc betaPr.
+			eapply typ_proc_after_betaPr in H5 as Htyp';try exact Hrec_unf.
+			destruct Htr as [Htr | Htr];[| destruct Htr as [Htr | Htr]].
+			{
+				eapply inv_proc_inact in Htyp';try easy. 
+			}
+			{
+				destr_hyps;subst. eapply inv_proc_ite in Htyp';try reflexivity;destr_hyps.
+				set (Meq1 := (((p <-- (p_ite x x0 x1)) |||(q <-- Q )) ||| M')).
+				assert(Hunf' : unfoldP M Meq1).
+				{
+					assert(Hm:multi betaPr Q Q). constructor.
+					eauto with procs.					
+				}
+				set (Meq := (p <-- (p_ite x x0 x1)) |||((q <-- Q ) ||| M')).
+				assert(Hexp: unfoldP Meq Meq1) by eauto with procs.
+				assert(Hexp': unfoldP M Meq) by eauto with procs.
+
+				eapply expr_eval_b in H9;destruct H9.
+				assert (exists M'0, betaP Meq M'0).
+				{
+					unfold Meq.
+					exists (p <-- x0 ||| ((q <-- Q) ||| M')). eapply rt_ite;easy.
+				}
+				destr_hyps. exists x4. eapply r_struct with (M2':=x4);try exact Hexp';try easy;constructor.
+				
+				assert (exists M'0, betaP Meq M'0).
+				{
+					unfold Meq.
+					exists (p <-- x1 ||| ((q <-- Q) ||| M')). eapply rf_ite;easy.
+				}
+				destr_hyps. exists x4. eapply r_struct with (M2':=x4);try exact Hexp';try easy;constructor.
+			}
+			{
+				destruct Htr;destr_hyps;subst. 
+				{
+				eapply inv_proc_send in Htyp';try reflexivity.
+				destr_hyps.
+				
+				eapply guardP_break in H4 as Htq. destruct Htq as [Q' [Hrec_unfq Htq]].
+				eapply typ_proc_after_betaPr in H2 as Htyq';try exact Hrec_unfq.
+
+				destruct Htq;subst. eapply inv_proc_inact in Htyq';try easy.
+				destruct H8. 
+				destr_hyps;subst.
+				{
+					eapply inv_proc_ite in Htyq';try reflexivity;destr_hyps.
+					set (Meq1 := (((q <-- (p_ite x5 x6 x7)) |||(p <-- P )) ||| M')).
+					assert(Hunf' : unfoldP M Meq1).
+					{
+						assert(Hm:multi betaPr P P). constructor.
+						eauto with procs.					
+					}
+					set (Meq := (q <-- (p_ite x5 x6 x7)) |||((p <-- P ) ||| M')).
+					assert(Hexp: unfoldP Meq Meq1) by eauto with procs.
+					assert(Hexp': unfoldP M Meq) by eauto with procs.
+
+					eapply expr_eval_b in H12;destruct H12.
+					assert (exists M'0, betaP Meq M'0).
+					{
+						unfold Meq.
+						exists (q <-- x6 ||| ((p <-- P) ||| M')). eapply rt_ite;easy.
+					}
+					destr_hyps. exists x10. eapply r_struct with (M2':=x10);try exact Hexp';try easy;constructor.
+					
+					assert (exists M'0, betaP Meq M'0).
+					{
+						unfold Meq.
+						exists (q <-- x7 ||| ((p <-- P) ||| M')). eapply rf_ite;easy.
+
+					}
+					destr_hyps. exists x10. eapply r_struct with (M2':=x10);try exact Hexp';try easy;constructor.
+				}
+				destruct H8. destr_hyps;subst.
+				eapply inv_proc_send in Htyq';try reflexivity. destr_hyps.
+				pinversion H10;try apply sub_mon.
+				destr_hyps;subst.
+				
+				eapply inv_proc_recv in Htyq';try reflexivity. destr_hyps.
+				rename x into q', x0 into ell, x1 into e, x2 into P_c, x3 into se, x4 into Tpc.
+				rename x5 into p', x6 into chcs, x7 into xq'.
+				
+				assert (q'=q) by (pinversion H7;subst;try apply sub_mon;easy);subst.
+				assert (p'=p) by (pinversion H9;subst;try apply sub_mon;easy);subst.
+				
+				assert (Hsubq: assoc.issubProj (ltt_recv p xsq) g q) by
+					(eapply assoc_inv_find with (g:=g) in Hfindq; easy).
+				
+				assert (Hsubp: assoc.issubProj (ltt_send q xsp) g p) by 
+				(eapply assoc_inv_find with (g:=g) in Hfindp; easy).
+				assert (Hax1 : SList xsp) by
+					(specialize (Htwf _ _ Hfindp); pinversion Htwf;subst;try apply wfltt.wfltt_mon;easy).
+				
+				assert (Hax2 : SList xsq) by
+					(specialize (Htwf _ _ Hfindq); pinversion Htwf;subst;try apply wfltt.wfltt_mon;easy).
+				assert(Hispartsp: isgPartsC p g).
+				{
+					destruct (decidable.decidable_isgPartsC g p);try easy.
+					red in Hsubp;destr_hyps. eapply assoc.subtype_send_inv1 in H14. destr_hyps;subst.
+					pinversion H13;subst;try easy;try apply proj_mon.
+				}
+				eapply assoc.lem_6_16_simul_subproj in Hsubp as Hsimul;try exact Hsubq;try easy.
+				move H7 at bottom. eapply subtype_send_inv in H7.
+				assert(Honthl: onth ell (extendLis ell (Some (se, Tpc)))=Some (se,Tpc)) by (rewrite extendExtract;easy).
+				eapply Forall2R_prop in H7;try exact Honthl;tac_sanitize.
+				eapply Forall2R_prop in Hsimul;try exact H13;tac_sanitize.
+				eapply subtype_recv_inv in H9. 
+				eapply Forall2R_prop in H9;try exact H16;tac_sanitize.
+				eapply Forall2_prop_l in H10;try exact H12;tac_sanitize.
+				assert(Hunf' : unfoldP M (((q <-- p_recv p chcs)) ||| (p <-- p_send q ell e P_c) ||| M')) by eauto with procs.
+				eapply expr_eval_ss in H;destr_hyps.
+				eapply r_comm with (p:=q) (q:=p) (e:=e) (Q:=P_c) (M:=M') (v:=x)  in H9 as Hbeta;try easy.
+				exists (((q <-- subst_expr_proc x6 (e_val x) 0 0) ||| (p <-- P_c)) ||| M').
+				eapply r_struct with (M2':= (((q <-- subst_expr_proc x6 (e_val x) 0 0)
+				||| (p <-- P_c)) ||| M'));try exact Hunf';try easy. constructor.
+				}
+				{
+					eapply inv_proc_recv in Htyp';try reflexivity;subst;destr_hyps.
+					pinversion H1;subst;try apply sub_mon. 
+				}
+			}
+		}
+		(*without M'*)
+		{
+			destruct H as [P [Q Hunf]].
+			eapply typ_after_unfold in Hunf as Hsess';try exact Hsess.
+			inversion Hsess';subst. rename H1 into Hdup, H2 into Hfat. 
+			
+			clear Hassocable H.
+			inversion Hfat;subst. inversion_clear H2;subst. inversion_clear H3;subst.
+			destr_hyps.
+			rewrite Hfindp in H;inversion H;subst;clear H. 
+			rewrite Hfindq in H1;inversion H1;subst;clear H1.
+			eapply guardP_break in H5 as Hgb. destruct Hgb as [P' [Hrec_unf Htr]].
+			
+			eapply typ_proc_after_betaPr in H4 as Htyp';try exact Hrec_unf.
+			destruct Htr as [Htr | Htr];[| destruct Htr as [Htr | Htr]].
+			{
+				eapply inv_proc_inact in Htyp';try easy. 
+			}
+			{
+				destr_hyps;subst. eapply inv_proc_ite in Htyp';try reflexivity;destr_hyps.
+				set (Meq1 := (((p <-- (p_ite x x0 x1)) |||(q <-- Q )) )).
+				assert(Hunf' : unfoldP M Meq1).
+				{
+					assert(Hm:multi betaPr Q Q). constructor.
+					eauto with procs.					
+				}
+				set (Meq := (p <-- (p_ite x x0 x1)) |||((q <-- Q ) )).
+				assert(Hexp: unfoldP Meq Meq1) by eauto with procs.
+				assert(Hexp': unfoldP M Meq) by eauto with procs.
+
+				eapply expr_eval_b in H8;destruct H8.
+				assert (exists M'0, betaP Meq M'0).
+				{
+					unfold Meq.
+					exists (p <-- x0 ||| ((q <-- Q))). eapply rt_ite;easy.
+				}
+				destr_hyps. exists x4. eapply r_struct with (M2':=x4);try exact Hexp';try easy;constructor.
+				
+				assert (exists M'0, betaP Meq M'0).
+				{
+					unfold Meq.
+					exists (p <-- x1 ||| ((q <-- Q))). eapply rf_ite;easy.
+				}
+				destr_hyps. exists x4. eapply r_struct with (M2':=x4);try exact Hexp';try easy;constructor.
+			}
+			{
+				destruct Htr;destr_hyps;subst. 
+				{
+				eapply inv_proc_send in Htyp';try reflexivity.
+				destr_hyps.
+				
+				eapply guardP_break in H3 as Htq. destruct Htq as [Q' [Hrec_unfq Htq]].
+				eapply typ_proc_after_betaPr in H2 as Htyq';try exact Hrec_unfq.
+
+				destruct Htq;subst. eapply inv_proc_inact in Htyq';try easy.
+				destruct H7. 
+				destr_hyps;subst.
+				{
+					eapply inv_proc_ite in Htyq';try reflexivity;destr_hyps.
+					set (Meq1 := (((q <-- (p_ite x5 x6 x7)) |||(p <-- P )))).
+					assert(Hunf' : unfoldP M Meq1).
+					{
+						assert(Hm:multi betaPr P P). constructor.
+						eauto with procs.					
+					}
+					set (Meq := (q <-- (p_ite x5 x6 x7)) |||((p <-- P ))).
+					assert(Hexp: unfoldP Meq Meq1) by eauto with procs.
+					assert(Hexp': unfoldP M Meq) by eauto with procs.
+
+					eapply expr_eval_b in H11;destruct H11.
+					assert (exists M'0, betaP Meq M'0).
+					{
+						unfold Meq.
+						exists (q <-- x6 ||| ((p <-- P))). eapply rt_ite;easy.
+					}
+					destr_hyps. exists x10. eapply r_struct with (M2':=x10);try exact Hexp';try easy;constructor.
+					
+					assert (exists M'0, betaP Meq M'0).
+					{
+						unfold Meq.
+						exists (q <-- x7 ||| ((p <-- P))). eapply rf_ite;easy.
+
+					}
+					destr_hyps. exists x10. eapply r_struct with (M2':=x10);try exact Hexp';try easy;constructor.
+				}
+				destruct H7. destr_hyps;subst.
+				eapply inv_proc_send in Htyq';try reflexivity. destr_hyps.
+				pinversion H9;try apply sub_mon.
+				destr_hyps;subst.
+				
+				eapply inv_proc_recv in Htyq';try reflexivity. destr_hyps.
+				rename x into q', x0 into ell, x1 into e, x2 into P_c, x3 into se, x4 into Tpc.
+				rename x5 into p', x6 into chcs, x7 into xq'.
+				
+				assert (q'=q) by (pinversion H6;subst;try apply sub_mon;easy);subst.
+				assert (p'=p) by (pinversion H8;subst;try apply sub_mon;easy);subst.
+				
+				assert (Hsubq: assoc.issubProj (ltt_recv p xsq) g q) by
+					(eapply assoc_inv_find with (g:=g) in Hfindq; easy).
+				
+				assert (Hsubp: assoc.issubProj (ltt_send q xsp) g p) by 
+				(eapply assoc_inv_find with (g:=g) in Hfindp; easy).
+				assert (Hax1 : SList xsp) by
+					(specialize (Htwf _ _ Hfindp); pinversion Htwf;subst;try apply wfltt.wfltt_mon;easy).
+				
+				assert (Hax2 : SList xsq) by
+					(specialize (Htwf _ _ Hfindq); pinversion Htwf;subst;try apply wfltt.wfltt_mon;easy).
+				assert(Hispartsp: isgPartsC p g).
+				{
+					destruct (decidable.decidable_isgPartsC g p);try easy.
+					red in Hsubp;destr_hyps. eapply assoc.subtype_send_inv1 in H13. destr_hyps;subst.
+					pinversion H12;subst;try easy;try apply proj_mon.
+				}
+				eapply assoc.lem_6_16_simul_subproj in Hsubp as Hsimul;try exact Hsubq;try easy.
+				move H6 at bottom. eapply subtype_send_inv in H6.
+				assert(Honthl: onth ell (extendLis ell (Some (se, Tpc)))=Some (se,Tpc)) by (rewrite extendExtract;easy).
+				eapply Forall2R_prop in H6;try exact Honthl;tac_sanitize.
+				eapply Forall2R_prop in Hsimul;try exact H12;tac_sanitize.
+				eapply subtype_recv_inv in H8. 
+				eapply Forall2R_prop in H8;try exact H15;tac_sanitize.
+				eapply Forall2_prop_l in H9;try exact H11;tac_sanitize.
+				assert(Hunf' : unfoldP M (((q <-- p_recv p chcs)) ||| (p <-- p_send q ell e P_c))) by eauto with procs.
+				eapply expr_eval_ss in H;destr_hyps.
+				Print betaP.
+				eapply r_commu with (p:=q) (q:=p) (e:=e) (Q:=P_c) (v:=x)  in H8 as Hbeta;try easy.
+				exists (((q <-- subst_expr_proc x6 (e_val x) 0 0) ||| (p <-- P_c))).
+				eapply r_struct with (M2':= (((q <-- subst_expr_proc x6 (e_val x) 0 0)
+				||| (p <-- P_c))));try exact Hunf';try easy. constructor.
+				}
+				{
+					eapply inv_proc_recv in Htyp';try reflexivity;subst;destr_hyps.
+					pinversion H1;subst;try apply sub_mon. 
+				}
+			}
+		}
+	}
+Qed.
 
 Theorem prog : forall M G, typ_sess M G -> (exists M', unfoldP M M' /\ (ForallT (fun _ P => P = p_inact) M')) \/ exists M', betaP M M'.
 Proof.
