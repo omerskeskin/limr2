@@ -424,9 +424,15 @@ Proof.
        eauto with procs.
       }
     }
-    destruct H;admit.
+    destruct H.
+	{
+		destr_hyps. right. left. exists (x|||M2), x0, x1. split;try eauto with procs.
+	}
+	{
+		destr_hyps. right. left. exists ( M2), x, x0. eauto with procs.  	
+	}
   }
-Admitted.
+Qed.
 
   
 Theorem prog : forall M G, typ_sess M G -> (exists M', unfoldP M M' /\ (ForallT (fun _ P => P = p_inact) M')) \/ exists M', betaP M M'.
