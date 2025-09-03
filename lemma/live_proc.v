@@ -43,6 +43,17 @@ Proof.
     eapply IHmulti. eapply guarded_after_unfold with (P:=x);easy.
 Qed.
 
+Lemma betaPr_unfold_one : forall P P' p, multi betaPr P P' -> unfoldP (p <-- P) (p <-- P').
+Proof.
+    intros.
+    induction H.
+    constructor. inversion H;subst. Search unfoldP.
+    eapply pc_trans with (M':= (p <-- y));try easy.
+    eapply pc_subm. easy.
+Qed.
+
+Hint Resolve betaPr_unfold_one :procs.
+
 Lemma inv_proc_send : forall M gamma p q xsp, typ_sess M gamma ->
 M.find p gamma = Some (ltt_send q xsp) -> exists M' M'' P' e ell,
 betaRtc M M' /\ 
@@ -105,7 +116,7 @@ Proof.
 
             assert(Hbet: betaP ((p <-- p_ite e p1 p2) ||| M') ((p <-- p1) ||| M'))
             by (eapply rt_ite;easy).
-            eapply IHHtyp'1 with (P:=p1) (M:=((p <-- p1) ||| M')) in Hfindp as IH_use; try easy. 
+            eapply IHHtyp'1 with (P:=P1) (M:=((p <-- P1) ||| M')) in Hfindp as IH_use; try easy. 
             admit. right.
         }
 
