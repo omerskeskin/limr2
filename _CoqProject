@@ -30,8 +30,8 @@ lemma/part.v
 lemma/step.v
 lemma/projection_helper.v
 lemma/projection.v
-lemma/main_helper.v
-lemma/main.v
+lemma/subj_red_helpers.v
+lemma/subj_red_prog.v
 lemma/soundness.v
 lemma/path_assoc.v
 lemma/multigrafting.v
