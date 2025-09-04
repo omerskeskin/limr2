@@ -332,6 +332,8 @@ Proof.
   - simpl. constructor. apply IHy.
 Qed.
 
+
+
 Lemma guardP_break : forall P,
     (forall n : fin, exists m : fin, guardP n m P) -> 
     exists Q, multi betaPr P Q /\ (Q = p_inact \/ (exists e p1 p2, Q = p_ite e p1 p2) \/ (exists pt lb ex pr, Q = p_send pt lb ex pr) \/ (exists pt llp, Q = p_recv pt llp)).
@@ -352,5 +354,5 @@ Proof.
       right. left. exists e. exists P0. exists Q. easy.
     - subst. specialize(IHm Q H3).
       destruct IHm as (Q1,(Ha,Hb)). exists Q1. split; try easy.
-      apply multi_step with (y := Q); try easy. 
+      apply multi_step with (y := Q); try easy.  
 Qed.

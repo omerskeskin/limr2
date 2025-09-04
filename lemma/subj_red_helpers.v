@@ -91,6 +91,47 @@ Proof.
       replace (flattenT M ++ flattenT M' ++ flattenT M'') with ((flattenT M ++ flattenT M') ++ flattenT M'') in *.
       easy.
     - constructor. constructor. easy. constructor. easy. easy. easy.
+    - inversion H;subst. 
+    assert(Htm : typ_sess (p <--M)G).
+    {
+        
+      inversion H3. destr_hyps;subst.
+      eapply typable_implies_wfC in H8 as Hwfc. eapply inv_proc_ite in H8;
+      try reflexivity. destr_hyps. constructor;try easy. exists x0;try easy.
+      constructor. exists x. split;try easy. split;try easy.
+      eapply tc_sub;try exact H4;try easy. intros.
+      specialize (H9 n). destr_hyps. inversion H9;subst. exists 0; try constructor.
+      exists m;easy.
+    }
+    assert(Htn: typ_sess (p <--N)G).
+    {
+        
+      inversion H3. destr_hyps;subst.
+      eapply typable_implies_wfC in H8 as Hwfc. eapply inv_proc_ite in H8;
+      try reflexivity. destr_hyps. constructor;try easy. exists x0;try easy.
+      constructor. exists x. split;try easy. split;try easy.
+      eapply tc_sub;try exact H6;try easy. intros.
+      specialize (H9 n). destr_hyps. inversion H9;subst. exists 0; try constructor.
+      exists m;easy.
+    }  
+    constructor;try easy. constructor. 
+    inversion H3;subst. destr_hyps.
+    exists x. split;try easy. 
+    eapply inv_proc_ite in H6;try reflexivity.
+    specialize (IHunfoldP1 _ Htm).
+    specialize (IHunfoldP2 _ Htn).
+    destr_hyps.
+    inversion IHunfoldP1;subst. inversion H16;destr_hyps. assert(x=x3) by congruence;subst.
+    inversion IHunfoldP2;subst. inversion H25;destr_hyps;subst. assert(x=x3) by congruence;subst.
+    split. constructor;try easy. 
+    Search guardP p_ite.
+    intros.
+    move H7 at bottom. specialize (H7 n). destr_hyps.
+    move H0_ at bottom.
+    Search guardP.
+    intros. specialize (H31 n). specialize (H22 n).
+    Print guardP.
+    constructor. 
 Qed.
 
 Lemma sub_red_1_helper : forall l x1 xs x4 x5 y,

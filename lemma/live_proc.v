@@ -26,6 +26,45 @@ Proof.
         exists 0; constructor |  exists m;easy].
 Qed.
 
+Fixpoint is_unfolded P := match P with
+  | p_ite e P1 P2 => is_unfolded P1 /\ is_unfolded P2
+  | p_send _ _ _ _ => True
+  | p_recv _ _ => True
+  | p_inact => True
+  | _ => False end.
+
+Lemma guardP_break_full :forall P,
+    (forall n : fin, exists m : fin, guardP n m P) -> 
+    exists Q, multi betaPr P Q /\ is_unfolded Q.
+Proof.
+    intros * Hguard.
+    induction P.
+    {
+        exists (p_send n n0 e P);split;try constructor;easy.
+    }
+    {
+        exists (p_recv n l);split;try constructor;easy. 
+    }
+    {
+        eapply guard_ite_inv in Hguard as Hg2. destr_hyps.
+        specialize (IHP1 H). specialize (IHP2 H0). destr_hyps.
+        assert(betaPr (p_ite e P1 P2) (p_ite e x0 P2)).
+        {
+            econstructor 2.         
+        }
+        exists (p_ite e x0 x). split. econstructor 2.   
+    }
+  eapply guardP_break in H.
+  destruct H. exists x. 
+  
+  destruct H. split;try easy.
+  induction x;try easy.
+  {
+
+  }
+  destruct H0;subst;try easy.
+  destruct H0;subst;destr_hyps.
+
 Lemma guarded_after_unfold : forall P P', all_guarded P ->  betaPr P P' -> all_guarded P'.
 Proof.
     intros. unfold all_guarded in *.

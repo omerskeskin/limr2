@@ -37,9 +37,9 @@ Inductive unfoldP : relation session :=
   | pc_par1  : forall M M', unfoldP (M ||| M') (M' ||| M)
   | pc_par2  : forall M M' M'', unfoldP ((M ||| M') ||| M'') (M ||| (M' ||| M''))
   | pc_par1m : forall M M' M'', unfoldP ((M ||| M') ||| M'') ((M' ||| M) ||| M'')
-  | pc_par2m : forall M M' M'' M''', unfoldP (((M ||| M') ||| M'') ||| M''') ((M ||| (M' ||| M'')) ||| M''').
-
-
+  | pc_par2m : forall M M' M'' M''', unfoldP (((M ||| M') ||| M'') ||| M''') ((M ||| (M' ||| M'')) ||| M''')
+  | pc_pite : forall M M' N N' p e, unfoldP (p <-- M ) (p <-- M' ) ->
+  unfoldP (p <-- N ) (p <-- N') -> unfoldP (p <-- p_ite e M N) (p <-- p_ite e M' N').
 Inductive typ_sess : session -> tctx -> Prop := 
   | t_sess : forall M gamma (Hassocable: exists g, wfgC g /\ assoc gamma g), tctx_wf gamma ->
                          (forall pt, in_not_end pt gamma -> InT pt M) ->
