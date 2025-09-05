@@ -40,3 +40,15 @@ Proof.
     induction H0;try easy.
     eapply IHmulti. eapply guarded_after_unfold with (P:=x);easy.
 Qed.
+
+(*session fidelity
+*)
+
+(*show that a fair session path exists from M
+this path is associated* with a fair path gamma
+gamma eventually has a p,q transition by liveness
+at that point, the corresponding M also transitions by weak session fidelity
+*)
+Definition live_sess (Mp:session) := forall M p q ell e P' Mr, betaRtc Mp M -> 
+    ((unfoldP M (p <-- p_send q ell e P' ||| Mr)) -> exists M', betaRtc M M' /\
+    exists Mr', unfoldP M' ((p <-- P') ||| Mr')).
