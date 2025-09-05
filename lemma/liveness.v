@@ -11,6 +11,7 @@ From Coq Require Import IndefiniteDescription.
 
 Import ListNotations.
 
+Search tctxR M.find.
 
 Locate no_step_from_end.
 Definition head_proj_is_recv p q:=(
