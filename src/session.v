@@ -58,11 +58,6 @@ Inductive betaP: relation session :=
                     ((p <-- subst_expr_proc y (e_val v) 0 0) ||| (q <-- Q) ||| M) 
   | r_struct: forall M1 M1' M2 M2', unfoldP M1 M1' -> unfoldP M2' M2 -> betaP M1' M2' -> betaP M1 M2.
 
-Definition beta_multistep := multi betaP.
-    
-Inductive multiC : relation gtt := 
-  | multiC_refl : forall G, multiC G G
-  | multiC_step : forall G1 G2 G3 p q n, gttstepC G1 G2 p q n -> multiC G2 G3 -> multiC G1 G3.
 
 Definition stuck (M : session) := ((exists M', unfoldP M M' /\ ForallT (fun _ P => P = p_inact) M') -> False) /\ ((exists M', betaP M M') -> False).
 

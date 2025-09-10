@@ -7,7 +7,7 @@ Import ListNotations.
 From SST Require Import src.header src.sim src.expr src.process src.local 
 src.global src.balanced src.typecheck src.part src.gttreeh src.path_props src.step src.merge src.projection src.session src.lcontext.  
 From SST Require Import lemma.inversion lemma.inversion_expr lemma.completeness lemma.substitution_helper lemma.substitution lemma.decidable_helper lemma.decidable lemma.expr lemma.part lemma.step 
-lemma.projection_helper lemma.projection lemma.multigrafting lemma.main_helper lemma.soundness lemma.liveness_helpers. 
+lemma.projection_helper lemma.projection lemma.multigrafting lemma.subj_red_helpers lemma.soundness lemma.liveness_helpers. 
 
 
 Search substitutionP guardP.
@@ -658,7 +658,7 @@ Proof.
         {
           Search typ_expr stepE. eapply expr_typ_step in H22;try exact H26;try easy.
           Create HintDb sc_hints.
-          Hint Constructors typ_expr.
+          Hint Constructors typ_expr :sc_hints.
           eauto with sc_hints.
         }
         eapply _subst_expr_var;try exact H34;try easy.
