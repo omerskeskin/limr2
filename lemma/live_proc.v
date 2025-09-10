@@ -10,8 +10,9 @@ From SST Require Import lemma.inversion lemma.path_assoc lemma.inversion_expr le
 lemma.projection_helper lemma.subj_red_prog_fid lemma.projection lemma.subj_red_helpers lemma.soundness lemma.liveness_helpers.
 
 Definition proc_path_valid_criteria := (fun x1 (l:label)  x2  =>
-  match (x1,x2) with 
-    | (g1,g2) => betaP g1 g2 
+  match (x1,l,x2) with 
+    | (g1,(lcomm p q ell), g2) => betaP_lbl g1 (lcomm p q ell) g2 
+    | _=> False
   end).
 
 Definition proc_valid_pathC := valid_path_GC proc_path_valid_criteria.

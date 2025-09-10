@@ -73,6 +73,7 @@ Proof.
 Theorem sub_red : forall M M' gamma, typ_sess M gamma -> betaP M M' -> exists gamma', typ_sess M' gamma' /\ tctxRtc gamma gamma'.
 Proof.
   intros * Hsess Hbeta.
+  destruct Hbeta as [l Hbeta].
   generalize dependent gamma.
   Print betaP.
   induction Hbeta;intros.
@@ -202,6 +203,7 @@ Qed.
 Theorem sub_red_strong : forall M M' gamma, typ_sess M gamma -> betaP M M' -> exists gamma', typ_sess M' gamma' /\ tctxRcomm gamma gamma'.
 Proof.
   intros * Hsess Hbeta.
+  destruct Hbeta as [l Hbeta].
   generalize dependent gamma.
   Print betaP.
   induction Hbeta;intros.
@@ -328,6 +330,134 @@ Proof.
   }
 Qed.
 
+Theorem sub_red_strong_labelled : forall M M' lb gamma, typ_sess M gamma -> betaP_lbl M lb M' -> exists gamma', typ_sess M' gamma' /\ tctxR gamma lb gamma'.
+Proof.
+  intros * Hsess Hbeta.
+  generalize dependent gamma.
+  Print betaP.
+  induction Hbeta;intros.
+  {
+    inversion Hsess;subst. rename H1 into Htwf, H2 into Hins, H3 into Hnodup, H4 into Hfat.
+    inversion Hfat;subst. inversion H3;subst. inversion H5;subst. inversion H6;subst.
+    clear H3 H4 H5 H6.
+    destruct H2 as [Tp [Htp [Htypp Hguardp]]]. destruct H7 as [Tq [Htq [Htypq Hguardq]]].
+    Check inv_proc_recv.
+    eapply inv_proc_recv in Htypp as Hrec_inv;try reflexivity.
+    eapply inv_proc_send in Htypq as Hsend_inv;try reflexivity.
+    destr_hyps.
+    rename x2 into g.
+    eapply assoc.subtype_recv_inv1 in H6 as Hn;destr_hyps;subst.
+    eapply assoc.subtype_send_inv1 in H5 as Hn;destr_hyps;subst.
+    rename H9 into Hassoc, H3 into Hwfg.
+    assert(Hispartsp : isgPartsC p g).
+    {
+      destruct (decidable_isgPartsC g p);try easy.
+      specialize (Hassoc p). destruct Hassoc.
+      specialize (H10 H3 _ Htp);easy. 
+    }
+    assert(Hispartsq : isgPartsC q g).
+    {
+      destruct (decidable_isgPartsC g q);try easy.
+      specialize (Hassoc q). destruct Hassoc.
+      specialize (H10 H3 _ Htq);easy. 
+    }
+    eapply subtype_recv_inv in H6 as Hsinvrec.
+    eapply subtype_send_inv in H5 as Hsinvsend.
+
+    assert (Honthl : onth l (extendLis l (Some (x, x0))) = Some (x,x0)) by
+    eapply extendExtract.
+    eapply Forall2R_prop in Hsinvsend;try exact Honthl;tac_sanitize.
+    assert(Hpq: p <>q).
+    {
+      red;intros;subst;congruence. 
+    }
+    assert (Hsubp: assoc.issubProj (ltt_send p x3) g q).
+    {
+      tac_use_assoc Hassoc q Hispartsq;destr_hyps. 
+      rewrite Htq in H3;inversion H3;subst;easy.
+    }
+    assert (Hsubq: assoc.issubProj (ltt_recv q x2) g p).
+    {
+      tac_use_assoc Hassoc p Hispartsp;destr_hyps. 
+      rewrite Htp in H3;inversion H3;subst;easy.
+    }
+    eapply assoc.lem_6_16_simul_subproj with (q:=p) (xp:=x3) (xq:=x2) 
+    in Hispartsq as Hsim;try easy;try solve [tac_wfl_to_slist
+
+    | 
+    specialize (Htwf _ _ Htq); pinversion Htwf; subst;try apply wfltt.wfltt_mon;try easy
+    |
+    
+    specialize (Htwf _ _ Htp); pinversion Htwf; subst;try apply wfltt.wfltt_mon
+    ;try easy
+    ].
+    eapply Forall2R_prop in Hsim;try exact H10;tac_sanitize.
+    eapply simple_red_comm in Htp as Hstep;try exact Htq;try easy;
+    try exact H10;try exact H13;try easy.
+    set (gamma' := (M.add q x4 (M.add p x10 (M.remove q (M.remove p gamma))))).
+    exists gamma'.
+    split;try solve [constructor;red;exists q, p, l;try easy].
+    constructor;try easy.
+    assert(Hprojable: projectableA g) by (eapply assoc_implies_projectable in Hassoc;try easy).
+    eapply assoc_completeness with (g:=g) in Hstep as Hgstep;try easy. 
+    destr_hyps. exists x;split;try easy. eapply wfgC_after_step in H9;try easy.
+    
+    eapply wfltt.tctx_wf_after_red_comm;try exact Htwf;try exact Hstep.
+    
+    intros.
+    eapply active_parts_subset in H3;try exact Hstep.
+    specialize (Hins _ H3) as Hins'.
+    red in Hins';simpl in Hins'.
+    red;simpl. easy.
+    repeat constructor.
+    rename x10 into Tp', x4 into Tq'.
+    {
+      exists Tp'.
+      split;unfold gamma';try autorewrite with mmaps;try easy.
+      split. 
+      eapply Forall2_prop_r in H7;try exact H;tac_sanitize.
+      eapply Forall2R_prop in Hsinvrec;try exact H13;tac_sanitize.
+      rewrite H9 in H16;inversion H16;subst;clear H16.
+      eapply _subst_expr_var with (S:=x11);try easy.
+      eapply tc_sub;try exact H18;try easy.
+
+      eapply wfC_recv with (q:=q); try exact H13.
+      eapply typable_implies_wfC;try exact Htypp.
+      
+      + eapply sc_sub;try exact H17. eapply sc_sub;try exact H14;
+      eapply sc_sub with (s:=x5);try easy. eapply expr_typ_step;try exact H1;try easy.
+      eapply guardP_subst_expr;try easy.
+      
+      + eapply guardP_cont_recv_n; try exact H;try easy.
+    }
+    {
+      unfold gamma';autorewrite with mmaps.
+      exists x4. repeat split;try easy. eapply tc_sub;try exact H4;try easy.
+      eapply wfC_send with (p:=p); try exact H10.
+      eapply typable_implies_wfC;try exact Htypq.
+      Search guardP.
+      intros.  specialize (Hguardq (S n)) as Hq'. destr_hyps. inversion H3;subst.
+      exists x. easy.
+    }
+    do 2  (inversion Hfat;subst). clear H16 H17.
+    assert (Hnotint : (InT p M -> False) /\ (InT q M -> False)).
+    {
+      simpl in Hnodup. 
+      eapply NoDup_cons_iff in Hnodup as Hnodup'. destr_hyps.
+      eapply NoDup_cons_iff in H9;destr_hyps.
+      eapply not_in_cons in H3;destr_hyps.
+      split;intros;unfold InT in H19; easy.
+    }
+    eapply typ_after_step_not_in_label with (gamma:=gamma);try exact Hstep;try easy.
+	 easy.
+  }
+
+  {
+    eapply typ_after_unfold in Hsess as Hunfold1;try exact H.
+    eapply IHHbeta in Hunfold1 as Hu2. destr_hyps. eapply typ_after_unfold in H1;try exact H0.
+    exists x;tauto.
+  }
+Qed.
 
 Lemma gtt_end_not_part : forall p, ~ isgPartsC p gtt_end.
 Proof.
@@ -474,7 +604,9 @@ Proof.
 				assert(Hunf' : unfoldP M (((q <-- p_recv p chcs)) ||| (p <-- p_send q ell e P_c) ||| M')) by  (eauto 7 with procs).
 				eapply expr_eval_ss in H;destr_hyps.
 				eapply r_comm with (p:=q) (q:=p) (e:=e) (Q:=P_c) (M:=M') (v:=x)  in H9 as Hbeta;try easy.
+        
 				exists (((q <-- subst_expr_proc x6 (e_val x) 0 0) ||| (p <-- P_c)) ||| M').
+        exists (lcomm p q ell).
 				eapply r_struct with (M2':= (((q <-- subst_expr_proc x6 (e_val x) 0 0)
 				||| (p <-- P_c)) ||| M'));try exact Hunf';try easy. constructor.
 			}
@@ -548,7 +680,7 @@ Qed.
 
 Theorem sess_fidelity : forall M gamma p q ell gamma', 
 typ_sess M gamma -> tctxR gamma (lcomm p q ell) gamma' ->
-    exists gamma'' M' ell', tctxR gamma (lcomm p q ell') gamma'' /\ betaP M M' /\ typ_sess M' gamma''.
+    exists gamma'' M' ell', tctxR gamma (lcomm p q ell') gamma'' /\ betaP_lbl M (lcomm p q ell') M' /\ typ_sess M' gamma''.
 Proof.
 	intros.
 	eapply lem_6_11c_tctx_comm_invert in H0 as Hinvert;destr_hyps.
@@ -607,10 +739,11 @@ Proof.
 		Check expr_eval_ss.
 					eapply expr_eval_ss in H22 as Hnt;destr_hyps.
 
-		assert(Hbeta: betaP (((q <-- p_recv p x5) ||| (p <-- p_send q x6 x8 x9)) ||| M')
+		assert(Hbeta: betaP_lbl (((q <-- p_recv p x5) ||| (p <-- p_send q x6 x8 x9)) ||| M')
+    (lcomm p q x6)
 (((q <-- subst_expr_proc x17 (e_val x14) 0 0) ||| (p <-- x9)) ||| M')).
 		{
-			eapply r_comm with (p:= q) (q:=p) (Q:=x9) (M:=M') in H32 as Hcomm;try exact H26.
+      eapply r_comm with (p:= q) (q:=p) (Q:=x9) (M:=M') in H32 as Hcomm;try exact H26.
 			easy.	
 		}
 		Hint Resolve  tauRtc_unfold unf_cont_l unf_cont unf_cont_r:procs.
@@ -620,7 +753,9 @@ Proof.
     assert(Hunf3: unfoldP M (((p <-- p_send q x6 x8 x9) ||| (q <-- p_recv p x5)) ||| M')). eauto  with procs.
     
 		assert(Hunf_b: unfoldP M (((q <-- p_recv p x5) ||| (p <-- p_send q x6 x8 x9)) ||| M')). eauto  with procs.
-		assert(Hbeta' : betaP M (((q <-- subst_expr_proc x17 (e_val x14) 0 0) ||| (p <-- x9)) ||| M')). eapply r_struct;try exact Hunf_b;try exact Hbeta;try constructor.
+		assert(Hbeta' : betaP_lbl M (lcomm p q x6) (((q <-- subst_expr_proc x17 (e_val x14) 0 0) ||| (p <-- x9)) ||| M')). 
+    
+    eapply r_struct;try exact Hunf_b;try exact Hbeta;try constructor;try easy.
     set (M_next :=(((q <-- subst_expr_proc x17 (e_val x14) 0 0) ||| (p <-- x9)) ||| M')).
     exists gamma'', M_next, x6.
     split;try easy. split;try easy.

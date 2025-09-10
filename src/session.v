@@ -51,13 +51,14 @@ Inductive typ_sess : session -> tctx -> Prop :=
                         typ_proc nil nil P T /\ (forall n, exists m, guardP n m P)) M ->
                          typ_sess M gamma.
 
-Inductive betaP: relation session :=
+Inductive betaP_lbl:  session -> label -> session -> Prop :=
   | r_comm  : forall p q xs y l e v Q M, 
               onth l xs = Some y -> stepE e (e_val v) -> 
-              betaP ((p <-- (p_recv q xs)) ||| (q <-- (p_send p l e Q)) ||| M)
+              betaP_lbl ((p <-- (p_recv q xs)) ||| (q <-- (p_send p l e Q)) ||| M) (lcomm q p l)
                     ((p <-- subst_expr_proc y (e_val v) 0 0) ||| (q <-- Q) ||| M) 
-  | r_struct: forall M1 M1' M2 M2', unfoldP M1 M1' -> unfoldP M2' M2 -> betaP M1' M2' -> betaP M1 M2.
+  | r_struct: forall M1 M1' M2 M2' l, unfoldP M1 M1' -> unfoldP M2' M2 -> betaP_lbl M1' l M2' -> betaP_lbl M1 l M2.
 
+Definition betaP a b := exists l, betaP_lbl a l b.
 
 Definition stuck (M : session) := ((exists M', unfoldP M M' /\ ForallT (fun _ P => P = p_inact) M') -> False) /\ ((exists M', betaP M M') -> False).
 
