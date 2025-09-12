@@ -127,7 +127,7 @@ Proof.
     {
         intros. red in H. destruct xs as [ | [t l]];try easy.
         destruct l;try tauto;destruct l;try tauto.
-        destruct (Nat.eq_dec p n);destruct (Nat.eq_dec q n0);try tauto;subst;clear H.
+        destr_hyps;subst.
         pinversion Hpassoc;try apply path_assoc_mon;subst. constructor.  simpl. tauto.
     }
     {
@@ -357,6 +357,7 @@ Proof.
     tauto.
 Qed.
 
+Check eq_refl.
 
 CoFixpoint conj_path : forall t g l  xs, wfgC g -> tctx_wf t -> assoc t g ->
     local_valid_pathC (cocons (t, l) xs) ->
