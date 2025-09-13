@@ -435,7 +435,8 @@ Proof.
 	intros Ax_fairness * Hsess. red. intros. split.
 	{
 		intros * Hpq H0.
-		specialize (Ax_fairness M0). red in Ax_fairness. destr_hyps.
+        
+		specialize (Ax_fairness ((p <-- p_send q ell e P') ||| M')). red in Ax_fairness. destr_hyps.
 		destruct x0;try easy. destruct p0;try easy. simpl in H1;inversion H1;subst;clear H1.
 		eapply sub_red_Rtc in Hsess;try exact H.
 		destruct Hsess as [gamma' Hsess].
@@ -513,6 +514,93 @@ Proof.
         {
             destr_hyps. destruct x;try easy. destruct l;try easy. simpl in H5;destr_hyps;subst.
             pinversion H2;subst;try apply valid_path_mon. red in H9;destr_hyps.   
+
+            
+            Lemma betaP_lbl_send_unique_comm : forall p q ell e P' M' ell' x, 
+            typable ((p <-- p_send q ell e P') ||| M') ->
+            betaP_lbl ((p <-- p_send q ell e P') ||| M') (lcomm p q ell') x ->
+            exists M'', betaP_lbl ((p <-- p_send q ell e P') ||| M') (lcomm p q ell) 
+            ((p <-- P') ||| M'').
+            Proof.
+                intros * Htyp Hbeta. destruct Htyp as [gamma Htyp]. 
+
+                eapply betaP_lbl_invert in Hbeta as Hbinv;destr_hyps;try exact Htyp.
+                Print unfoldP.
+        Inductive scong : session -> session -> Prop :=
+            | scong_refl : forall M, scong M M
+            | scong_par_com : forall M1 M1' , scong (M1 ||| M1') (M1' ||| M1)
+            | scong_par_ass: forall M1 M2 M3 , 
+            scong (M1 ||| (M2 ||| M3))
+            ((M1 ||| M2)|||M3)
+            | scong_zero: forall M, scong M (M ||| s_zero)
+            | scong_sym: forall M M', scong M M' -> scong M' M
+            | scong_cong: forall M M' M'', scong M M' -> scong (M|||M'') (M' ||| M'').
+            
+        Lemma scong_implies_unfold : forall M M', scong M M' -> unfoldP M M'.
+        Proof.
+            intros. induction H;eauto 2 with procs.
+            
+                Lemma unfold_squeeze : forall p P M Q M',
+                is_p_send P ->
+                unfoldP ((p <-- P )|||M) M0 ->
+                unfoldP M0 ((p <-- Q )|||M') ->
+
+                Lemma unfoldP_split : forall p P M Q M', 
+                typable ((p <-- P )|||M) ->
+                unfoldP ((p <-- P )|||M) ((p<--Q) |||M') ->
+                unfoldP (p <-- P) (p <-- Q) /\ unfoldP M M'.
+                Proof.
+                    intros * Htyp Hunf1.
+                    
+                    dependent induction Hunf1.
+                    {
+                        intros.
+                        split; eauto with procs.
+                    }
+                    {
+                        split;eauto with procs.   
+                    }
+                    {
+                           
+                    }
+                    split. Print unfoldP. econstructor 3.
+
+                    Search unfoldP.
+                Definition is_p_send P:=exists q ell e P', P=p_send q ell e P'.    
+                Lemma unfold_p_unique : forall p P M' M'',
+                is_p_send P ->
+                typable ((p <-- P) ||| M') ->
+                unfoldP ((p <-- P) ||| M')
+                M'' ->  exists M''', unfoldP M'' ((p <-- P) ||| M''').
+                Proof.
+                    intros * Hse Htyp Hunf.
+                    red in Htyp;destruct Htyp as [gamma Htyp].
+                    assert(Hinp: InT p M'' ). 
+                    {
+                        eapply part_after_unf with (p:=p) in Hunf;try easy. red;simpl;tauto.
+                    }
+                    eapply move_forward_h in Hinp;destr_hyps.
+                    generalize dependent gamma.
+                    dependent induction Hunf;subst;try easy;intros.
+                    red in Hse;destr_hyps;subst;inversion H;subst;inversion H0.
+                    exists M';try constructor 2.
+                    eapply IHHunf1 in Hse as Hse1;try reflexivity;try exact Htyp.
+                    assert(Hinp: InT p M'0 ). 
+                    {
+                        eapply part_after_unf with (p:=p) in Hunf1;try easy. red;simpl;tauto.
+                    }
+                    eapply move_forward_h in Hinp;destr_hyps.
+                    assert(Hunf3: unfoldP ((p <-- P) ||| M') ((p <-- x) ||| x0)) by eauto with procs.
+                    eapply IHHunf1 in Hse.
+                    admit.
+                    inversion Htyp;subst. simpl in H1. inversion H1;subst. 
+                    exfalso;eapply H5;simpl;tauto.
+                Admitted.
+                Search unfoldP.
+                evar (Ms : session). exists Ms.
+                econstructor 2 with (M1':=((p <-- p_send q ell e P') ||| M')) (M2':=(p <-- P') ||| Ms).
+                constructor 2. constructor 2.
+                dependent induction Hbeta.
         }
         destruct xs.
         eapply eventually_P_iff_P_suffix in Hev;destr_hyps.
