@@ -25,14 +25,14 @@ Module MF := MMaps.Facts.Properties Nat M.
 
 Definition tctx: Type := M.t ltt.
 
-Definition both (z: nat) (o:option ltt) (o':option ltt) :=
+Definition both {A:Type} (z: nat) (o:option A) (o':option A) :=
  match o,o' with 
    | Some _, None   => o
    | None, Some _   => o'
    | _,_            => None
  end.
 
-Definition disj_merge (g1 g2:tctx) (H:MF.Disjoint g1 g2) : tctx := 
+Definition disj_merge {A:Type} (g1 g2:M.t A) (H:MF.Disjoint g1 g2)  := 
   M.merge both g1 g2.  
 
 
@@ -146,7 +146,7 @@ Proof.
   }
 Qed.
 
-Lemma spc_merge_find1: forall (g1 g2:tctx) p H_disj x, M.find p g1 = Some x ->
+Lemma spc_merge_find1 {A:Type}: forall (g1 g2:M.t A) p H_disj x, M.find p g1 = Some x ->
   M.find p (disj_merge g1 g2 H_disj)=Some x.
 Proof.
   intros.
@@ -162,7 +162,7 @@ Proof.
   apply MF.in_find in H_2. exfalso. exact (H_disj (conj H H_2)). 
 Qed.
 
-Lemma spc_merge_find2: forall (g1 g2:tctx) p H_disj x, M.find p g2 = Some x ->
+Lemma spc_merge_find2 {A:Type}: forall (g1 g2:M.t A) p H_disj x, M.find p g2 = Some x ->
   M.find p (disj_merge g1 g2 H_disj)=Some x.
 Proof.
   intros.
@@ -178,7 +178,7 @@ Proof.
   apply MF.in_find in H_2. exfalso. exact (H_disj (conj H_2 H)). 
 Qed.
 
-Lemma spc_merge_find3 : forall (g1 g2:tctx) p H_disj x, 
+Lemma spc_merge_find3 {A:Type}: forall (g1 g2:M.t A) p H_disj x, 
   M.find p (disj_merge g1 g2 H_disj)=Some x ->
   (M.find p g1=Some x /\ M.find p g2=None) \/ 
   (M.find p g2=Some x /\ M.find p g1=None).
@@ -190,7 +190,7 @@ Proof.
   destruct (M.find p g2); crush.
 Qed.
 
-Lemma spc_merge_nfind : forall g1 g2 H p, M.find p (disj_merge g1 g2 H) = None ->
+Lemma spc_merge_nfind {A:Type}: forall  (g1 : M.t A) g2 H p, M.find p (disj_merge g1 g2 H) = None ->
   M.find p g1=None /\ M.find p g2=None.
 Proof.
   intros.  unfold disj_merge in H0. split;
@@ -200,7 +200,7 @@ Proof.
   apply opt_lem2 in H_pg2; apply MF.in_find in H_pg2; specialize (H p); crush. 
 Qed.
 
-Lemma empty_disjoint : forall (g:tctx), MF.Disjoint g M.empty.
+Lemma empty_disjoint {A:Type}: forall (g:M.t A), MF.Disjoint g M.empty.
 Proof.
   intros.
   unfold MF.Disjoint. unfold not. intros.
@@ -209,7 +209,7 @@ Proof.
   apply MF.empty_in_iff in H0. assumption.
 Qed.
 
-Lemma spc_merge_nfind2 : forall g1 g2 H p,
+Lemma spc_merge_nfind2 {A:Type}: forall (g1 : M.t A) g2 H p,
   M.find p g1=None /\ M.find p g2=None-> M.find p (disj_merge g1 g2 H) = None.
 Proof.
   intros.  unfold disj_merge in H0. destruct H0. unfold disj_merge. 
@@ -236,7 +236,8 @@ Ltac tac_double_find_disjoint := match goal
     H3: MF.Disjoint ?g1 ?g2 
     |- _] => exfalso;apply (double_find_disjoint g1 g2 y _ _ H3 H1 H2) end.
 
-Lemma disj_merge_sym : forall g1 g2 H, M.Equal (disj_merge g1 g2 H) (disj_merge g2 g1 (MF.Disjoint_sym H)). 
+Lemma disj_merge_sym {A:Type}: forall (g1 : M.t A) g2 H, 
+M.Equal (disj_merge g1 g2 H) (disj_merge g2 g1 (MF.Disjoint_sym H)). 
 Proof.
   unfold M.Equal. intros.
   destruct (M.find y g1) eqn:H_yg1;destruct(M.find y g2) eqn:H_yg2;
@@ -687,7 +688,7 @@ Proof.
       unfold MF.Add in H1.
       unfold disj_merge.
       setoid_rewrite H1.
-      fold disj_merge.
+      fold ( @disj_merge (M.t ltt)).
       change (M.merge both g1 g2_1) with (disj_merge g1 g2_1 Hd).
       change (M.merge both g1 (M.add x e g2_1)) with 
       (disj_merge g1 (M.add x e g2_1) Hd'').
@@ -978,7 +979,7 @@ Proof.
     Hdeq (ltt_send q xp) (ltt_recv p xq) H_eq Hd1.
     Hdeq Tp_k Tq_k H_eq Hd1.
     apply tctxR_weakening.
-    assert(Heq1: forall Ttp Ttq Hdd, M.Equal (M.add p Ttp
+    assert(Heq1: forall (Ttp :ltt) Ttq Hdd, M.Equal (M.add p Ttp
     (M.add q Ttq M.empty)) (disj_merge (M.add p Ttp M.empty) (M.add q Ttq M.empty) Hdd)).
     {
      intros.

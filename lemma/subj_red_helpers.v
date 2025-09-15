@@ -321,45 +321,13 @@ Proof.
     - specialize(IHM2 G pt H1 H4). apply IHM2; try easy.
 Qed.
 
-Lemma pc_par5 : forall M M' M'', unfoldP (M ||| (M' ||| M'')) ((M ||| M') ||| M'').
-Proof.
-  intros.
-  apply pc_trans with (M' := (M' ||| M'') ||| M). constructor.
-  apply pc_trans with (M' := (M' ||| (M'' ||| M))). constructor.
-  apply pc_trans with (M' := (M'' ||| M) ||| M'). constructor.
-  apply pc_trans with (M' := M'' ||| (M ||| M')). constructor. constructor. 
-Qed.
+
 
 
 Create HintDb procs.
 Hint Constructors unfoldP tauP betaPr :procs.
 Hint Resolve pc_par5 :procs.
-Lemma unf_cont_l : forall M1 M1' M2,
-  unfoldP M1 M1' -> 
-  unfoldP (M1 ||| M2) (M1' ||| M2).
-Proof.
-  intros. revert M2.
-  induction H; intros;try solve [eauto with procs].
-Qed.
 
-Lemma unf_cont_r : forall M1 M2 M2', 
-    unfoldP M2 M2' -> 
-    unfoldP (M1 ||| M2) (M1 ||| M2').
-Proof.
-  intros.
-  apply pc_trans with (M' := M2 ||| M1). constructor.
-  apply pc_trans with (M' := M2' ||| M1). apply unf_cont_l. easy.
-  constructor.
-Qed.
-
-Lemma unf_cont : forall M1 M1' M2 M2',
-    unfoldP M1 M1' -> unfoldP M2 M2' -> 
-    unfoldP (M1 ||| M2) (M1' ||| M2').
-Proof.
-  intros.
-  apply pc_trans with (M' := (M1 ||| M2')). apply unf_cont_r. easy.
-  apply unf_cont_l. easy.
-Qed.
 
 Lemma move_forward_h : forall M,
     forall p : part,
