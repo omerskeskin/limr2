@@ -282,57 +282,62 @@ Ltac destruct_forallT := match goal with
                 end.
 
 Definition proc_path_head_is x (xs : coseq (session *option label)) := 
-        match xs with (cocons (M,_) _) => M = x
-        | _ => False
-        end.
-        Definition proc_path_head_unfolds_to_send p q (xs : coseq (session *option label)) := 
-        match xs with (cocons (M,_) _) => exists M' ell e P, unfoldP M ((p <-- p_send q ell e P) |||M')
-        | _ => False
-        end.
-        
-        Lemma betaP_lbl_invert : forall M M' p q ell gamma,
-        typ_sess M gamma -> betaP_lbl M (lcomm p q ell) M' ->
-        exists M'' P' llp e, unfoldP M ((p <-- p_send q ell e P' )|||(q <-- p_recv p llp) |||M'').
-        Proof.
-            intros * Hsess Hbeta.
-            generalize dependent gamma.
-            dependent induction Hbeta.
-            {
-                exists M, Q, xs, e. eauto with procs.
-            }
-            {
-                intros.
-                assert(Hsess2 : typ_sess M1' gamma).
-                {
-                    eapply typ_after_unfold in Hsess;try exact H;easy.
-                }
-                eapply IHHbeta in Hsess2 as IH_use;try reflexivity.
-                destr_hyps.
-                exists x, x0, x1, x2.
-                eauto with procs.
-            }
-        Qed.
+match xs with (cocons (M,_) _) => M = x
+| _ => False
+end.
 
-        Lemma betaP_lbl_send_unique : forall M M' M'' gamma p q ell ell' q', 
-        typ_sess M gamma ->
-        betaP_lbl M (lcomm p q ell) M' -> betaP_lbl M (lcomm p q' ell') M'' ->
-        q = q'.
-        Proof.
-            intros * Hsess Hbeta1 Hbeta2.
-            eapply betaP_lbl_invert in Hbeta1;try exact Hsess.
-            
-            eapply betaP_lbl_invert in Hbeta2;try exact Hsess.
-            destr_hyps.
-            eapply typ_after_unfold in H0 as Ht1;try exact Hsess.
+Definition proc_path_head_scong_send p q ell e P' (xs : coseq (session *option label)):= 
+match xs with (cocons (M,_) _) => exists M', scong M  (p<-- p_send q ell e P' |||M')
+    | _ => False
+end.
+Definition proc_path_head_unfolds_to_send p q (xs : coseq (session *option label)) := 
+match xs with (cocons (M,_) _) => exists M' ell e P, unfoldP M ((p <-- p_send q ell e P) |||M')
+| _ => False
+end.
 
-            eapply typ_after_unfold in H as Ht2;try exact Hsess.
-            inversion Ht1;inversion Ht2;subst.
-            
-            repeat destruct_forallT;destr_hyps.
-            assert(x9 =x7) by congruence;subst.
-            eapply inv_proc_send in H15, H19;try reflexivity.
-            destr_hyps. pinversion H28;subst;pinversion H26;subst;try apply sub_mon. easy.
-        Qed.
+Lemma betaP_lbl_invert : forall M M' p q ell gamma,
+typ_sess M gamma -> betaP_lbl M (lcomm p q ell) M' ->
+exists M'' P' llp e, unfoldP M ((p <-- p_send q ell e P' )|||(q <-- p_recv p llp) |||M'').
+Proof.
+    intros * Hsess Hbeta.
+    generalize dependent gamma.
+    dependent induction Hbeta.
+    {
+        exists M, Q, xs, e. eauto with procs.
+    }
+    {
+        intros.
+        assert(Hsess2 : typ_sess M1' gamma).
+        {
+            eapply typ_after_unfold in Hsess;try exact H;easy.
+        }
+        eapply IHHbeta in Hsess2 as IH_use;try reflexivity.
+        destr_hyps.
+        exists x, x0, x1, x2.
+        eauto with procs.
+    }
+Qed.
+
+Lemma betaP_lbl_send_unique : forall M M' M'' gamma p q ell ell' q', 
+typ_sess M gamma ->
+betaP_lbl M (lcomm p q ell) M' -> betaP_lbl M (lcomm p q' ell') M'' ->
+q = q'.
+Proof.
+    intros * Hsess Hbeta1 Hbeta2.
+    eapply betaP_lbl_invert in Hbeta1;try exact Hsess.
+    
+    eapply betaP_lbl_invert in Hbeta2;try exact Hsess.
+    destr_hyps.
+    eapply typ_after_unfold in H0 as Ht1;try exact Hsess.
+
+    eapply typ_after_unfold in H as Ht2;try exact Hsess.
+    inversion Ht1;inversion Ht2;subst.
+    
+    repeat destruct_forallT;destr_hyps.
+    assert(x9 =x7) by congruence;subst.
+    eapply inv_proc_send in H15, H19;try reflexivity.
+    destr_hyps. pinversion H28;subst;pinversion H26;subst;try apply sub_mon. easy.
+Qed.
 
 Lemma proc_same_after_distinct_trans: 
     forall M M' M'' p q p' q' ell ell' e P',
@@ -365,22 +370,23 @@ Lemma proc_same_after_distinct_trans:
         red; intros;simpl;auto. simpl in H1. destruct H1;subst;try easy.
     Qed.
 
-Lemma live_proc_helper2 : forall p q  xs,
+Lemma live_proc_helper2 : forall p q P ell e xs,
         p <> q ->
         proc_valid_pathC xs ->
-        proc_path_head_unfolds_to_send p q xs -> 
+        proc_path_head_scong_send p q ell e P xs -> 
         weak_untilC ((fun u=> 
         match u with | conil => True
-        | x => proc_path_head_unfolds_to_send p q x 
+        | x => proc_path_head_scong_send p q ell e P x
          end)) 
-        (fun u=> exists ell', proc_path_head_unfolds_to_send p q u /\  head_trans_proc p q ell' u) xs. 
-Proof.
-    intros * Hpq.  generalize dependent xs. pcofix CIH. 
+        (fun u=>  proc_path_head_scong_send p q ell e P u /\ 
+        exists ell',  head_trans_proc p q ell' u) xs. 
+Proof. 
+    intros * Hpq.  revert xs. pcofix CIH.
     intros * Hvalid Hphead. pfold.
     destruct xs;try easy. destruct p0;try easy.
     pinversion Hvalid;subst;try apply valid_path_mon.
     {
-        econstructor 2. simpl in Hphead. destr_hyps. simpl. exists x, x0, x1, x2. easy. 
+        econstructor 2. simpl in Hphead. destr_hyps. simpl. exists x. easy. 
         left.  
         pfold. econstructor 3. easy.    
     }
@@ -389,7 +395,9 @@ Proof.
         destruct H3 as [Htab Htypable].
         destruct (Nat.eq_dec n p);destruct (Nat.eq_dec n0 q);subst;try easy.
         {
-            econstructor 1. simpl. exists n1; tauto.
+            econstructor 1. simpl in Hphead. simpl. destr_hyps. 
+            split. exists x0; tauto.
+            exists n1;tauto.
         }
         {
             simpl in Hphead.
@@ -411,15 +419,18 @@ Proof.
                 pinversion H24;pinversion H9;subst;try apply sub_mon;congruence. 
             Qed.
             red in Htypable. destr_hyps.
-            eapply unfold_beta_unique_send in Htab as Hunfq;try exact Hphead;
-            subst;try exact H0; try exact H;subst.
-            easy.
+            eapply unfold_beta_unique_send with (q:=q) (ell:=ell) (e:=e) (P':=P) (M'':=x1)  in Htab as Hunfq; 
+            try exact H;subst;try easy.
+            eapply unfoldB_to_unfoldP. inversion H;try easy.
+            econstructor 1. econstructor 2. easy.
         }
         {
             econstructor 2. easy.
             right. eapply CIH;try easy.
-            simpl in Hphead. destr_hyps.  
-            eapply proc_same_after_distinct_trans in Htab as Hd;try exact H;try easy.
+            simpl in Hphead.  destr_hyps.
+            simpl. exists x0.  
+            eapply proc_same_after_distinct_trans in Htab as Hd.
+            try exact H;try easy.
         }
         {
             econstructor 2. easy.
@@ -566,12 +577,31 @@ Proof.
 ||| x7).
 eauto with procs.
 Qed.
-    
+
+Lemma live_proc_helper : forall p q xs ys, 
+eventually (headComm p q) xs -> 
+typ_pathC  ys xs -> exists ell,
+eventually (head_trans_proc p q ell) ys.
+Proof.
+    intros * Hev Htyp. generalize dependent ys. induction Hev.
+    {
+        intros. destruct xs;try easy. destruct p0. destruct o;try easy.
+        destruct l;try easy. simpl in H;destr_hyps;subst.
+        pinversion Htyp;subst. exists n1;simpl. constructor. easy. 
+    }
+    {
+        intros.
+        pinversion Htyp;subst. specialize (IHHev ms H3). 
+        destr_hyps. exists x. constructor 2. easy.   
+    }
+Qed.
+
 Lemma extends_to_fair_implies_live : fairness_feasible -> forall M gamma, typ_sess M gamma -> live_sess M.
 Proof. 
 	intros Ax_fairness * Hsess. red. intros. split.
 	{
 		intros * Hpq H0.
+        
         
 		specialize (Ax_fairness ((p <-- p_send q ell e P') ||| M')). red in Ax_fairness. destr_hyps.
 		destruct x0;try easy. destruct p0;try easy. simpl in H1;inversion H1;subst;clear H1.
@@ -580,7 +610,6 @@ Proof.
 		eapply typ_path_exists in H2 as Htypp;try exact Hsess. destr_hyps.
 		assert(Hlive: liveCtx gamma').
 		{
-			Check liveness_global.
             inversion Hsess;destr_hyps.
 			eapply liveness with (g:=x2);try easy. 
             eapply assoc_implies_projectable in H12;try easy.  	
@@ -621,23 +650,7 @@ Proof.
             eapply H7. simpl. easy.
         }
         Check typ_path_preserves_fairness_helper.
-        Lemma live_proc_helper : forall p q xs ys, 
-        eventually (headComm p q) xs -> 
-        typ_pathC  ys xs -> exists ell,
-        eventually (head_trans_proc p q ell) ys.
-        Proof.
-            intros * Hev Htyp. generalize dependent ys. induction Hev.
-            {
-                intros. destruct xs;try easy. destruct p0. destruct o;try easy.
-                destruct l;try easy. simpl in H;destr_hyps;subst.
-                pinversion Htyp;subst. exists n1;simpl. constructor. easy. 
-            }
-            {
-                intros.
-                pinversion Htyp;subst. specialize (IHHev ms H3). 
-                destr_hyps. exists x. constructor 2. easy.   
-            }
-        Qed.
+        
         eapply live_proc_helper in Hev_local_trans as Hlpr;try exact H1.
         destruct Hlpr as [ell' Hlpr].
         eapply  live_proc_helper2 with (p:=p) (q:=q) in H2 as Hweak;try easy;
@@ -650,7 +663,7 @@ Proof.
         Check until_suf.
         destruct Hunt.
         {
-            destr_hyps. destruct x;try easy. destruct l;try easy. simpl in H5;destr_hyps;subst.
+            destr_hyps. clear H5. rename H6 into H5. destruct x;try easy. destruct l;try easy. simpl in H5;destr_hyps;subst.
             pinversion H2;subst;try apply valid_path_mon. red in H9;destr_hyps.   
             destruct H6 as [gamma'' Hty].
             eapply sub_red_strong_labelled in H5 as Hss;try exact Hty.
@@ -710,10 +723,19 @@ Proof.
              destruct p0.
              pinversion Hv;try apply valid_path_mon;try easy;subst.
 
+             simpl in H7;simpl in H8.
              destruct o0;try easy.
              destruct l0;try easy.
-             simpl in H7;destr_hyps;subst.
-             pinversion H10;subst;try easy;try eapply valid_path_mon.
+             destr_hyps;subst.
+             destruct l;try easy.
+             pinversion H11;subst;try easy;try eapply valid_path_mon.
+             red in H15.
+             red in H13.
+             destr_hyps.
+             destruct H9 as [gamma_0 Htyp0].
+             eapply sub_red_strong_labelled in H8;try exact Htyp0;destr_hyps.
+             eapply sess_fidelity_strong in H9;try exact Htyp0;try exact H7.
+             destr_hyps.
              destruct l;try easy.
              red in H14.
              red in H12. destr_hyps.
