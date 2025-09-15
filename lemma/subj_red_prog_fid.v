@@ -702,59 +702,54 @@ Proof.
 	eapply typ_proc_inv_recv in H15 as Htinvq;try easy.
 	destr_hyps.
 
-		eapply assoc_inv_find in H12 as Hsub1;try exact H14;try easy.
-		eapply assoc_inv_find in H11 as Hsub2;try exact H14;try easy.
-		assert(Hpartp :isgPartsC p x7).
-		{
-			red in Hsub1;destr_hyps. pinversion H23;try apply sub_mon;subst.
-			Locate proj_contains_q_implies_part_send.
-			eapply proj_contains_q_implies_part_send in H22;destr_hyps;try easy.
-			eapply assoc_implies_projectable in H19;try easy.	
-		}
-		assert(Hslist1: SList x1).
-		{
-			red in H8. specialize (H8 _ _ H12). pinversion H8;try apply wfltt.wfltt_mon;try easy.
-		}
-		assert(Hslist2 : SList x3).
-		{
-			red in H8. specialize (H8 _ _ H11). pinversion H8;try apply wfltt.wfltt_mon;try easy.
-		}
-		eapply assoc.lem_6_16_simul_subproj in Hsub1 as Hsim;try exact Hsub2;try easy.
-		eapply typ_after_tauRtc in H21 as Ht2;try exact H17. eapply inv_proc_send in Ht2;try reflexivity;destr_hyps.
-		eapply subtype_send_inv in H24.
-		assert(onth x6 (extendLis x6 (Some (x10,x11)))=(Some (x10,x11))) by (rewrite extendExtract;easy).
-		eapply Forall2R_prop in H24;try exact H25;tac_sanitize.
-		eapply Forall2R_prop in Hsim;try exact H27;tac_sanitize.
-		set (gamma'' :=M.add p x12 (M.add q x18 (M.remove p (M.remove q gamma)))).
-		assert (Hstep: tctxR gamma (lcomm p q x6) gamma'').
-		{
-			eapply simple_red_comm; try exact H27; try exact H30;try easy.	
-		}
-		eapply typ_after_tauRtc in H20 as Ht3;try exact H15.
-		eapply inv_proc_recv in Ht3;try reflexivity;destr_hyps.
-		eapply subtype_recv_inv in H26. 
-		eapply Forall2R_prop in H26;try exact H30;tac_sanitize.
-		eapply Forall2_prop_l in H32;try exact H35;tac_sanitize.
-		Check r_comm.
-		Check expr_eval_ss.
-					eapply expr_eval_ss in H22 as Hnt;destr_hyps.
-
-		assert(Hbeta: betaP_lbl (((q <-- p_recv p x5) ||| (p <-- p_send q x6 x8 x9)) ||| M')
-    (lcomm p q x6)
-(((q <-- subst_expr_proc x17 (e_val x14) 0 0) ||| (p <-- x9)) ||| M')).
-		{
-      eapply r_comm with (p:= q) (q:=p) (Q:=x9) (M:=M') in H32 as Hcomm;try exact H26.
-			easy.	
-		}
-		Hint Resolve  tauRtc_unfold unf_cont_l unf_cont unf_cont_r:procs.
+	eapply assoc_inv_find in H12 as Hsub1;try exact H14;try easy.
+	eapply assoc_inv_find in H11 as Hsub2;try exact H14;try easy.
+	assert(Hpartp :isgPartsC p x7).
+	{
+		red in Hsub1;destr_hyps. pinversion H23;try apply sub_mon;subst.
+		Locate proj_contains_q_implies_part_send.
+		eapply proj_contains_q_implies_part_send in H22;destr_hyps;try easy.
+		eapply assoc_implies_projectable in H19;try easy.	
+	}
+	assert(Hslist1: SList x1).
+	{
+		red in H8. specialize (H8 _ _ H12). pinversion H8;try apply wfltt.wfltt_mon;try easy.
+	}
+	assert(Hslist2 : SList x3).
+	{
+		red in H8. specialize (H8 _ _ H11). pinversion H8;try apply wfltt.wfltt_mon;try easy.
+	}
+	eapply assoc.lem_6_16_simul_subproj in Hsub1 as Hsim;try exact Hsub2;try easy.
+	eapply typ_after_tauRtc in H21 as Ht2;try exact H17. eapply inv_proc_send in Ht2;try reflexivity;destr_hyps.
+	eapply subtype_send_inv in H24.
+	assert(onth x6 (extendLis x6 (Some (x10,x11)))=(Some (x10,x11))) by (rewrite extendExtract;easy).
+	eapply Forall2R_prop in H24;try exact H25;tac_sanitize.
+	eapply Forall2R_prop in Hsim;try exact H27;tac_sanitize.
+	set (gamma'' :=M.add p x12 (M.add q x18 (M.remove p (M.remove q gamma)))).
+	assert (Hstep: tctxR gamma (lcomm p q x6) gamma'').
+	{
+		eapply simple_red_comm; try exact H27; try exact H30;try easy.	
+	}
+	eapply typ_after_tauRtc in H20 as Ht3;try exact H15.
+	eapply inv_proc_recv in Ht3;try reflexivity;destr_hyps.
+	eapply subtype_recv_inv in H26. 
+	eapply Forall2R_prop in H26;try exact H30;tac_sanitize.
+	eapply Forall2_prop_l in H32;try exact H35;tac_sanitize.
+	eapply expr_eval_ss in H22 as Hnt;destr_hyps.
+	assert(Hbeta: betaP_lbl (((q <-- p_recv p x5) ||| (p <-- p_send q x6 x8 x9)) ||| M') (lcomm p q x6) (((q <-- subst_expr_proc x17 (e_val x14) 0 0) ||| (p <-- x9)) ||| M')).
+	{
+      	eapply r_comm with (p:= q) (q:=p) (Q:=x9) (M:=M') in H32 as Hcomm;try exact H26.
+		easy.	
+	}
+	Hint Resolve  tauRtc_unfold unf_cont_l unf_cont unf_cont_r:procs.
     Check unf_cont_l.
             
     assert(Hunf2: unfoldP (((p <-- P) ||| (q <-- Q)) ||| M') (((p <-- p_send q x6 x8 x9) ||| (q <-- p_recv p x5)) ||| M')). eauto  with procs.
     assert(Hunf3: unfoldP M (((p <-- p_send q x6 x8 x9) ||| (q <-- p_recv p x5)) ||| M')). eauto  with procs.
     
-		assert(Hunf_b: unfoldP M (((q <-- p_recv p x5) ||| (p <-- p_send q x6 x8 x9)) ||| M')). eauto  with procs.
-		assert(Hbeta' : betaP_lbl M (lcomm p q x6) (((q <-- subst_expr_proc x17 (e_val x14) 0 0) ||| (p <-- x9)) ||| M')). 
-    
+	assert(Hunf_b: unfoldP M (((q <-- p_recv p x5) ||| (p <-- p_send q x6 x8 x9)) ||| M')). eauto  with procs.
+	assert(Hbeta' : betaP_lbl M (lcomm p q x6) (((q <-- subst_expr_proc x17 (e_val x14) 0 0) ||| (p <-- x9)) ||| M')). 
+
     eapply r_struct;try exact Hunf_b;try exact Hbeta;try constructor;try easy.
     set (M_next :=(((q <-- subst_expr_proc x17 (e_val x14) 0 0) ||| (p <-- x9)) ||| M')).
     exists gamma'', M_next, x6.
@@ -783,62 +778,61 @@ Proof.
       eauto with nodup_hints.      
     }
     {
-      unfold M_next. econstructor. econstructor. 
-      {
-        econstructor. exists x20.
-        split. unfold gamma'';autorewrite with mmaps;easy.
-        split.
-        Search typ_proc subst_expr_proc.
-        assert(typ_expr [] (e_val x14) x18).
-        {
-          Search typ_expr stepE. eapply expr_typ_step in H22;try exact H26;try easy.
-          Create HintDb sc_hints.
-          Hint Constructors typ_expr :sc_hints.
-          eauto with sc_hints.
-        }
-        eapply _subst_expr_var;try exact H34;try easy.
-        eapply tc_sub;try exact H38;try easy.
-        eapply typable_implies_wfC in H15 as Hwf1.
-        eapply wfC_recv;try exact H30;try exact Hwf1.
-
-        eapply guardP_subst_expr.
-        
-        assert(all_guarded (p_recv p x5)).
-         eapply guard_after_tauRtc;try exact H20;try easy.
-         eapply all_guarded_recv_cont;try exact H34;try exact H32.
-      } 
-	  {
-        econstructor. exists x12.
-        split. unfold gamma'';autorewrite with mmaps;easy.
-        split.
-		assert(Hwf:wfC x12). 
+		unfold M_next. econstructor. econstructor. 
 		{
-			eapply wfC_send with (p:=q);try exact H27.
-			eapply typable_implies_wfC;try exact H17.
+		econstructor. exists x20.
+		split. unfold gamma'';autorewrite with mmaps;easy.
+		split.
+		Search typ_proc subst_expr_proc.
+		assert(typ_expr [] (e_val x14) x18).
+		{
+			Search typ_expr stepE. eapply expr_typ_step in H22;try exact H26;try easy.
+			Create HintDb sc_hints.
+			Hint Constructors typ_expr :sc_hints.
+			eauto with sc_hints.
 		}
+		eapply _subst_expr_var;try exact H34;try easy.
+		eapply tc_sub;try exact H38;try easy.
+		eapply typable_implies_wfC in H15 as Hwf1.
+		eapply wfC_recv;try exact H30;try exact Hwf1.
 
-		eapply tc_sub;try exact H23;try easy.
-        
-        assert(all_guarded (p_send q x6 x8 x9)). 
-         eapply guard_after_tauRtc;try exact H18;try easy.
-         eapply all_guarded_send_cont;try exact H34;try exact H32.
-      }
-	  {
-		Search ForallT.
-		eapply typ_after_step_not_in_label;try exact Hstep;try easy;
-		red;intros;unfold InT in H34; move H10 at bottom;
-		unfold flattenT in H10; fold flattenT in H10;
-		rewrite <- app_assoc in H10.
-		change ([q] ++ flattenT M') with (q::flattenT M') in H10.
-		eapply NoDup_remove_2 in H10.
-		eapply H10.
-		eapply in_or_app;tauto.
+		eapply guardP_subst_expr.
 		
-		eapply NoDup_remove in H10;destr_hyps.
-		change ([p]++ flattenT M') with (p::flattenT M') in H10.
-		inversion H10;subst. easy.
-	  } 
+		assert(all_guarded (p_recv p x5)).
+			eapply guard_after_tauRtc;try exact H20;try easy.
+			eapply all_guarded_recv_cont;try exact H34;try exact H32.
+		} 
+		{
+			econstructor. exists x12.
+			split. unfold gamma'';autorewrite with mmaps;easy.
+			split.
+			assert(Hwf:wfC x12). 
+			{
+				eapply wfC_send with (p:=q);try exact H27.
+				eapply typable_implies_wfC;try exact H17.
+			}
+
+			eapply tc_sub;try exact H23;try easy.
+			
+			assert(all_guarded (p_send q x6 x8 x9)). 
+			eapply guard_after_tauRtc;try exact H18;try easy.
+			eapply all_guarded_send_cont;try exact H34;try exact H32.
+		}
+		{
+			Search ForallT.
+			eapply typ_after_step_not_in_label;try exact Hstep;try easy;
+			red;intros;unfold InT in H34; move H10 at bottom;
+			unfold flattenT in H10; fold flattenT in H10;
+			rewrite <- app_assoc in H10.
+			change ([q] ++ flattenT M') with (q::flattenT M') in H10.
+			eapply NoDup_remove_2 in H10.
+			eapply H10.
+			eapply in_or_app;tauto.
+			
+			eapply NoDup_remove in H10;destr_hyps.
+			change ([p]++ flattenT M') with (p::flattenT M') in H10.
+			inversion H10;subst. easy.
+		} 
     }
 Qed.
     
-	

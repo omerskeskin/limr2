@@ -493,6 +493,123 @@ Proof.
   eauto with procs.
 Qed.
 
+Lemma unfoldB_p_unique_single : forall p P Q M M', noDupSess ((p <-- P)|||M) -> 
+unfoldB ((p<--P)|||M) ((p<--Q)|||M') -> (tauP P Q) \/P=Q.
+Proof.
+  intros. dependent induction H0.
+  left. easy.
+  eapply scong_p_unique in H0;try easy. tauto.
+Qed.
+
+Search tauP.
+
+Definition unfoldB_sess_map M M' := forall p x, M.find p M = Some x ->
+  exists y, M.find p M' = Some y /\ (clos_refl_trans process tauP) x y.
+
+Lemma sess_to_map_preserves_unfoldB_single: forall M M', noDupSess M -> unfoldB M M' ->
+  unfoldB_sess_map (sess_to_map M) (sess_to_map M').
+Proof.
+  intros * Hnd Hunfb.
+  revert Hnd. induction Hunfb.
+  {
+    intros. simpl.
+    red;intros.
+    assert(Hmpn : ~ InT p M).
+    {
+      red;intros. red in Hnd. simpl in Hnd.
+      red in H1. inversion Hnd;easy.
+    }
+    rewrite sess_map_inT_to_in in Hmpn.
+    assert(M.find p (sess_to_map M)=None) by 
+    (rewrite MF.in_find in Hmpn; tauto).
+    destruct (Nat.eq_dec p0 p);subst.
+    {
+      rewrite MF.merge_spec1mn in H0.
+      rewrite H1 in H0. autorewrite with mmaps in H0. simpl in H0. inversion H0;subst.
+      exists Q.
+      split. rewrite MF.merge_spec1mn. rewrite H1. autorewrite with mmaps. easy.
+      intros;simpl;easy.
+      econstructor 1;easy.
+      intros;simpl;easy.
+    }
+    {
+      rewrite MF.merge_spec1mn in H0.
+      autorewrite with mmaps in H0. 
+      destruct (M.find p0 (sess_to_map M)) eqn:Hg1;simpl in *;inversion H0;subst.
+      exists x. split. rewrite MF.merge_spec1mn. autorewrite with mmaps. rewrite Hg1. simpl. easy.
+      intros;simpl;easy.
+      econstructor 2.
+      intros;simpl;easy.
+    }
+    eapply noDupSess_par in Hnd;tauto.
+  }
+  {
+    intros.
+    eapply scong_to_map in H as Hmp;try easy.
+    red;intros.
+    red in Hmp.
+    specialize (Hmp p). exists x.
+    split;try congruence. econstructor 2. 
+  }
+Qed.
+
+Lemma sess_to_map_preserves_unfoldB: forall M M', noDupSess M -> unfoldBrtc M M' ->
+  unfoldB_sess_map (sess_to_map M) (sess_to_map M').
+Proof.
+  intros * Hnodup Hunfb.
+  induction Hunfb.
+  eapply sess_to_map_preserves_unfoldB_single;try easy.
+  red;intros;exists x0;split;try easy;try constructor 2.
+  eapply unfoldB_preserves_noDup in Hunfb1;try exact Hnodup.
+  specialize (IHHunfb1 Hnodup).
+  rewrite Hunfb1 in Hnodup.
+  specialize (IHHunfb2 Hnodup).
+  red;intros.
+  red in IHHunfb1, IHHunfb2.
+  specialize (IHHunfb1 _ _ H).
+  destr_hyps.
+  specialize (IHHunfb2 _ _ H0).
+  destr_hyps.
+  exists x2. split;try easy. econstructor 3;try exact H1;try easy.
+Qed.
+
+Lemma unfoldB_p_unique : forall p P Q M M', noDupSess ((p <-- P)|||M) -> 
+unfoldBrtc ((p<--P)|||M) ((p<--Q)|||M') -> (clos_refl_trans process tauP P Q).
+Proof.
+  intros. 
+  eapply sess_to_map_preserves_unfoldB in H0 as Hump;try easy.
+  red in H0.
+  assert(Hmp: M.find p (sess_to_map ((p <-- P) |||M))=  Some P).
+  {
+    simpl.
+    rewrite MF.merge_spec1mn.
+    assert(M.find p (sess_to_map M)=None).
+    {
+      assert(~ InT p M). red in H;simpl in H. inversion H;subst;easy.
+      rewrite sess_map_inT_to_in in H1. rewrite MF.in_find in H1. tauto.
+      eapply noDupSess_par in H;try easy. 
+    }
+    rewrite H1. autorewrite with mmaps. simpl. easy.
+    intros;simpl. easy.
+  }
+  specialize (Hump _ _ Hmp). destr_hyps.
+  assert(M.find p (sess_to_map ((p <-- Q) ||| M')) = Some Q).
+  {
+    simpl.
+    assert(M.find p (sess_to_map M')=None).
+    
+  eapply unfoldB_preserves_noDup in H0 as Hnd2;try exact H.
+  pose proof H as H'. rewrite Hnd2 in H'.
+ 
+    assert(~ InT p M'). red in H';simpl in H'. inversion H';subst;easy.
+      rewrite sess_map_inT_to_in in H3. rewrite MF.in_find in H3. tauto.
+      eapply noDupSess_par in H';try easy.
+      rewrite MF.merge_spec1mn.
+      rewrite H3. autorewrite with mmaps. simpl. easy.
+      intros;simpl;easy. 
+  }
+  assert(Q=x) by congruence;subst. easy.
+Qed.
 
 Inductive typ_sess : session -> tctx -> Prop := 
   | t_sess : forall M gamma (Hassocable: exists g, wfgC g /\ assoc gamma g), tctx_wf gamma ->
