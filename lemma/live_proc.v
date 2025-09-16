@@ -342,15 +342,16 @@ Qed.
 Lemma proc_same_after_distinct_trans: 
     forall M M' M'' p q p' q' ell ell' e P',
     typable M ->
-    unfoldP M ((p<-- p_send q ell e P')|||M') ->
+    scong M ((p<-- p_send q ell e P')|||M') ->
     betaP_lbl M (lcomm p' q' ell') M'' ->
     p' <> p -> q' <> p ->
-    exists M''' ell' e' P'', unfoldP M'' ((p<-- p_send q ell' e' P'')|||M''').
+    exists M''' ell' e' P'', scong M'' ((p<-- p_send q ell' e' P'')|||M''').
     Proof.
         intros * Htyp Hunf Hbeta Hpp Hqp.
         destruct Htyp as [gamma Htyp].
         eapply sub_red_strong_labelled in Hbeta as Hbeta';try exact Htyp;destr_hyps.
         eapply lem_6_10 with (r:=p) in H0.
+        Search typ_sess scong.
         eapply typ_after_unfold in Hunf as Htyp';try exact Htyp. inversion Htyp';subst.
         repeat destruct_forallT. destr_hyps.
         eapply inv_proc_send in H7;try reflexivity;destr_hyps.

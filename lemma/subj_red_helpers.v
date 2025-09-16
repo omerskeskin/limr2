@@ -99,6 +99,8 @@ Proof.
   inversion H;subst. exists 0;constructor. exists m;easy.
 Qed.
 
+
+
 Lemma typ_after_unfold : forall M M' G, typ_sess M G -> unfoldP M M' -> typ_sess M' G.
 Proof.
   intros. revert H. revert G. induction H0; intros; try easy.
