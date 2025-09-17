@@ -1078,8 +1078,8 @@ Proof.
         
         eapply live_proc_helper in Hev_local_trans as Hlpr;try exact H1.
         destruct Hlpr as [ell' Hlpr].
-        eapply  live_proc_helper2 with (p:=p) (q:=q) in H2 as Hweak;try easy;
-        try solve [simpl; exists M', ell, e, P';  easy].
+        eapply  live_proc_helper2 with (p:=p) (q:=q) (ell:=ell) (e:=e) (P:=P') in H2 as Hweak;try easy;
+        try solve [simpl; exists M'; eauto with brocs].
         eapply weak_untilC_to_until in Hweak as Hunt;
         try solve[
         rewrite eventually_P_iff_P_suffix in Hlpr; destr_hyps;
@@ -1159,37 +1159,37 @@ Proof.
              destr_hyps.
              destruct H9 as [gamma_0 Htyp0].
              eapply sub_red_strong_labelled in H8;try exact Htyp0;destr_hyps.
+             assert(Hnd1 : noDupSess s). {inversion H13; inversion H14;try easy. }
+             
+             assert(Hnd2 : noDupSess s0). {inversion Htyp0; easy. }
+            eapply scong_to_unfoldP in H7;try easy.
+            destruct H7 as [H7 _].
              eapply sess_fidelity_strong in H9;try exact Htyp0;try exact H7.
              destr_hyps.
-             destruct l;try easy.
-             red in H14.
-             red in H12. destr_hyps.
-             destruct H8 as [gamma_s0 Hts0].
-             eapply sub_red_strong_labelled in H7 as Hsbr;try exact Hts0.
-             destr_hyps.
-             eapply sess_fidelity_strong in H13.
-             
-             destruct l;try easy.
-             simpl in H6.
-             destr_hyps.
-             red in H14.
-             destr_hyps.
-             destruct H9 as [gamma_s Htyps].
-             eapply sub_red_strong_labelled in H8;try exact Htyps.
-             destr_hyps.
-             
-             red in H14.
-
-
-             
-             destruct o;try easy.
-
-            assert(Hbet2: betaRtc M0 s \/ unfoldP M0 s).
+            assert(Hbets0: betaP_lbl s0 (lcomm n n0 ell) ((n <-- P') ||| x6)).
+            eapply r_struct;try exact H9;eauto with procs.
+             assert(Hbet2: betaRtc M0 s \/ unfoldP M0 s).
             {
                 eapply unfoldP_to_betaRtc with (M:=M0) in Hbet1;try easy.
             }
-            des
-            red in H7.
+            assert(Hbetr: betaRtc s ((n <-- P') ||| x6)). {
+                econstructor 3 with (y:=s0).
+                econstructor 1. exists (lcomm n2 n3 n4). easy.
+                econstructor 1. exists (lcomm n n0 ell). easy.
+            }
+            destruct Hbet2 as [Hbet2 | Hbet2].
+            {
+                exists x6. econstructor 3;try exact Hbet2;try easy.   
+            }
+            {
+                exists x6.
+                assert(Hbet3 : betaP M0 s0).
+                exists (lcomm n2 n3 n4).
+                econstructor 2;try exact Hbet2;try exact H12;eauto with procs.
+                econstructor 3 with (y:=s0);try easy.
+                econstructor 1;easy.
+                econstructor 1. exists (lcomm n n0 ell). easy.
+            }
         }
         destruct xs.
         eapply eventually_P_iff_P_suffix in Hev;destr_hyps.
