@@ -369,6 +369,36 @@ Proof.
   apply move_forward_h.
 Qed.
 
+Lemma move_forward_h_scong : forall M,
+    forall p : part,
+    InT p M ->
+    (exists (P : process) (M' : session), scong M ((p <-- P) ||| M')).
+Proof.
+  induction M;intros.
+  assert(p0=n) by(
+    red in H;simpl in H;destruct H;try easy).
+  subst.
+  exists p, s_zero. eauto with brocs.
+  red in H;simpl in H. eapply in_app_or in H. destruct H;
+  [assert(InT p M1) by easy | assert (InT p M2) by easy].
+  eapply IHM1 in H0. destr_hyps. exists x, (M2 |||x0). eauto 6 with brocs.
+  eapply IHM2 in H0. destr_hyps. exists x, (M1 |||x0). eauto 7 with brocs.
+  inversion H. 
+Qed.
+
+Lemma move_forward_scong : forall p M G, 
+    typ_sess M G -> 
+    in_not_end p G -> 
+    (exists P M', scong M (p <-- P ||| M')).
+Proof.
+  intros. inversion H. subst. clear H1 H3 H4 H.
+  specialize(H2 p H0). clear H0.
+  revert H2. revert p. 
+  apply move_forward_h_scong.
+Qed.
+
+
+
 Lemma part_after_unf : forall M M' p,
     unfoldP M M' -> 
     InT p M ->

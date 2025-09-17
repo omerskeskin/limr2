@@ -329,47 +329,467 @@ Proof.
     eapply betaP_lbl_invert in Hbeta2;try exact Hsess.
     destr_hyps.
     eapply typ_after_unfold in H0 as Ht1;try exact Hsess.
-
     eapply typ_after_unfold in H as Ht2;try exact Hsess.
     inversion Ht1;inversion Ht2;subst.
-    
     repeat destruct_forallT;destr_hyps.
     assert(x9 =x7) by congruence;subst.
     eapply inv_proc_send in H15, H19;try reflexivity.
     destr_hyps. pinversion H28;subst;pinversion H26;subst;try apply sub_mon. easy.
 Qed.
 
+Lemma typ_after_scong : forall M M' G, typ_sess M G -> scong M M' -> typ_sess M' G.
+Proof.
+  intros * Hsess Hcong.
+  generalize dependent G. induction Hcong;intros;try easy;try tauto;inversion Hsess;subst;
+  econstructor;try solve [
+    intros; eapply H0 in H3;
+    eapply scong_preserves_part;try exact H3; eauto with brocs |
+        eapply scong_preserves_noDup_zero;try exact H1; eauto with brocs    
+    ];try easy;repeat destruct_forallT;try solve [repeat constructor;try easy].
+    eapply scong_preserves_forallT;try exact H2;try easy.
+    constructor;try easy.
+    eapply scong_preserves_forallT;try  exact H3;try easy. eauto with brocs.
+    assert(Hsessmg : typ_sess M G) by
+      (constructor;try easy).
+    eapply IHHcong1 in Hsessmg.
+    eapply IHHcong2 in Hsessmg.
+    inversion Hsessmg;try easy.
+Qed.
+
+
+Lemma scong_cong_r : forall M1 M2 M2', scong M2 M2' -> scong (M1 ||| M2') (M1 ||| M2').
+Proof.
+    intros.
+    eauto with brocs.
+Qed.
+
+Lemma scong_cont : forall M1 M2 M1' M2',
+scong M1 M1' -> scong M2 M2' ->  scong (M1 ||| M2) (M1' ||| M2').
+Proof.
+    intros. eauto 6 with brocs.
+Qed.
+
+Hint Resolve scong_cong_r scong_cont :brocs.
+
+
+Lemma sess_map_empty_implies_scong_zero : forall M, noDupSess M -> 
+M.Equal M.empty (sess_to_map M) ->
+    scong M s_zero.
+Proof.
+    intros * Hnd H.
+    induction M.
+    red in H;simpl in H;specialize (H n). autorewrite with mmaps in H;easy.
+    assert(scong (s_zero|||s_zero) s_zero). eauto with brocs.
+    Search noDupSess MF.Disjoint.
+    eapply sess_to_map_noDup_to_disj in Hnd as Hdisj.
+    rewrite sess_to_map_disj_merge with (Hdisj:=Hdisj) in H;try easy.
+    unfold disj_merge in H. 
+    assert(Hem1  :M.Equal M.empty (sess_to_map M1)).
+    {
+        red;intros;specialize (H y). 
+        rewrite MF.merge_spec1mn in H;try easy. autorewrite with mmaps in H.
+        destruct (M.find y (sess_to_map M1)) eqn:Hg1;destruct (M.find y (sess_to_map M2)) eqn:Hg2;
+        simpl in H;try easy.
+        red in Hdisj. specialize (Hdisj y). eapply opt_lem2 in Hg1, Hg2. rewrite <- MF.in_find in Hg1, Hg2.
+        tauto.
+    }
+    assert(Hem2  :M.Equal M.empty (sess_to_map M2)).
+    {
+        red;intros;specialize (H y). 
+        rewrite MF.merge_spec1mn in H;try easy. autorewrite with mmaps in H.
+        destruct (M.find y (sess_to_map M1)) eqn:Hg1;destruct (M.find y (sess_to_map M2)) eqn:Hg2;
+        simpl in H;try easy.
+        red in Hdisj. specialize (Hdisj y). eapply opt_lem2 in Hg1, Hg2. rewrite <- MF.in_find in Hg1, Hg2.
+        tauto.
+    }
+    eapply noDupSess_par in Hnd as Hnp;destr_hyps.
+    eapply IHM1 in Hem1;
+    eapply IHM2 in Hem2;try easy. eauto with brocs.
+    eauto with brocs.
+Qed.
+
+Create HintDb brocs_pres.
+Hint Rewrite scong_preserves_forallT
+scong_preserves_noDup_zero scong_preserves_part  :brocs_pres.
+Hint Resolve noDupSess_par :brocs_pres.
+
+
+Ltac subtac_nodup_par:= match goal with 
+[H: noDupSess (?a ||| ?b)|- noDupSess ?a ] => 
+eapply noDupSess_par in H;destruct H;try easy
+| [H: noDupSess (?a ||| ?b)|- noDupSess ?b ] => 
+eapply noDupSess_par in H;destruct H;try easy end.
+
+
+Lemma map_equal_implies_scong : forall M M' Mp Mp', noDupSess M -> 
+noDupSess M' ->
+M.Equal Mp  (sess_to_map M) ->
+M.Equal Mp' (sess_to_map M') ->
+M.Equal Mp Mp' ->scong M M'.
+Proof.
+    intros * Hnd Hnd' Hs1 Hs2 Heq. generalize dependent M'.
+    generalize dependent Mp'.
+    generalize dependent M. 
+
+    induction Mp using MF.map_induction;intros.
+    {
+        assert(Heqm1: M.Equal M.empty Mp').
+        {
+            red;intros. red in Hs2, Heq, Hs1.
+            autorewrite with mmaps. 
+            specialize (Hs2 y).
+            specialize (Heq y). specialize (Hs1 y).
+            assert(M.find y (sess_to_map M)=None).
+            red in H.
+            destruct (M.find y (sess_to_map M)) eqn:Hg;try easy.
+            specialize (H y p).
+            rewrite <- M.find_spec in H. easy.
+            congruence.               
+        }
+        assert(Heqm2: M.Equal M.empty Mp).
+        {
+            red;intros. red in Hs2, Heq, Hs1.
+            autorewrite with mmaps. 
+            specialize (Hs2 y).
+            specialize (Heq y). specialize (Hs1 y).
+            assert(M.find y (sess_to_map M)=None).
+            red in H.
+            destruct (M.find y (sess_to_map M)) eqn:Hg;try easy.
+            specialize (H y p).
+            rewrite <- M.find_spec in H. easy.
+            congruence.   
+        }
+        
+        subst.
+        rewrite Hs1 in Heqm2.
+        rewrite Hs2 in Heqm1.
+        eapply sess_map_empty_implies_scong_zero in Heqm1, Heqm2;try easy.
+        eauto with brocs.
+    }
+    {
+        subst.
+        red in H0.
+        assert(InT x M).
+        {
+            eapply sess_map_inT_to_in;try easy.
+            specialize (H0 x). autorewrite with mmaps in H0.
+            eapply opt_lem2 in H0. rewrite MF.in_find;try easy.
+            rewrite <- Hs1. easy.   
+        }
+        assert(M.In x Mp').
+        {
+            rewrite MF.in_find. 
+            specialize (H0 x).
+            specialize (Hs1 x).
+            specialize (Hs2 x).
+            autorewrite with mmaps in *.
+            assert(M.find x Mp' =Some e) by congruence.
+            eapply opt_lem2 in H2;try easy.   
+        }
+        assert(InT x M').
+        {
+            eapply sess_map_inT_to_in;try easy.
+            rewrite <- Hs2. easy.  
+        }
+
+        
+        eapply move_forward_h_scong in H1;destr_hyps.
+        eapply scong_trans;try exact H1.
+        
+        specialize (IHMp1 x1).
+        eapply move_forward_h_scong in H3;destr_hyps.
+
+        assert(Hnd1: noDupSess ((x <--x0)|||x1)) by
+                (eapply scong_preserves_noDup_zero in H1;
+                rewrite H1 in Hnd;easy). 
+            assert(Hnd2: noDupSess ((x <--x2)|||x3)) by
+                (eapply scong_preserves_noDup_zero in H3;
+                rewrite H3 in Hnd';easy).
+            assert(Hinf1: ~ InT x x1 ). 
+            {
+                red;intros. red in H4. red in Hnd1. simpl in Hnd1. 
+                inversion Hnd1;try easy.   
+            }
+            assert(Hinf2: ~ InT x x3 ). 
+            {
+                red;intros. red in H4. red in Hnd2. simpl in Hnd2. 
+                inversion Hnd2;try easy.   
+            }
+        assert(Hsx: scong x1 x3).
+        {
+            
+            eapply IHMp1;try easy;
+            try solve subtac_nodup_par.
+            red;intros.
+            eapply scong_to_map in H1;try easy.
+            
+            destruct (Nat.eq_dec x y);subst.
+            {
+                rewrite sess_map_inT_to_in in Hinf1.
+                
+                rewrite MF.not_in_find in H.
+                rewrite MF.not_in_find in Hinf1. congruence. subtac_nodup_par.         
+            }
+            {
+                specialize (H1 y).
+                simpl in H1. rewrite MF.merge_spec1mn in H1.
+                autorewrite with mmaps in H1.
+                specialize (H0 y). autorewrite with mmaps in H0.
+                specialize (Hs1 y).
+                destruct (M.find y (sess_to_map x1)) eqn:Hg;simpl in H1;try congruence.
+                1-2:easy.   
+            }
+            red;intros.
+            eapply scong_to_map in H3;try easy.
+            destruct (Nat.eq_dec x y);subst.
+            {
+                rewrite sess_map_inT_to_in in Hinf2.
+                
+                rewrite MF.not_in_find in H.
+                rewrite MF.not_in_find in Hinf2. congruence. subtac_nodup_par.         
+            }
+            {
+                specialize (H3 y).
+                simpl in H3. rewrite MF.merge_spec1mn in H3.
+                autorewrite with mmaps in H3.
+                specialize (H0 y). autorewrite with mmaps in H0.
+                specialize (Hs1 y). specialize (Heq y). specialize (Hs2 y).
+                destruct (M.find y (sess_to_map x3)) eqn:Hg;simpl in H3;try congruence.
+                1-2:easy.   
+            }
+        }   
+        assert(x0=x2).
+        {
+            eapply scong_to_map in H1;
+            eapply scong_to_map in H3;try easy.
+            repeat 
+            (match goal with [H: M.Equal _ _ |-  _ ]=> specialize (H x) end).
+            simpl in H1. simpl in H3.
+            rewrite MF.merge_spec1mn in *;try easy.
+            autorewrite with mmaps in *.
+            rewrite sess_map_inT_to_in in Hinf1 , Hinf2;try subtac_nodup_par.
+            rewrite MF.in_find in Hinf1, Hinf2.
+            destruct (M.find x (sess_to_map x1)) eqn:Hg1;
+            destruct (M.find x (sess_to_map x3)) eqn:Hg2;
+            red in Hinf1, Hinf2;
+            try solve 
+            [exfalso;eapply Hinf1;easy | exfalso;eapply Hinf2;easy].
+            simpl in H1, H3. congruence.
+        }
+        subst.
+        eauto with brocs.
+    }
+Qed.
+
+Lemma scong_par_elim : forall M M' p P Q, noDupSess (((p <--P) ||| M)) ->
+ scong ((p <--P) ||| M)
+ ((p <--Q) ||| M') -> scong M M'.
+Proof.
+    intros * Hd ?Hs.
+    assert(Hd2 : noDupSess ((p<--Q) |||M')). eapply scong_sym in Hs; 
+    eapply scong_preserves_noDup_zero;try exact Hs;try easy.
+    assert(Hinp1: ~InT p M). red in Hd;simpl in Hd;inversion Hd;subst;red;intros;easy.
+    assert(Hinp2: ~InT p M'). red in Hd2;simpl in Hd2;inversion Hd2;subst;red;intros;easy.
+    rewrite sess_map_inT_to_in in Hinp1, Hinp2;try subtac_nodup_par.
+    rewrite MF.not_in_find in Hinp1, Hinp2.
+    eapply scong_to_map in Hs;try easy.
+    eapply map_equal_implies_scong with (Mp:=sess_to_map M);try subtac_nodup_par;try easy.
+    red;intros;specialize (Hs y).
+    destruct (Nat.eq_dec y p);subst.
+    {
+        congruence.   
+    }
+    {
+        simpl in Hs;autorewrite with mmaps in Hs.
+        do 2 rewrite MF.merge_spec1mn in Hs;try easy.
+        autorewrite with mmaps in Hs.
+        destruct (M.find y (sess_to_map M)) eqn:Hg;   
+        destruct (M.find y (sess_to_map M')) eqn:Hg';
+        simpl in Hs;try easy.
+    }
+Qed.
+
+Lemma unfoldB_preserves_noDup : forall M M', unfoldB M M' -> noDupSess M  <-> noDupSess M'.
+Proof.
+    intros; induction H;try tauto; eapply unfoldB_preserves_noDup_single in H; easy.
+Qed.
+
+Lemma scong_unfold_send_stills_same : forall M p M' q ell e P' M'', 
+noDupSess M ->
+scong M (( p <-- p_send q ell e P') ||| M' ) ->
+unfoldP M M'' -> exists M''', scong M'' (( p <-- p_send q ell e P') ||| M''' ).
+Proof.
+    intros * Hnd Hscong Hunf.
+    revert Hscong.
+    revert p q ell e P'.
+    generalize dependent M'.
+    eapply unfoldP_to_unfoldB in Hunf.
+    dependent induction Hunf.
+    {
+        inversion H;subst.
+        intros.   
+        assert(Hinp: InT p M').
+        {
+            eapply scong_preserves_part with (p:=p) in Hscong as Hpr.
+            unfold InT in Hpr;simpl in Hpr. 
+            assert(p0=p \/ In p (flattenT M')) by tauto.
+            destruct H1;subst;try easy.
+            eapply scong_p_unique in Hscong;try easy;subst. inversion H0;subst;inversion H1.        
+        }
+        eapply move_forward_h_scong in Hinp. destr_hyps.
+        exists ((p <-- Q)|||x0).
+        assert(Hs2 : scong ((p <-- P) ||| M)
+        ((p0 <-- p_send q ell e P') ||| ((p <-- x) ||| x0))). eauto with brocs.
+
+        assert(Hs3 : scong ((p <-- P) ||| M)
+        ( (p <-- x) ||| ((p0 <-- p_send q ell e P') ||| x0))). eauto with brocs.
+        Hint Resolve scong_p_unique :brocs. 
+        assert(P=x). eauto with brocs.
+        subst. 
+        eapply scong_par_elim in Hs3;try easy.
+        eauto with brocs.
+        intros. eauto with brocs.           
+    }
+    {
+        intros. exists M'. easy.   
+    }
+    {
+        intros.
+        eapply IHHunf1 in Hscong as IHu;destr_hyps;try easy.
+        eapply IHHunf2 in H. easy.
+        
+        eapply unfoldB_preserves_noDup in Hunf1. tauto.
+    }
+Qed.
+   
+Lemma noDup_after_unf : forall M M', unfoldP M M' -> 
+    noDupSess M <-> noDupSess M'.
+Proof.
+    intros. eapply unfoldP_to_unfoldB in H.
+    eapply unfoldB_preserves_noDup;easy.
+Qed.
+
+Lemma noDup_after_beta: forall M M', betaP M M' -> noDupSess M <-> noDupSess M'.
+Proof.
+    intros. red in H. destr_hyps. induction H.
+    unfold noDupSess;simpl. easy.
+    eapply noDup_after_unf in H. eapply noDup_after_unf in H0. tauto.
+Qed.
+
 Lemma proc_same_after_distinct_trans: 
     forall M M' M'' p q p' q' ell ell' e P',
-    typable M ->
+    noDupSess M ->
+    
     scong M ((p<-- p_send q ell e P')|||M') ->
     betaP_lbl M (lcomm p' q' ell') M'' ->
-    p' <> p -> q' <> p ->
-    exists M''' ell' e' P'', scong M'' ((p<-- p_send q ell' e' P'')|||M''').
-    Proof.
-        intros * Htyp Hunf Hbeta Hpp Hqp.
-        destruct Htyp as [gamma Htyp].
-        eapply sub_red_strong_labelled in Hbeta as Hbeta';try exact Htyp;destr_hyps.
-        eapply lem_6_10 with (r:=p) in H0.
-        Search typ_sess scong.
-        eapply typ_after_unfold in Hunf as Htyp';try exact Htyp. inversion Htyp';subst.
-        repeat destruct_forallT. destr_hyps.
-        eapply inv_proc_send in H7;try reflexivity;destr_hyps.
-        eapply betaP_lbl_invert in Hbeta;destr_hyps;try exact Htyp.
-        pinversion H11;subst;try apply sub_mon.
-        rewrite H4 in H0.
-        inversion H;subst.
-        eapply move_forward with (p:=p) in H as Hmf;
-        try solve [red;exists (ltt_send q ys);easy].
-        destr_hyps. eapply typ_after_unfold in H18 as Ht1;try exact H.
-        inversion Ht1;subst. repeat destruct_forallT. destr_hyps.
-        assert(x10= ltt_send q ys) by congruence;subst.
-        eapply typ_proc_inv_send in H27;try easy.
+    p' <> p -> q' <> p -> p' <> q' ->
+    exists M''', scong M'' ((p<-- p_send q ell e P')|||M''').
+Proof.
+    intros * Hnd  Hscong Hbeta Hpp Hqp Hpqp.
+    generalize dependent M'.    
+    dependent induction Hbeta;intros.
+    {
+        assert(Hinp: InT p M). {
+            eapply scong_preserves_part with (p:=p) in Hscong. unfold InT at 2 in Hscong.
+            simpl in Hscong. 
+            assert(InT p (((q' <-- p_recv p' xs) ||| (p' <-- p_send q' ell' e0 Q))
+            ||| M)). tauto.
+            red in H1. simpl in H1. tauto.
+        } 
+        eapply move_forward_h_scong in Hinp. destr_hyps.
+        assert(Hinp: InT p' M'). {
+            eapply scong_preserves_part with (p:=p') in Hscong.
+            unfold InT at 1 in Hscong. simpl in Hscong.
+            assert(InT p' ((p <-- p_send q ell e P') ||| M')). tauto.
+            red in H2;simpl in H2. destruct H2;subst;try easy.
+        }
+        eapply move_forward_h_scong in Hinp.  destr_hyps.
+        assert(Hinq: InT q' x2).
+        { 
+            eapply scong_preserves_part with (p:=q') in Hscong.
+            unfold InT at 1 in Hscong. simpl in Hscong.  
+            assert(InT q' ((p <-- p_send q ell e P') ||| M')) by tauto.
+            red in H3;simpl in H3;destruct H3;subst;try easy.
+            eapply scong_preserves_part with (p:=q') in H2. 
+            rewrite H2 in  H3.
+            red in H3;simpl in H3;destruct H3;subst;easy.
+        } 
+        eapply move_forward_h_scong in Hinq. destr_hyps.
+        assert(Hst1: scong ((q' <-- p_recv p' xs) ||| ((p' <-- p_send q' ell' e0
+        Q) ||| ((p <-- x) ||| x0))) ((p <-- p_send q ell e P') ||| M')). eauto with brocs.
+
+        assert(Hst2: scong M' ((p' <-- x1)||| ((q' <--x3) |||x4))). eauto with brocs.
+        clear Hscong.
+        assert(Hst3: scong (((q' <-- p_recv p' xs) ||| (p' <-- p_send q' ell' e0 Q)) ||| ((p <-- x) ||| x0)) 
+        ((p <-- p_send q ell e P') ||| ((p' <-- x1) ||| ((q' <-- x3) ||| x4)))
+        ). eauto with brocs.
+        exists (((q' <-- subst_expr_proc y (e_val v) 0 0) ||| (p' <-- Q))
+        ||| x0).
+        assert(x=p_send q ell e P').
+        {   assert(
+            scong     
+            ((p <-- x)  ||| ((q' <-- p_recv p' xs) ||| (p' <-- p_send q' ell' e0 Q) ||| x0))
+            ((p <-- p_send q ell e P') ||| ((p' <-- x1)
+            ||| ((q' <-- x3) ||| x4)))).
+            eauto with brocs.
+            eapply scong_p_unique in H4. try easy.
+            
+            assert(
+            scong (((q' <-- p_recv p' xs) ||| (p' <-- p_send q' ell' e0 Q)) ||| M)
+             (((q' <-- p_recv p' xs) ||| (p' <-- p_send q' ell' e0 Q))
+        ||| (p <-- x ||| x0))). eauto with brocs.
+            red;simpl.
+        eapply scong_preserves_noDup_zero in H5.
+        rewrite H5 in Hnd. red in Hnd;simpl in Hnd.
+        move Hnd at bottom.
+            inversion Hnd;subst. inversion H9;subst.
+            inversion H11;subst.
+            repeat (try constructor);try easy;
+            red;intros. inversion H6;try easy.
+            inversion H7;try easy.
+
+
+            inversion H6;try easy.
+            eapply H8. constructor 2. constructor 2. easy.
+            
+            eapply H10. constructor 2. easy.
+        }
+        subst.
+        eauto with brocs.
+    }
+    {
+        assert(noDupSess M1'). eapply noDup_after_unf in H;try tauto.
+        assert (Hnd2: noDupSess M2'). 
+        {
+            assert(Hb:betaP M1' M2') by (red;exists (lcomm p' q' ell');easy).
+            eapply noDup_after_beta in Hb;tauto. 
+        }
+        assert (Hnd3: noDupSess M2). 
+        {
+            eapply noDup_after_unf in H0;try tauto.
+        }
+        eapply scong_unfold_send_stills_same in H as Hs2;try exact Hscong;try easy.
         destr_hyps.
-        exists x8, x10, x12, x13.
-        eauto with procs.
-        red; intros;simpl;auto. simpl in H1. destruct H1;subst;try easy.
-    Qed.
+        eapply IHHbeta in H2 as Ht1;try reflexivity;try easy.
+        destr_hyps.
+        eapply IHHbeta in H1;try reflexivity;try easy;try exact H2.
+        eapply scong_unfold_send_stills_same in H0;try exact H3;try easy.
+    }
+Qed.
+
+Lemma betaP_lbl_pq : forall M M' p q ell, noDupSess M -> betaP_lbl M (lcomm p q ell) M' ->
+    p <> q.
+Proof.
+    intros. dependent induction H0.
+    {
+        red;intros;subst;red in H;simpl in H;inversion H;subst. eapply H4.
+        constructor. easy.   
+    }
+    {
+        eapply IHbetaP_lbl;try reflexivity.
+        eapply noDup_after_unf in H2;try easy. tauto.   
+    }
+Qed.
 
 Lemma live_proc_helper2 : forall p q P ell e xs,
         p <> q ->
@@ -429,13 +849,16 @@ Proof.
             econstructor 2. easy.
             right. eapply CIH;try easy.
             simpl in Hphead.  destr_hyps.
-            simpl. exists x0.  
-            eapply proc_same_after_distinct_trans in Htab as Hd.
+            simpl.   
+            eapply proc_same_after_distinct_trans in Htab as Hd;
             try exact H;try easy.
+            inversion Htypable. inversion H0. easy.
+            eapply betaP_lbl_pq in Htab;try easy. inversion Htypable;inversion H0;easy.
         }
         {
             econstructor 2. easy.
             right. eapply CIH;try easy.
+            assert(Hnodup: noDupSess s) by (inversion Htypable; inversion H;easy).
             simpl in Hphead. destr_hyps.  
             eapply proc_same_after_distinct_trans in Htab as Hd;try exact H;try easy.
             red;intros;subst.
@@ -443,16 +866,17 @@ Proof.
             eapply betaP_lbl_invert in Htab as Hinv;destr_hyps;try exact Htyp.
             
             eapply typ_after_unfold in H0 as Ht2;try exact Htyp.
-            eapply typ_after_unfold in H as Ht3;try exact Htyp.
+            eapply typ_after_scong in H as Ht3;try exact Htyp.
             inversion_clear Ht3.
             inversion_clear Ht2.
             repeat destruct_forallT.
             destr_hyps.
-            assert(x8=x10) by congruence;subst.
+            assert(x5=x7) by congruence;subst.
             eapply inv_proc_send in H15;try reflexivity.
             eapply inv_proc_recv in H19;try reflexivity.
             destr_hyps.
             pinversion H27;pinversion H23;subst;try apply sub_mon;try easy.
+            eapply betaP_lbl_pq in Htab;easy.
         }
     }
 Qed.

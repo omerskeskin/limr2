@@ -44,11 +44,11 @@ Inductive scong : session -> session -> Prop :=
     | scong_cong: forall M M' M'', scong M M' -> scong (M|||M'') (M' ||| M'')
     | scong_trans: forall M M' M'', scong M M' -> scong M' M'' -> scong M M''.
 
-Inductive unfoldB : relation session :=
-  | pcb_tau   : forall p P Q M, tauP P Q -> unfoldB ((p <-- P) ||| M) ((p <-- Q) ||| M)
-  | pcb_scong : forall M1 M2 , scong M1 M2 -> unfoldB M1 M2.
+Inductive unfoldB_s : relation session :=
+  | pcb_tau   : forall p P Q M, tauP P Q -> unfoldB_s ((p <-- P) ||| M) ((p <-- Q) ||| M)
+  | pcb_scong : forall M1 M2 , scong M1 M2 -> unfoldB_s M1 M2.
 
-Definition unfoldBrtc := clos_refl_trans session unfoldB.
+Definition unfoldB := clos_refl_trans session unfoldB_s.
 
 Inductive unfoldP : relation session := 
   | pc_tau   : forall p P Q M, tauP P Q -> unfoldP ((p <-- P) ||| M) ((p <-- Q) ||| M)
@@ -62,12 +62,12 @@ Inductive unfoldP : relation session :=
   | pc_zero_intro : forall M, unfoldP  M (M ||| s_zero).
 
 Create HintDb brocs.
-Hint Constructors unfoldB scong clos_refl_trans:brocs.
+Hint Constructors unfoldB_s scong clos_refl_trans:brocs.
 
 Create HintDb procs.
 Hint Constructors unfoldP tauP betaPr :procs.
 
-Definition unfoldP_to_unfoldB : forall M M', unfoldP M M' -> unfoldBrtc M M'.
+Definition unfoldP_to_unfoldB : forall M M', unfoldP M M' -> unfoldB M M'.
 Proof.
   intros. induction H;try solve [econstructor 1; eauto with brocs].
   econstructor 3;try exact IHunfoldP1;try easy.
@@ -457,13 +457,13 @@ Proof.
   specialize (IHHc1 Hnd1). specialize (IHHc2 Hnd). destr_hyps. eauto with procs.
 Qed.
 
-Lemma unfoldB_to_unfoldP_single : forall M M', noDupSess M -> unfoldB M M' -> unfoldP M M'.
+Lemma unfoldB_to_unfoldP_single : forall M M', noDupSess M -> unfoldB_s M M' -> unfoldP M M'.
 Proof.
     intros.
     induction H0. econstructor 1. easy. eapply scong_to_unfoldP in H0;destr_hyps; easy.
 Qed.
 
-Lemma unfoldB_preserves_noDup_single : forall M M', unfoldB M M' -> (noDupSess M <-> noDupSess M'). 
+Lemma unfoldB_preserves_noDup_single : forall M M', unfoldB_s M M' -> (noDupSess M <-> noDupSess M'). 
 Proof.
   intros.
   inversion H;subst.
@@ -472,7 +472,7 @@ Proof.
   easy.
 Qed.
 
-Lemma unfoldB_preserves_noDup : forall M M', unfoldBrtc M M' -> (noDupSess M <-> noDupSess M').
+Lemma unfoldB_preserves_noDup : forall M M', unfoldB M M' -> (noDupSess M <-> noDupSess M').
 Proof.
   intros.
   induction H. eapply unfoldB_preserves_noDup_single in H;try easy.
@@ -480,7 +480,7 @@ Proof.
   tauto.
 Qed. 
 
-Definition unfoldB_to_unfoldP : forall M M', noDupSess M -> unfoldBrtc M M' -> unfoldP M M'.
+Definition unfoldB_to_unfoldP : forall M M', noDupSess M -> unfoldB M M' -> unfoldP M M'.
 Proof.
   intros * Hnd H. induction H.
   
@@ -494,7 +494,7 @@ Proof.
 Qed.
 
 Lemma unfoldB_p_unique_single : forall p P Q M M', noDupSess ((p <-- P)|||M) -> 
-unfoldB ((p<--P)|||M) ((p<--Q)|||M') -> (tauP P Q) \/P=Q.
+unfoldB_s ((p<--P)|||M) ((p<--Q)|||M') -> (tauP P Q) \/P=Q.
 Proof.
   intros. dependent induction H0.
   left. easy.
@@ -506,7 +506,7 @@ Search tauP.
 Definition unfoldB_sess_map M M' := forall p x, M.find p M = Some x ->
   exists y, M.find p M' = Some y /\ (clos_refl_trans process tauP) x y.
 
-Lemma sess_to_map_preserves_unfoldB_single: forall M M', noDupSess M -> unfoldB M M' ->
+Lemma sess_to_map_preserves_unfoldB_single: forall M M', noDupSess M -> unfoldB_s M M' ->
   unfoldB_sess_map (sess_to_map M) (sess_to_map M').
 Proof.
   intros * Hnd Hunfb.
@@ -553,7 +553,7 @@ Proof.
   }
 Qed.
 
-Lemma sess_to_map_preserves_unfoldB: forall M M', noDupSess M -> unfoldBrtc M M' ->
+Lemma sess_to_map_preserves_unfoldB: forall M M', noDupSess M -> unfoldB M M' ->
   unfoldB_sess_map (sess_to_map M) (sess_to_map M').
 Proof.
   intros * Hnodup Hunfb.
@@ -574,7 +574,7 @@ Proof.
 Qed.
 
 Lemma unfoldB_p_unique : forall p P Q M M', noDupSess ((p <-- P)|||M) -> 
-unfoldBrtc ((p<--P)|||M) ((p<--Q)|||M') -> (clos_refl_trans process tauP P Q).
+unfoldB ((p<--P)|||M) ((p<--Q)|||M') -> (clos_refl_trans process tauP P Q).
 Proof.
   intros. 
   eapply sess_to_map_preserves_unfoldB in H0 as Hump;try easy.
@@ -609,6 +609,56 @@ Proof.
       intros;simpl;easy. 
   }
   assert(Q=x) by congruence;subst. easy.
+Qed.
+
+
+Ltac destruct_forallT := match goal with 
+                 | [ H: ForallT _ (?p <-- ?P)|- _] => inversion_clear H
+                | [ H: ForallT _ (?M ||| ?M' ) |- _] => inversion_clear H
+                end.
+
+
+Lemma scong_preserves_forallT : forall P M M', scong M M' -> (ForallT P M <->
+  ForallT P M').
+Proof.
+  intros.  induction H;intros;try easy; try tauto;try solve 
+  [split;intros;repeat destruct_forallT;repeat constructor;easy].
+  split;intros;repeat destruct_forallT; constructor;try tauto.
+Qed.
+
+Variant tauS : relation session :=
+    | tauS_c : forall p P P' M M' Mr, scong M ((p <-- P) |||Mr) -> 
+    scong M' ((p <--P')|||Mr) -> tauP P P' -> tauS M M'.
+
+Definition tauSrtc := clos_refl_trans session tauS.
+
+Lemma unfoldB_s_factors_tauS : forall M M', unfoldB_s M M' ->
+    exists Mt , tauSrtc M Mt /\ scong Mt M'.
+Proof.
+    intros. induction H.
+    {
+           exists ((p <-- Q) ||| M).
+           split. econstructor 1. econstructor 1 with (p:=p) (Mr:=M);try exact H.
+           all: eauto with brocs.
+    }
+    {
+        exists M1.
+        split;try easy. constructor 2.   
+    }
+Qed.
+
+Lemma scong_preserves_part : forall p M M', scong M M' -> (InT p M <-> InT p M').
+Proof.
+  intros. induction H;try tauto;split;intros;red;simpl;
+  try (red in H;simpl in H).
+  1-2: eapply in_swap;easy.
+    rewrite <- app_assoc. easy.
+    rewrite <- app_assoc in H. easy.
+    rewrite app_nil_r. easy.
+    rewrite app_nil_r in H. easy.
+    1-2: red in H0;simpl in H0; 
+    eapply in_or_app; eapply in_app_or in H0; 
+    destruct H0;try tauto.
 Qed.
 
 Inductive typ_sess : session -> tctx -> Prop := 
