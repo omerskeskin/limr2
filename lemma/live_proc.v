@@ -1003,22 +1003,109 @@ Proof.
 eauto with procs.
 Qed.
 
-Lemma live_proc_helper : forall p q xs ys, 
+Lemma live_proc_helper : forall p q ell e P xs ys, 
+proc_path_head_scong_send p q ell e P ys->
+proc_valid_pathC ys ->
 eventually (headComm p q) xs -> 
-typ_pathC  ys xs -> exists ell,
-eventually (head_trans_proc p q ell) ys.
+typ_pathC  ys xs -> 
+eventually (fun u=>  proc_path_head_scong_send p q ell e P u /\ 
+        exists ell',  head_trans_proc p q ell' u) ys.
 Proof.
-    intros * Hev Htyp. generalize dependent ys. induction Hev.
+    intros * Head Hvalid Hev Htyp. generalize dependent ys. induction Hev.
     {
         intros. destruct xs;try easy. destruct p0. destruct o;try easy.
         destruct l;try easy. simpl in H;destr_hyps;subst.
-        pinversion Htyp;subst. exists n1;simpl. constructor. easy. 
+        pinversion Htyp;subst. constructor. split;try easy. exists n1;simpl. constructor; easy. 
     }
     {
         intros.
-        pinversion Htyp;subst. specialize (IHHev ms H3). 
-        destr_hyps. exists x. constructor 2. easy.   
+        pinversion Hvalid;subst;try apply valid_path_mon.
+        {
+            pinversion Htyp.   
+        }
+        {
+            pinversion Htyp;subst. pinversion H5;subst. inversion Hev;subst. simpl in H. easy.   
+        }
+        {
+            destruct l;try easy.
+            destruct (Nat.eq_dec n p);subst.
+            {
+                simpl in Head.
+                red in H0;destr_hyps.
+                destruct H2 as [gamma Htyp2].
+                Check unfold_beta_unique_send.
+                eapply scong_to_unfoldP in H1 as Hunf.
+                destr_hyps.
+                eapply unfold_beta_unique_send in H2;try exact H0;try exact Htyp2.
+                subst.
+                constructor.
+                split;simpl. exists x1. easy.
+                exists n1. tauto.
+                inversion Htyp2;easy.
+            }
+            destruct (Nat.eq_dec n0 p);subst.
+            {
+                simpl in Head.
+                red in H0. destr_hyps.
+                
+                destruct H2 as [gamma Htyp2].
+                eapply betaP_lbl_invert in H0;try exact Htyp2.
+                destr_hyps.
+                eapply typ_after_unfold in Htyp2 as Hty3;try exact H0.
+                eapply scong_to_unfoldP in H1 as Ht.
+                destr_hyps.
+                eapply typ_after_unfold in Htyp2 as Hty4; try exact H2.
+                inversion Hty4;inversion Hty3;subst.
+                repeat destruct_forallT. destr_hyps. 
+                assert(x6=x8) by congruence;subst.
+                eapply inv_proc_send in H17;try reflexivity.
+                eapply inv_proc_recv in H21;try reflexivity.
+                destr_hyps.
+                pinversion H25;subst;try apply sub_mon.
+                pinversion H29;try apply sub_mon.
+                inversion Htyp2;easy.   
+            }
+            
+            red in H0;destr_hyps.
+            assert(n <> n0). eapply betaP_lbl_pq in H0;try easy. inversion H1. inversion H2;easy.
+            simpl in Head. destr_hyps.
+            eapply proc_same_after_distinct_trans in H0;try exact H3;try easy.
+            destr_hyps.
+            econstructor 2.
+            eapply IHHev. simpl. exists x2. easy.
+            easy. pinversion Htyp. easy.
+            inversion H1. inversion H4;try easy.
+        }
     }
+Qed.
+
+Lemma unfoldP_to_betaRtc : forall M M' M'', unfoldP M M' -> betaRtc M' M'' ->
+             (betaRtc M M'' \/ unfoldP M M'').
+Proof.
+intros. generalize dependent M. induction H0.
+{
+    intros. left.  econstructor 1. red in H. destr_hyps. exists x0.
+    eapply r_struct;try exact H0;try exact H. constructor 2.
+}
+{
+    intros. tauto.
+}
+{
+    intros.   
+    specialize (IHclos_refl_trans1 _ H).
+    destruct IHclos_refl_trans1.
+    left. econstructor 3;try exact H0;easy.
+    specialize (IHclos_refl_trans2 _ H0).
+    destruct IHclos_refl_trans2;try easy;try tauto.
+}
+Qed.
+
+Lemma valid_suffix_valid_proc : forall xs ys, proc_valid_pathC xs ->
+is_suffix ys xs -> proc_valid_pathC ys.
+Proof.
+intros. induction H0;try easy.
+pinversion H;subst;try apply valid_path_mon. inversion H0;subst. pfold;constructor.
+eapply IHis_suffix. easy.
 Qed.
 
 Lemma extends_to_fair_implies_live : fairness_feasible -> forall M gamma, typ_sess M gamma -> live_sess M.
@@ -1026,8 +1113,6 @@ Proof.
 	intros Ax_fairness * Hsess. red. intros. split.
 	{
 		intros * Hpq H0.
-        
-        
 		specialize (Ax_fairness ((p <-- p_send q ell e P') ||| M')). red in Ax_fairness. destr_hyps.
 		destruct x0;try easy. destruct p0;try easy. simpl in H1;inversion H1;subst;clear H1.
 		eapply sub_red_Rtc in Hsess;try exact H.
@@ -1043,7 +1128,7 @@ Proof.
         {
             eapply Hlive. constructor 2.   
         }
-                    destruct x1;try easy. destruct p0. simpl in H5;inversion H5;subst;clear H5.
+            destruct x1;try easy. destruct p0. simpl in H5;inversion H5;subst;clear H5.
 
         assert(Hev_local_trans: eventually (headComm p q) (cocons (gamma', x) x1)).
         {
@@ -1059,7 +1144,6 @@ Proof.
                 eapply inv_proc_send in H13;try reflexivity. destr_hyps. 
                 pose proof H17 as Hsub.
                 pinversion H17;subst;try apply sub_mon.
-                Search "sub" "inv" "send".
                 eapply subtype_send_inv in Hsub.
                 eapply Forall2R_prop with (l:=ell) (p:=(x4,x5)) in Hsub;
                 try solve [rewrite extendExtract;try easy]; tac_sanitize.
@@ -1076,8 +1160,9 @@ Proof.
         }
         Check typ_path_preserves_fairness_helper.
         
-        eapply live_proc_helper in Hev_local_trans as Hlpr;try exact H1.
-        destruct Hlpr as [ell' Hlpr].
+        eapply live_proc_helper with (ell:=ell) (e:=e)
+        (P:=P') in Hev_local_trans as Hlpr;try exact H1;try easy.
+        
         eapply  live_proc_helper2 with (p:=p) (q:=q) (ell:=ell) (e:=e) (P:=P') in H2 as Hweak;try easy;
         try solve [simpl; exists M'; eauto with brocs].
         eapply weak_untilC_to_until in Hweak as Hunt;
@@ -1112,34 +1197,7 @@ Proof.
                 eapply eventually_P_iff_P_suffix. exists (cocons (s, o) x3).
                 split;try easy.
             }
-            Lemma unfoldP_to_betaRtc : forall M M' M'', unfoldP M M' -> betaRtc M' M'' ->
-             (betaRtc M M'' \/ unfoldP M M'').
-             Proof.
-                intros. generalize dependent M. induction H0.
-                {
-                    intros. left.  econstructor 1. red in H. destr_hyps. exists x0.
-                    eapply r_struct;try exact H0;try exact H. constructor 2.
-                }
-                {
-                    intros. tauto.
-                }
-                {
-                    intros.   
-                    specialize (IHclos_refl_trans1 _ H).
-                    destruct IHclos_refl_trans1.
-                    left. econstructor 3;try exact H0;easy.
-                    specialize (IHclos_refl_trans2 _ H0).
-                    destruct IHclos_refl_trans2;try easy;try tauto.
-                }
-             Qed.
-
-             Lemma valid_suffix_valid_proc : forall xs ys, proc_valid_pathC xs ->
-             is_suffix ys xs -> proc_valid_pathC ys.
-             Proof.
-                intros. induction H0;try easy.
-                pinversion H;subst;try apply valid_path_mon. inversion H0;subst. pfold;constructor.
-                eapply IHis_suffix. easy.
-             Qed.
+            
              assert(Hv:proc_valid_pathC (cocons (s,o) x3)).
              {
                 eapply valid_suffix_valid_proc in H5;try easy.
@@ -1191,8 +1249,8 @@ Proof.
                 econstructor 1. exists (lcomm n n0 ell). easy.
             }
         }
-        destruct xs.
-        eapply eventually_P_iff_P_suffix in Hev;destr_hyps.
-
+        easy.
+        simpl. exists M';eauto with brocs.
+        eapply typ_after_unfold in Hsess;try exact H0. easy.
     }
 
