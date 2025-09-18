@@ -244,9 +244,11 @@ Qed.
 Definition live_sess Mp := forall M, betaRtc Mp M -> (forall p q ell e P' M', p <>q -> unfoldP M ( (p <-- p_send q ell e P') ||| M') -> exists M'',
 betaRtc M ((p <-- P')|||M''))
 /\
-(forall p  q llp M', p <>q -> unfoldP M ( (p <-- p_recv q llp) ||| M') -> exists M'' P' k,
-onth k llp = Some P' /\
-betaRtc M ((p <-- P')|||M'')).
+(forall p  q llp M', p <>q -> unfoldP M ( (p <-- p_recv q llp) ||| M') -> 
+    exists M'' P' e k,
+    onth k llp = Some P' /\
+     
+    betaRtc M ((p <-- subst_expr_proc P' e 0 0)|||M'')).
 
 Lemma path_to_betaRtc : forall xs M M' (lb:option label), coseq_head xs = Some (M,lb) -> 
 proc_valid_pathC xs ->
@@ -290,10 +292,12 @@ Definition proc_path_head_scong_send p q ell e P' (xs : coseq (session *option l
 match xs with (cocons (M,_) _) => exists M', scong M  (p<-- p_send q ell e P' |||M')
     | _ => False
 end.
-Definition proc_path_head_unfolds_to_send p q (xs : coseq (session *option label)) := 
-match xs with (cocons (M,_) _) => exists M' ell e P, unfoldP M ((p <-- p_send q ell e P) |||M')
-| _ => False
+
+Definition proc_path_head_scong_recv p q llp (xs : coseq (session *option label)):= 
+match xs with (cocons (M,_) _) => exists M', scong M  (p<-- p_recv q llp |||M')
+    | _ => False
 end.
+
 
 Lemma betaP_lbl_invert : forall M M' p q ell gamma,
 typ_sess M gamma -> betaP_lbl M (lcomm p q ell) M' ->
@@ -614,7 +618,7 @@ Proof.
     intros; induction H;try tauto; eapply unfoldB_preserves_noDup_single in H; easy.
 Qed.
 
-Lemma scong_unfold_send_stills_same : forall M p M' q ell e P' M'', 
+Lemma scong_unfold_send_still_same : forall M p M' q ell e P' M'', 
 noDupSess M ->
 scong M (( p <-- p_send q ell e P') ||| M' ) ->
 unfoldP M M'' -> exists M''', scong M'' (( p <-- p_send q ell e P') ||| M''' ).
@@ -661,7 +665,55 @@ Proof.
         eapply unfoldB_preserves_noDup in Hunf1. tauto.
     }
 Qed.
-   
+
+Lemma scong_unfold_recv_still_same : forall M p M' q llp M'', 
+noDupSess M ->
+scong M (( p <-- p_recv q llp) ||| M' ) ->
+unfoldP M M'' -> exists M''', scong M'' (( p <-- p_recv q llp) ||| M''' ).
+Proof.
+    intros * Hnd Hscong Hunf.
+    revert Hscong.
+    revert p q llp.
+    generalize dependent M'.
+    eapply unfoldP_to_unfoldB in Hunf.
+    dependent induction Hunf.
+    {
+        inversion H;subst.
+        intros.   
+        assert(Hinp: InT p M').
+        {
+            eapply scong_preserves_part with (p:=p) in Hscong as Hpr.
+            unfold InT in Hpr;simpl in Hpr. 
+            assert(p0=p \/ In p (flattenT M')) by tauto.
+            destruct H1;subst;try easy.
+            eapply scong_p_unique in Hscong;try easy;subst. inversion H0;subst;inversion H1.        
+        }
+        eapply move_forward_h_scong in Hinp. destr_hyps.
+        exists ((p <-- Q)|||x0).
+        assert(Hs2 : scong ((p <-- P) ||| M)
+        ((p0 <-- p_recv q llp) ||| ((p <-- x) ||| x0))). eauto with brocs.
+
+        assert(Hs3 : scong ((p <-- P) ||| M)
+        ( (p <-- x) ||| ((p0 <-- p_recv q llp) ||| x0))). eauto with brocs.
+        Hint Resolve scong_p_unique :brocs. 
+        assert(P=x). eauto with brocs.
+        subst. 
+        eapply scong_par_elim in Hs3;try easy.
+        eauto with brocs.
+        intros. eauto with brocs.           
+    }
+    {
+        intros. exists M'. easy.   
+    }
+    {
+        intros.
+        eapply IHHunf1 in Hscong as IHu;destr_hyps;try easy.
+        eapply IHHunf2 in H. easy.
+        
+        eapply unfoldB_preserves_noDup in Hunf1. tauto.
+    }
+Qed.
+
 Lemma noDup_after_unf : forall M M', unfoldP M M' -> 
     noDupSess M <-> noDupSess M'.
 Proof.
@@ -676,10 +728,9 @@ Proof.
     eapply noDup_after_unf in H. eapply noDup_after_unf in H0. tauto.
 Qed.
 
-Lemma proc_same_after_distinct_trans: 
+Lemma proc_same_after_distinct_trans_send: 
     forall M M' M'' p q p' q' ell ell' e P',
-    noDupSess M ->
-    
+    noDupSess M ->    
     scong M ((p<-- p_send q ell e P')|||M') ->
     betaP_lbl M (lcomm p' q' ell') M'' ->
     p' <> p -> q' <> p -> p' <> q' ->
@@ -768,12 +819,112 @@ Proof.
         {
             eapply noDup_after_unf in H0;try tauto.
         }
-        eapply scong_unfold_send_stills_same in H as Hs2;try exact Hscong;try easy.
+        eapply scong_unfold_send_still_same in H as Hs2;try exact Hscong;try easy.
         destr_hyps.
         eapply IHHbeta in H2 as Ht1;try reflexivity;try easy.
         destr_hyps.
         eapply IHHbeta in H1;try reflexivity;try easy;try exact H2.
-        eapply scong_unfold_send_stills_same in H0;try exact H3;try easy.
+        eapply scong_unfold_send_still_same in H0;try exact H3;try easy.
+    }
+Qed.
+
+Lemma proc_same_after_distinct_trans_recv: 
+    forall M M' M'' p q p' q' ell' llp,
+    noDupSess M ->    
+    scong M ((p<-- p_recv q llp)|||M') ->
+    betaP_lbl M (lcomm p' q' ell') M'' ->
+    p' <> p -> q' <> p -> p' <> q' ->
+    exists M''', scong M'' ((p<-- p_recv q llp)|||M''').
+Proof.
+    intros * Hnd  Hscong Hbeta Hpp Hqp Hpqp.
+    generalize dependent M'.    
+    dependent induction Hbeta;intros.
+    {
+        assert(Hinp: InT p M). {
+            eapply scong_preserves_part with (p:=p) in Hscong. unfold InT at 2 in Hscong.
+            simpl in Hscong. 
+            assert(InT p (((q' <-- p_recv p' xs) ||| (p' <-- p_send q' ell' e Q))
+            ||| M)). tauto.
+            red in H1. simpl in H1. tauto.
+        } 
+        eapply move_forward_h_scong in Hinp. destr_hyps.
+        assert(Hinp: InT p' M'). {
+            eapply scong_preserves_part with (p:=p') in Hscong.
+            unfold InT at 1 in Hscong. simpl in Hscong.
+            assert(InT p' ((p <-- p_recv q llp) ||| M')). tauto.
+            red in H2;simpl in H2. destruct H2;subst;try easy.
+        }
+        eapply move_forward_h_scong in Hinp.  destr_hyps.
+        assert(Hinq: InT q' x2).
+        { 
+            eapply scong_preserves_part with (p:=q') in Hscong.
+            unfold InT at 1 in Hscong. simpl in Hscong.  
+            assert(InT q' ((p <-- p_recv q llp) ||| M')) by tauto.
+            red in H3;simpl in H3;destruct H3;subst;try easy.
+            eapply scong_preserves_part with (p:=q') in H2. 
+            rewrite H2 in  H3.
+            red in H3;simpl in H3;destruct H3;subst;easy.
+        } 
+        eapply move_forward_h_scong in Hinq. destr_hyps.
+        assert(Hst1: scong ((q' <-- p_recv p' xs) ||| ((p' <-- p_send q' ell' e
+        Q) ||| ((p <-- x) ||| x0))) ((p <-- p_recv q llp) ||| M')). eauto with brocs.
+
+        assert(Hst2: scong M' ((p' <-- x1)||| ((q' <--x3) |||x4))). eauto with brocs.
+        clear Hscong.
+        assert(Hst3: scong (((q' <-- p_recv p' xs) ||| (p' <-- p_send q' ell' e Q)) ||| ((p <-- x) ||| x0)) 
+        ((p <-- p_recv q llp) ||| ((p' <-- x1) ||| ((q' <-- x3) ||| x4)))
+        ). eauto with brocs.
+        exists (((q' <-- subst_expr_proc y (e_val v) 0 0) ||| (p' <-- Q))
+        ||| x0).
+        assert(x=p_recv q llp).
+        {   assert(
+            scong     
+            ((p <-- x)  ||| ((q' <-- p_recv p' xs) ||| (p' <-- p_send q' ell' e Q) ||| x0))
+            ((p <-- p_recv q llp) ||| ((p' <-- x1)
+            ||| ((q' <-- x3) ||| x4)))).
+            eauto with brocs.
+            eapply scong_p_unique in H4. try easy.
+            
+            assert(
+            scong (((q' <-- p_recv p' xs) ||| (p' <-- p_send q' ell' e Q)) ||| M)
+             (((q' <-- p_recv p' xs) ||| (p' <-- p_send q' ell' e Q))
+        ||| (p <-- x ||| x0))). eauto with brocs.
+            red;simpl.
+        eapply scong_preserves_noDup_zero in H5.
+        rewrite H5 in Hnd. red in Hnd;simpl in Hnd.
+        move Hnd at bottom.
+            inversion Hnd;subst. inversion H9;subst.
+            inversion H11;subst.
+            repeat (try constructor);try easy;
+            red;intros. inversion H6;try easy.
+            inversion H7;try easy.
+
+
+            inversion H6;try easy.
+            eapply H8. constructor 2. constructor 2. easy.
+            
+            eapply H10. constructor 2. easy.
+        }
+        subst.
+        eauto with brocs.
+    }
+    {
+        assert(noDupSess M1'). eapply noDup_after_unf in H;try tauto.
+        assert (Hnd2: noDupSess M2'). 
+        {
+            assert(Hb:betaP M1' M2') by (red;exists (lcomm p' q' ell');easy).
+            eapply noDup_after_beta in Hb;tauto. 
+        }
+        assert (Hnd3: noDupSess M2). 
+        {
+            eapply noDup_after_unf in H0;try tauto.
+        }
+        eapply scong_unfold_recv_still_same in H as Hs2;try exact Hscong;try easy.
+        destr_hyps.
+        eapply IHHbeta in H2 as Ht1;try reflexivity;try easy.
+        destr_hyps.
+        eapply IHHbeta in H1;try reflexivity;try easy;try exact H2.
+        eapply scong_unfold_recv_still_same in H0;try exact H3;try easy.
     }
 Qed.
 
@@ -791,107 +942,54 @@ Proof.
     }
 Qed.
 
-Lemma live_proc_helper2 : forall p q P ell e xs,
-        p <> q ->
-        proc_valid_pathC xs ->
-        proc_path_head_scong_send p q ell e P xs -> 
-        weak_untilC ((fun u=> 
-        match u with | conil => True
-        | x => proc_path_head_scong_send p q ell e P x
-         end)) 
-        (fun u=>  proc_path_head_scong_send p q ell e P u /\ 
-        exists ell',  head_trans_proc p q ell' u) xs. 
-Proof. 
-    intros * Hpq.  revert xs. pcofix CIH.
-    intros * Hvalid Hphead. pfold.
-    destruct xs;try easy. destruct p0;try easy.
-    pinversion Hvalid;subst;try apply valid_path_mon.
-    {
-        econstructor 2. simpl in Hphead. destr_hyps. simpl. exists x. easy. 
-        left.  
-        pfold. econstructor 3. easy.    
-    }
-    {
-        destruct l;try easy. red in H3.
-        destruct H3 as [Htab Htypable].
-        destruct (Nat.eq_dec n p);destruct (Nat.eq_dec n0 q);subst;try easy.
-        {
-            econstructor 1. simpl in Hphead. simpl. destr_hyps. 
-            split. exists x0; tauto.
-            exists n1;tauto.
-        }
-        {
-            simpl in Hphead.
-            Lemma unfold_beta_unique_send : 
-            forall M M' M'' p q ell e P' q' ell' gamma, typ_sess M gamma ->
-            unfoldP M ((p <-- p_send q ell e P')|||M'') ->
-            betaP_lbl M (lcomm p q' ell') M' -> q=q'.
-            Proof.
-                intros * Hsess Hunf Hbet.
-                eapply typ_after_unfold in Hsess as Hsess';try exact Hunf.
-                inversion Hsess';subst. repeat destruct_forallT. destr_hyps.
-                eapply inv_proc_send in H5;try reflexivity;destr_hyps.
-                eapply betaP_lbl_invert in Hbet as Hbinv;try exact Hsess.
-                destr_hyps.
-                eapply typ_after_unfold in Hsess as Hsess'';try exact H10.
-                inversion Hsess'';subst. repeat destruct_forallT. destr_hyps.
-                assert(x=x7) by congruence;subst.
-                eapply inv_proc_send in H18;try reflexivity;destr_hyps.
-                pinversion H24;pinversion H9;subst;try apply sub_mon;congruence. 
-            Qed.
-            red in Htypable. destr_hyps.
-            eapply unfold_beta_unique_send with (q:=q) (ell:=ell) (e:=e) (P':=P) (M'':=x1)  in Htab as Hunfq; 
-            try exact H;subst;try easy.
-            eapply unfoldB_to_unfoldP. inversion H;try easy.
-            econstructor 1. econstructor 2. easy.
-        }
-        {
-            econstructor 2. easy.
-            right. eapply CIH;try easy.
-            simpl in Hphead.  destr_hyps.
-            simpl.   
-            eapply proc_same_after_distinct_trans in Htab as Hd;
-            try exact H;try easy.
-            inversion Htypable. inversion H0. easy.
-            eapply betaP_lbl_pq in Htab;try easy. inversion Htypable;inversion H0;easy.
-        }
-        {
-            econstructor 2. easy.
-            right. eapply CIH;try easy.
-            assert(Hnodup: noDupSess s) by (inversion Htypable; inversion H;easy).
-            simpl in Hphead. destr_hyps.  
-            eapply proc_same_after_distinct_trans in Htab as Hd;try exact H;try easy.
-            red;intros;subst.
-            destruct Htypable as [gamma Htyp].
-            eapply betaP_lbl_invert in Htab as Hinv;destr_hyps;try exact Htyp.
-            
-            eapply typ_after_unfold in H0 as Ht2;try exact Htyp.
-            eapply typ_after_scong in H as Ht3;try exact Htyp.
-            inversion_clear Ht3.
-            inversion_clear Ht2.
-            repeat destruct_forallT.
-            destr_hyps.
-            assert(x5=x7) by congruence;subst.
-            eapply inv_proc_send in H15;try reflexivity.
-            eapply inv_proc_recv in H19;try reflexivity.
-            destr_hyps.
-            pinversion H27;pinversion H23;subst;try apply sub_mon;try easy.
-            eapply betaP_lbl_pq in Htab;easy.
-        }
-    }
+Lemma unfold_beta_unique_send : 
+forall M M' M'' p q ell e P' q' ell' gamma, typ_sess M gamma ->
+unfoldP M ((p <-- p_send q ell e P')|||M'') ->
+betaP_lbl M (lcomm p q' ell') M' -> q=q'.
+Proof.
+    intros * Hsess Hunf Hbet.
+    eapply typ_after_unfold in Hsess as Hsess';try exact Hunf.
+    inversion Hsess';subst. repeat destruct_forallT. destr_hyps.
+    eapply inv_proc_send in H5;try reflexivity;destr_hyps.
+    eapply betaP_lbl_invert in Hbet as Hbinv;try exact Hsess.
+    destr_hyps.
+    eapply typ_after_unfold in Hsess as Hsess'';try exact H10.
+    inversion Hsess'';subst. repeat destruct_forallT. destr_hyps.
+    assert(x=x7) by congruence;subst.
+    eapply inv_proc_send in H18;try reflexivity;destr_hyps.
+    pinversion H24;pinversion H9;subst;try apply sub_mon;congruence. 
+Qed.
+
+Lemma unfold_beta_unique_recv : 
+forall M M' M'' p q llp q' ell' gamma, typ_sess M gamma ->
+unfoldP M ((p <-- p_recv q llp)|||M'') ->
+betaP_lbl M (lcomm q' p ell') M' -> q=q'.
+Proof.
+    intros * Hsess Hunf Hbet.
+    eapply typ_after_unfold in Hsess as Hsess';try exact Hunf.
+    inversion Hsess';subst. repeat destruct_forallT. destr_hyps.
+    eapply inv_proc_recv in H5;try reflexivity;destr_hyps.
+    eapply betaP_lbl_invert in Hbet as Hbinv;try exact Hsess.
+    destr_hyps.
+    eapply typ_after_unfold in Hsess as Hsess'';try exact H11.
+    inversion Hsess'';subst. repeat destruct_forallT. destr_hyps.
+    assert(x=x7) by congruence;subst.
+    eapply inv_proc_recv in H21;try reflexivity;destr_hyps.
+    pinversion H24;pinversion H8;subst;try apply sub_mon;congruence. 
 Qed.
 
 
 Definition is_p_send P:=exists q ell e P', P=p_send q ell e P'.    
 
 Lemma p_send_no_tau : forall P Q, is_p_send P -> tauRtc P Q -> P=Q.
-    Proof.
-        intros. revert H. induction H0;
-        intros. red in H0;destr_hyps;subst. inversion H;inversion H0.
-        easy.
-        eapply IHclos_refl_trans1 in H as H';subst.
-        tauto.
-    Qed.
+Proof.
+    intros. revert H. induction H0;
+    intros. red in H0;destr_hyps;subst. inversion H;inversion H0.
+    easy.
+    eapply IHclos_refl_trans1 in H as H';subst.
+    tauto.
+Qed.
+
 Lemma unfold_p_unique : forall p P M' M'',
 is_p_send P ->
 typable ((p <-- P) ||| M') ->
@@ -992,18 +1090,107 @@ Proof.
     by eauto with procs.
 
     assert(unfoldP M  ((q <-- p_recv p x8) ||| (p <-- p_send q ell' e P')
-||| x7)) by eauto with procs.
+    ||| x7)) by eauto with procs.
     exists (((q <-- subst_expr_proc x18 (e_val x11) 0 0) ||| (p <-- P')) ||| x7).
     split.
     eapply r_struct with (M2':= (((q <-- subst_expr_proc x18 (e_val x11) 0 0) ||| (p <-- P'))
-||| x7));try exact H32;try easy.
+    ||| x7));try exact H32;try easy.
     eauto with procs.
     exists (((q <-- subst_expr_proc x18 (e_val x11) 0 0))
-||| x7).
-eauto with procs.
+    ||| x7).
+    eauto with procs.
 Qed.
 
-Lemma live_proc_helper : forall p q ell e P xs ys, 
+Theorem sess_fidelity_strong_recv : forall M gamma M' llp p q ell  gamma', 
+typ_sess M gamma -> tctxR gamma (lcomm q p ell) gamma' ->
+unfoldP M ((p <-- p_recv q llp) |||M') ->
+exists M'' ell', betaP_lbl M (lcomm q p ell') M'' /\ 
+exists M''' e P', onth ell' llp = Some P' /\ 
+unfoldP M'' ((p <-- subst_expr_proc P' e 0 0)|||M''').
+Proof.
+	intros * Hsess Hgstep Hunf.
+	eapply typ_after_unfold in Hunf as Hsess';try exact Hsess.
+	eapply lem_6_11c_tctx_comm_invert in Hgstep as Hinvert;destr_hyps.
+	
+	assert(Hinp: InT p M) by (
+		inversion Hsess;subst;eapply H7; red;exists (ltt_recv q x3);split;try easy).
+
+	assert(Hinq: InT q M) by 
+    (inversion Hsess;subst;eapply H7; red;exists (ltt_send p x1);split;try easy).
+	assert(Hpq : p<> q) by (red;intros;subst;congruence).
+    inversion Hsess;destr_hyps;subst.
+   	eapply assoc_inv_find in H as Hsub1;try exact H13;try easy.
+	eapply assoc_inv_find in H0 as Hsub2;try exact H13;try easy.
+	assert(Hpartp :isgPartsC q x5).
+	{
+		red in Hsub1;destr_hyps. pinversion H11;try apply sub_mon;subst.
+        
+		eapply multigrafting.proj_contains_q_implies_part_send in H10;destr_hyps;try easy.
+		eapply assoc_implies_projectable in H13;try easy.	
+	}
+	assert(Hslist1: SList x1).
+	{
+		red in H6. specialize (H6 _ _ H). pinversion H6;try apply wfltt.wfltt_mon;try easy.
+	}
+	assert(Hslist2 : SList x3).
+	{
+		red in H6. specialize (H6 _ _ H0). pinversion H6;try apply wfltt.wfltt_mon;try easy.
+	}
+    Check assoc.lem_6_16_simul_subproj.
+	eapply assoc.lem_6_16_simul_subproj in Hsub1 as Hsim;try exact Hsub2;try easy.
+	
+    eapply unfold_ooo_lemma in Hinq as Hinq';try exact Hunf.
+    destruct Hinq';try easy.
+    eapply move_forward_h in H10. destr_hyps.
+    assert (Hunf1: unfoldP M ((p <-- p_recv q llp) ||| ((q <-- x6) ||| x7))) by
+    eauto with procs.
+    eapply typ_after_unfold in Hsess as Hsess2;try exact Hunf1.    
+    
+    inversion Hsess2;subst.
+    repeat destruct_forallT.
+    destr_hyps;subst.
+    assert(x8=(ltt_send p x1)) by congruence;subst.
+    assert(x9=(ltt_recv q x3)) by congruence;subst.
+    eapply typ_proc_inv_send in H20 as Hdr;try easy.
+    destr_hyps. eapply typ_after_tauRtc in H25 as Ht;try exact H20.
+    eapply inv_proc_send in Ht;try reflexivity.
+    destr_hyps.
+    eapply subtype_send_inv in H28.
+    eapply inv_proc_recv in H22 as Ht2;try reflexivity.
+    destr_hyps.
+    eapply subtype_recv_inv in H30. 
+    assert(onth x8 (extendLis x8 (Some (x12,x13)))=(Some (x12,x13))) by (rewrite extendExtract;easy).
+	eapply Forall2R_prop in H28;try exact H33;tac_sanitize.
+    eapply Forall2R_prop in Hsim;try exact H35;tac_sanitize.
+    eapply Forall2R_prop in H30;try exact H38;tac_sanitize. 
+    eapply Forall2_prop_l in H31;try exact H34;tac_sanitize.
+    eapply expr_eval_ss in H26;destr_hyps.
+    assert(betaP_lbl (((p <-- (p_recv q llp)) ||| (q <-- p_send p x8 x9 x11) ||| x7)) 
+    (lcomm q p x8) 
+        ((p <-- subst_expr_proc x20 (e_val x12) 0 0) ||| (q <-- x11) ||| x7)).
+    {
+        eapply r_comm;try easy.   
+    }
+    
+    assert (Hunfx1 : unfoldP M
+    ((p <-- p_recv q llp) ||| (q <-- x6) ||| x7))
+    by eauto with procs.
+    
+    assert(Hunfx2: unfoldP M  ((p <-- p_recv q llp) ||| (q <-- p_send p 
+    x8 x9 x11)
+    ||| x7)). eauto with procs.
+    exists (((p <-- subst_expr_proc x20 (e_val x12) 0 0) ||| (q <-- x11) ||| x7)), x8.
+        
+    split.
+    eapply r_struct with (M2':= ((p <-- subst_expr_proc x20 (e_val x12) 0 0) ||| (q <-- x11) ||| x7));
+    try exact Hunfx2;try easy.
+    eauto with procs.
+    exists ((q <-- x11 ||| x7)), (e_val x12), x20.
+    split;try easy.
+    eauto with procs.
+Qed.
+
+Lemma live_proc_helper_send : forall p q ell e P xs ys, 
 proc_path_head_scong_send p q ell e P ys->
 proc_valid_pathC ys ->
 eventually (headComm p q) xs -> 
@@ -1069,7 +1256,7 @@ Proof.
             red in H0;destr_hyps.
             assert(n <> n0). eapply betaP_lbl_pq in H0;try easy. inversion H1. inversion H2;easy.
             simpl in Head. destr_hyps.
-            eapply proc_same_after_distinct_trans in H0;try exact H3;try easy.
+            eapply proc_same_after_distinct_trans_send in H0;try exact H3;try easy.
             destr_hyps.
             econstructor 2.
             eapply IHHev. simpl. exists x2. easy.
@@ -1079,8 +1266,233 @@ Proof.
     }
 Qed.
 
+Lemma live_proc_helper_send2 : forall p q P ell e xs,
+        p <> q ->
+        proc_valid_pathC xs ->
+        proc_path_head_scong_send p q ell e P xs -> 
+        weak_untilC ((fun u=> 
+        match u with | conil => True
+        | x => proc_path_head_scong_send p q ell e P x
+         end)) 
+        (fun u=>  proc_path_head_scong_send p q ell e P u /\ 
+        exists ell',  head_trans_proc p q ell' u) xs. 
+Proof. 
+    intros * Hpq.  revert xs. pcofix CIH.
+    intros * Hvalid Hphead. pfold.
+    destruct xs;try easy. destruct p0;try easy.
+    pinversion Hvalid;subst;try apply valid_path_mon.
+    {
+        econstructor 2. simpl in Hphead. destr_hyps. simpl. exists x. easy. 
+        left.  
+        pfold. econstructor 3. easy.    
+    }
+    {
+        destruct l;try easy. red in H3.
+        destruct H3 as [Htab Htypable].
+        destruct (Nat.eq_dec n p);destruct (Nat.eq_dec n0 q);subst;try easy.
+        {
+            econstructor 1. simpl in Hphead. simpl. destr_hyps. 
+            split. exists x0; tauto.
+            exists n1;tauto.
+        }
+        {
+            simpl in Hphead.
+            
+            red in Htypable. destr_hyps.
+            eapply unfold_beta_unique_send with (q:=q) (ell:=ell) (e:=e) (P':=P) (M'':=x1)  in Htab as Hunfq; 
+            try exact H;subst;try easy.
+            eapply unfoldB_to_unfoldP. inversion H;try easy.
+            econstructor 1. econstructor 2. easy.
+        }
+        {
+            econstructor 2. easy.
+            right. eapply CIH;try easy.
+            simpl in Hphead.  destr_hyps.
+            simpl.   
+            eapply proc_same_after_distinct_trans_send in Htab as Hd;
+            try exact H;try easy.
+            inversion Htypable. inversion H0. easy.
+            eapply betaP_lbl_pq in Htab;try easy. inversion Htypable;inversion H0;easy.
+        }
+        {
+            econstructor 2. easy.
+            right. eapply CIH;try easy.
+            assert(Hnodup: noDupSess s) by (inversion Htypable; inversion H;easy).
+            simpl in Hphead. destr_hyps.  
+            eapply proc_same_after_distinct_trans_send in Htab as Hd;try exact H;try easy.
+            red;intros;subst.
+            destruct Htypable as [gamma Htyp].
+            eapply betaP_lbl_invert in Htab as Hinv;destr_hyps;try exact Htyp.
+            
+            eapply typ_after_unfold in H0 as Ht2;try exact Htyp.
+            eapply typ_after_scong in H as Ht3;try exact Htyp.
+            inversion_clear Ht3.
+            inversion_clear Ht2.
+            repeat destruct_forallT.
+            destr_hyps.
+            assert(x5=x7) by congruence;subst.
+            eapply inv_proc_send in H15;try reflexivity.
+            eapply inv_proc_recv in H19;try reflexivity.
+            destr_hyps.
+            pinversion H27;pinversion H23;subst;try apply sub_mon;try easy.
+            eapply betaP_lbl_pq in Htab;easy.
+        }
+    }
+Qed.
+
+Lemma live_proc_helper_recv : forall p q llp xs ys, 
+proc_path_head_scong_recv p q llp ys->
+proc_valid_pathC ys ->
+eventually (headComm q p) xs -> 
+typ_pathC  ys xs -> 
+eventually (fun u=>  proc_path_head_scong_recv p q llp u /\ 
+        exists ell',  head_trans_proc q p ell' u) ys.
+Proof.
+    intros * Head Hvalid Hev Htyp. generalize dependent ys. induction Hev.
+    {
+        intros. destruct xs;try easy. destruct p0. destruct o;try easy.
+        destruct l;try easy. simpl in H;destr_hyps;subst.
+        pinversion Htyp;subst. constructor. split;try easy. exists n1;simpl. constructor; easy. 
+    }
+    {
+        intros.
+        pinversion Hvalid;subst;try apply valid_path_mon.
+        {
+            pinversion Htyp.   
+        }
+        {
+            pinversion Htyp;subst. pinversion H5;subst. inversion Hev;subst. simpl in H. easy.   
+        }
+        {
+            destruct l;try easy.
+            destruct (Nat.eq_dec n p);subst.
+            {
+                simpl in Head.
+                red in H0. destr_hyps.
+                
+                destruct H2 as [gamma Htyp2].
+                eapply betaP_lbl_invert in H0;try exact Htyp2.
+                destr_hyps.
+                eapply typ_after_unfold in Htyp2 as Hty3;try exact H0.
+                eapply scong_to_unfoldP in H1 as Ht.
+                destr_hyps.
+                eapply typ_after_unfold in Htyp2 as Hty4; try exact H2.
+                inversion Hty4;inversion Hty3;subst.
+                repeat destruct_forallT. destr_hyps. 
+                assert(x6=x7) by congruence;subst.
+                eapply inv_proc_recv in H17;try reflexivity.
+                eapply inv_proc_send in H19;try reflexivity.
+                destr_hyps.
+                pinversion H26;subst;try apply sub_mon.
+                pinversion H27;try apply sub_mon.
+                inversion Htyp2;easy.   
+            }
+            destruct (Nat.eq_dec n0 p);subst.
+            {
+                 simpl in Head.
+                red in H0;destr_hyps.
+                destruct H2 as [gamma Htyp2].
+                eapply scong_to_unfoldP in H1 as Hunf.
+                destr_hyps.
+                eapply unfold_beta_unique_recv in H2;try exact H0;try exact Htyp2.
+                subst.
+                constructor.
+                split;simpl. exists x1. easy.
+                exists n1. tauto.
+                inversion Htyp2;easy. 
+            }
+            
+            red in H0;destr_hyps.
+            assert(n <> n0). eapply betaP_lbl_pq in H0;try easy. inversion H1. inversion H2;easy.
+            simpl in Head. destr_hyps.
+            eapply proc_same_after_distinct_trans_recv in H0;try exact H3;try easy.
+            destr_hyps.
+            econstructor 2.
+            eapply IHHev. simpl. exists x2. easy.
+            easy. pinversion Htyp. easy.
+            inversion H1. inversion H4;try easy.
+        }
+    }
+Qed.
+
+
+Lemma live_proc_helper_recv2 : forall p q llp xs,
+        p <> q ->
+        proc_valid_pathC xs ->
+        proc_path_head_scong_recv p q llp xs -> 
+        weak_untilC ((fun u=> 
+        match u with | conil => True
+        | x => proc_path_head_scong_recv p q llp x
+         end)) 
+        (fun u=>  proc_path_head_scong_recv p q llp u /\ 
+        exists ell',  head_trans_proc q p ell' u) xs. 
+Proof. 
+    intros * Hpq.  revert xs. pcofix CIH.
+    intros * Hvalid Hphead. pfold.
+    destruct xs;try easy. destruct p0;try easy.
+    pinversion Hvalid;subst;try apply valid_path_mon.
+    {
+        econstructor 2. simpl in Hphead. destr_hyps. simpl. exists x. easy. 
+        left.  
+        pfold. econstructor 3. easy.    
+    }
+    {
+        destruct l;try easy. red in H3.
+        destruct H3 as [Htab Htypable].
+        destruct (Nat.eq_dec n0 p);destruct (Nat.eq_dec n q);subst;try easy.
+        {
+            econstructor 1. simpl in Hphead. simpl. destr_hyps. 
+            split. exists x0; tauto.
+            exists n1;tauto.
+        }
+        {
+            simpl in Hphead.
+            
+            red in Htypable. destr_hyps.
+            eapply unfold_beta_unique_recv with (q:=q) (llp:=llp) (M'':=x1)  in Htab as Hunfq; 
+            try exact H;subst;try easy.
+            eapply unfoldB_to_unfoldP. inversion H;try easy.
+            econstructor 1. econstructor 2. easy.
+        }
+        {
+            econstructor 2. easy.
+            right. eapply CIH;try easy.
+            simpl in Hphead.  destr_hyps.
+            simpl.   
+            eapply proc_same_after_distinct_trans_recv in Htab as Hd;
+            try exact H;try easy.
+            inversion Htypable. inversion H0. easy.
+            eapply betaP_lbl_pq in Htab;try easy. inversion Htypable;inversion H0;easy.
+        }
+        {
+            econstructor 2. easy.
+            right. eapply CIH;try easy.
+            assert(Hnodup: noDupSess s) by (inversion Htypable; inversion H;easy).
+            simpl in Hphead. destr_hyps.  
+            eapply proc_same_after_distinct_trans_recv in Htab as Hd;
+            try exact H;try easy.
+            red;intros;subst.
+            destruct Htypable as [gamma Htyp].
+            eapply betaP_lbl_invert in Htab as Hinv;destr_hyps;try exact Htyp.
+            
+            eapply typ_after_unfold in H0 as Ht2;try exact Htyp.
+            eapply typ_after_scong in H as Ht3;try exact Htyp.
+            inversion_clear Ht3.
+            inversion_clear Ht2.
+            repeat destruct_forallT.
+            destr_hyps.
+            assert(x5=x6) by congruence;subst.
+            eapply inv_proc_send in H17;try reflexivity.
+            eapply inv_proc_recv in H15;try reflexivity.
+            destr_hyps.
+            pinversion H27;pinversion H23;subst;try apply sub_mon;try easy.
+            eapply betaP_lbl_pq in Htab;easy.
+        }
+    }
+Qed.
+
 Lemma unfoldP_to_betaRtc : forall M M' M'', unfoldP M M' -> betaRtc M' M'' ->
-             (betaRtc M M'' \/ unfoldP M M'').
+    (betaRtc M M'' \/ unfoldP M M'').
 Proof.
 intros. generalize dependent M. induction H0.
 {
@@ -1158,19 +1570,15 @@ Proof.
             destr_hyps.
             eapply H7. simpl. easy.
         }
-        Check typ_path_preserves_fairness_helper.
-        
-        eapply live_proc_helper with (ell:=ell) (e:=e)
+        eapply live_proc_helper_send with (ell:=ell) (e:=e)
         (P:=P') in Hev_local_trans as Hlpr;try exact H1;try easy.
-        
-        eapply  live_proc_helper2 with (p:=p) (q:=q) (ell:=ell) (e:=e) (P:=P') in H2 as Hweak;try easy;
+        eapply  live_proc_helper_send2 with (p:=p) (q:=q) (ell:=ell) (e:=e) (P:=P') in H2 as Hweak;try easy;
         try solve [simpl; exists M'; eauto with brocs].
         eapply weak_untilC_to_until in Hweak as Hunt;
         try solve[
         rewrite eventually_P_iff_P_suffix in Hlpr; destr_hyps;
         rewrite eventually_P_iff_P_suffix; exists x2; split;try easy; exists ell'; easy].
         eapply until_suf in Hunt.
-        Check until_suf.
         destruct Hunt.
         {
             destr_hyps. clear H5. rename H6 into H5. destruct x;try easy. destruct l;try easy. simpl in H5;destr_hyps;subst.
@@ -1253,4 +1661,148 @@ Proof.
         simpl. exists M';eauto with brocs.
         eapply typ_after_unfold in Hsess;try exact H0. easy.
     }
+    {
+		intros * Hpq H0.
+		specialize (Ax_fairness ((p <-- p_recv q llp) ||| M')). red in Ax_fairness. destr_hyps.
+		destruct x0;try easy. destruct p0;try easy. simpl in H1;inversion H1;subst;clear H1.
+		eapply sub_red_Rtc in Hsess;try exact H.
+		destruct Hsess as [gamma' Hsess].
+		eapply typ_path_exists in H2 as Htypp;try exact Hsess. destr_hyps.
+		assert(Hlive: liveCtx gamma').
+		{
+            inversion Hsess;destr_hyps.
+			eapply liveness with (g:=x2);try easy. 
+            eapply assoc_implies_projectable in H12;try easy.  	
+		}
+        assert(Hlive_path: all_fair_live gamma').
+        {
+            eapply Hlive. constructor 2.   
+        }
+            destruct x1;try easy. destruct p0. simpl in H5;inversion H5;subst;clear H5.
 
+        assert(Hev_local_trans: eventually (headComm q p) (cocons (gamma', x) x1)
+        ).
+        {
+            red in Hlive_path.
+            eapply typ_path_preserves_fairness in H3 as Hfair_local;try exact H1;try easy.
+            eapply Hlive_path in Hfair_local;try exact H4.
+            pinversion Hfair_local;subst. red in H7.
+            assert(exists s ell xsp Tp', 
+            M.find p gamma' = Some (ltt_recv q xsp) 
+            /\ onth ell xsp = Some (s,Tp')).
+            {
+                eapply typ_after_unfold in H0;try exact Hsess. inversion H0;subst. inversion_clear H10.
+                inversion_clear H11. destr_hyps.  
+                eapply inv_proc_recv in H13;try reflexivity. destr_hyps.
+                 
+                pose proof H16 as Hsub.
+                pinversion H16;subst;try apply sub_mon.
+                specialize (H5 _ _ H10).
+                pinversion H5;subst;try apply wfltt.wfltt_mon.
+                eapply slist_implies_some in H21.
+                destr_hyps.
+                destruct x5.
+                exists s, x2, ys, l.
+                repeat split;try easy.
+            }
+            destr_hyps.
+            assert(tctxRE (lrecv p q (Some x2) x3) gamma').
+            red. exists (m_update p x5 gamma').
+            eapply simple_red_recv ;try exact H5;try easy.
+            specialize (H7 p q x2 x3).
+            destr_hyps.
+            eapply H10. simpl. easy.
+        }
+        eapply live_proc_helper_recv with (llp:=llp) in Hev_local_trans as Hlpr;try exact H1;try easy.
+        eapply  live_proc_helper_recv2 with (p:=p) (q:=q) (llp:=llp) in H2 as Hweak;try easy;
+        try solve [simpl; exists M'; eauto with brocs].
+        eapply weak_untilC_to_until in Hweak as Hunt;
+        try solve[
+        rewrite eventually_P_iff_P_suffix in Hlpr; destr_hyps;
+        rewrite eventually_P_iff_P_suffix; exists x2; split;try easy; exists ell'; easy].
+        eapply until_suf in Hunt.
+        destruct Hunt.
+        {
+            destr_hyps. clear H5. rename H6 into H5. destruct x;try easy. destruct l;try easy. simpl in H5;destr_hyps;subst.
+            pinversion H2;subst;try apply valid_path_mon. red in H9;destr_hyps.   
+            destruct H6 as [gamma'' Hty].
+            eapply sub_red_strong_labelled in H5 as Hss;try exact Hty.
+            destr_hyps.
+            eapply sess_fidelity_strong_recv in Hty;try exact H8;
+            try solve [
+            econstructor 2].
+            destr_hyps.
+            exists x4, x6,x5,x3.
+            split;try easy.
+            econstructor 1.
+            red.
+            exists (lcomm n n0 x3).
+            eapply r_struct;try exact H9;try easy.
+        }
+        {
+            destr_hyps.
+            destruct x2. 
+            assert(Hbet1 : betaRtc  ((p <-- p_recv q llp) ||| M') s).
+            {
+                eapply path_to_betaRtc with (xs:=cocons ((p <-- p_recv q llp) ||| M', x) x0);try easy.
+                eapply eventually_P_iff_P_suffix. exists (cocons (s, o) x3).
+                split;try easy.
+            }
+            
+             assert(Hv:proc_valid_pathC (cocons (s,o) x3)).
+             {
+                eapply valid_suffix_valid_proc in H5;try easy.
+             }
+             destruct x3;try easy.
+             destruct p0.
+             pinversion Hv;try apply valid_path_mon;try easy;subst.
+
+             simpl in H7;simpl in H8.
+             destruct o0;try easy.
+             destruct l0;try easy.
+             destr_hyps;subst.
+             destruct l;try easy.
+             pinversion H11;subst;try easy;try eapply valid_path_mon.
+             red in H15.
+             red in H13.
+             destr_hyps.
+             destruct H9 as [gamma_0 Htyp0].
+             eapply sub_red_strong_labelled in H8;try exact Htyp0;destr_hyps.
+             assert(Hnd1 : noDupSess s). {inversion H13; inversion H14;try easy. }
+             
+             assert(Hnd2 : noDupSess s0). {inversion Htyp0; easy. }
+            eapply scong_to_unfoldP in H7;try easy.
+            destruct H7 as [H7 _].
+             eapply sess_fidelity_strong_recv in H9;try exact Htyp0;try exact H7.
+             destr_hyps.
+            assert(Hbets0: betaP_lbl s0 (lcomm n n0 x6) ((n0 <-- subst_expr_proc x9 x8 0 0) ||| x7)).
+            eapply r_struct;try exact H9;eauto with procs.
+             assert(Hbet2: betaRtc M0 s \/ unfoldP M0 s).
+            {
+                eapply unfoldP_to_betaRtc with (M:=M0) in Hbet1;try easy.
+            }
+            assert(Hbetr: betaRtc s ((n0 <-- subst_expr_proc x9 x8 0 0) ||| x7)). {
+                econstructor 3 with (y:=s0).
+                econstructor 1. exists (lcomm n2 n3 n4). easy.
+                econstructor 1. exists (lcomm n n0 x6). easy.
+            }
+            destruct Hbet2 as [Hbet2 | Hbet2].
+            {
+                exists x7, x9, x8, x6. split;try easy. econstructor 3;try exact Hbet2;try easy.   
+            }
+            {
+                exists x7, x9, x8, x6.
+                assert(Hbet3 : betaP M0 s0).
+                exists (lcomm n2 n3 n4).
+                econstructor 2;try exact Hbet2;try exact H12;eauto with procs.
+                split;try easy.
+                econstructor 3 with (y:=s0);try easy.
+                econstructor 1;easy.
+                econstructor 1. exists (lcomm n n0 x6). easy.
+            }
+        }
+        easy.
+        simpl. exists M';eauto with brocs.
+        eapply typ_after_unfold in Hsess;try exact H0. easy.
+    }
+Qed.
