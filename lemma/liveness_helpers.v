@@ -622,18 +622,14 @@ Proof.
     }
 Qed.
 
-Lemma Forall2R_length {A:Type} {B:Type}: forall (P:A -> B-> Prop) xs ys, Forall2R P xs ys -> Datatypes.length xs <= Datatypes.length ys.
-Proof.
-    intros;
-    induction H;crush.
-Qed.
+
 Lemma Forall2R_subset_trans {A:Type}: forall (xs ys zs: list (option A)),
 Forall2R (fun u v=> u=None \/ u=v) xs ys ->
 Forall2R (fun u v=> u=None \/ u=v) ys zs ->
 Forall2R (fun u v=> u=None \/ u=v) xs zs.
 Proof.
     intros.
-    eapply Forall2_Forall.
+    eapply Forall2R_Forall.
     {
         eapply Forall2R_length in H, H0. crush.
     }
@@ -666,7 +662,7 @@ Proof.
         intros.
         destruct n. simpl in Honth. inversion Honth;subst.
         Search Forall2R.
-        eapply Forall2_Forall;crush.
+        eapply Forall2R_Forall;crush.
         
         simpl in Honth. rewrite onth_nil in Honth;easy.
     }
@@ -1717,7 +1713,7 @@ u = Some (s, g0) /\ v = Some (s, t) /\ projectionH g0 gs q0 t ls)) xs1 lx
                             try exact H;try easy
                         |
                             red;
-                            eapply Forall2_Forall;[tac_forall_to_length | ];
+                            eapply Forall2R_Forall;[tac_forall_to_length | ];
                             intros;
                             destruct (onth k0 gs') eqn:Hyg1;[right |left;easy];
                             eapply Forall2R_prop in Hmergesubs;try exact Hyg1;destr_hyps;
@@ -1788,7 +1784,7 @@ ls)) xs1 lxs /\
                     }
                     {
                             red;
-                            eapply Forall2_Forall;[tac_forall_to_length | ];
+                            eapply Forall2R_Forall;[tac_forall_to_length | ];
                             intros;
                             destruct (onth k0 gs') eqn:Hyg1;[right |left;easy].
                             eapply Forall2R_prop in H1;try exact Hyg1;destr_hyps.
@@ -1912,7 +1908,7 @@ u = Some (s, g0) /\ v = Some (s, t) /\ projectionH g0 gs q0 t ls)) xs1 lx
                             try exact H;try easy
                         |
                             red;
-                            eapply Forall2_Forall;[tac_forall_to_length | ];
+                            eapply Forall2R_Forall;[tac_forall_to_length | ];
                             intros;
                             destruct (onth k0 gs') eqn:Hyg1;[right |left;easy];
                             eapply Forall2R_prop in Hmergesubs;try exact Hyg1;destr_hyps;
@@ -1982,7 +1978,7 @@ ls)) xs1 lxs /\
                     }
                     {
                             red;
-                            eapply Forall2_Forall;[tac_forall_to_length | ];
+                            eapply Forall2R_Forall;[tac_forall_to_length | ];
                             intros;
                             destruct (onth k0 gs') eqn:Hyg1;[right |left;easy].
                             eapply Forall2R_prop in H1;try exact Hyg1;destr_hyps.
@@ -2045,7 +2041,7 @@ Proof.
     eapply projectionH_consistent with (p:=p) in H3 as Hprojcons;try exact Hprojq;try easy.
     exists x1, ls;easy.
     
-    red;eapply Forall2_Forall;[tac_forall_to_length|];intros;
+    red;eapply Forall2R_Forall;[tac_forall_to_length|];intros;
     destruct (onth k x0) eqn:Hyg;try tauto;right.
     eapply Forall2_prop_r in Hls;try exact Hyg;tac_sanitize;exists x2, x3;auto.
 Qed.
@@ -2053,7 +2049,7 @@ Qed.
 Lemma is_proj_list_implies_proj_list_subset : forall gs p xs, is_proj_list gs p xs ->
 is_proj_list_subset gs p xs.
 Proof.
-    intros;red in H;red;eapply Forall2_Forall;[tac_forall_to_length|];intros.
+    intros;red in H;red;eapply Forall2R_Forall;[tac_forall_to_length|];intros.
     destruct (onth k gs) eqn:Hyg;try tauto;right.
     eapply Forall2_prop_r in H;try exact Hyg;tac_sanitize; exists x0, x1;auto.
 Qed.

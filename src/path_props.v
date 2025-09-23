@@ -141,7 +141,8 @@ forall p q s s'  k k', tctxRE (lsend p q (Some s) k) c -> tctxRE (lrecv q p (Som
 
 Inductive safe (R: tctx -> Prop): tctx -> Prop :=
   | safety_red :  forall c, weak_safety c -> (forall p q c' k, 
-    tctxR c (lcomm p q k) c' -> (weak_safety c' /\ (exists c'', M.Equal c' c'' /\ R c''))) 
+    tctxR c (lcomm p q k) c' -> 
+    (weak_safety c' /\ (exists c'', M.Equal c' c'' /\ R c''))) 
     ->  safe R c.
                                (*
 Definition weak_safe_tctx := {c | weak_safety c}.

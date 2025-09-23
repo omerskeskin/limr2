@@ -28,6 +28,7 @@ lemma/decidable.v
 lemma/expr.v
 lemma/part.v
 lemma/step.v
+lemma/safety.v
 lemma/projection_helper.v
 lemma/projection.v
 lemma/subj_red_prog_fid.v

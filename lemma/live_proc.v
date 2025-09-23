@@ -9,6 +9,8 @@ From SST Require Import lemma.inversion lemma.path_assoc lemma.inversion_expr le
 lemma.projection_helper lemma.subj_red_prog_fid lemma.projection lemma.subj_red_helpers lemma.soundness 
 lemma.liveness_helpers lemma.liveness.
 
+Search usedCtx onth.
+
 Definition typable M := exists gamma, typ_sess M gamma. 
 
 Definition proc_path_valid_criteria := (fun x1 (l:label)  x2  =>
