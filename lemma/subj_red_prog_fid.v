@@ -18,10 +18,10 @@ Lemma active_parts_subset: forall gamma pt p q ell gamma',
       intros * Hred Hin.
       red in Hin. destr_hyps.
       destruct (Nat.eq_dec pt p);subst.
-      eapply lem_6_11c_tctx_comm_invert in Hred;destr_hyps;red;
+      eapply tctx_comm_invert in Hred;destr_hyps;red;
       exists (ltt_send q x2);split;try easy.
       destruct (Nat.eq_dec pt q);subst.
-      eapply lem_6_11c_tctx_comm_invert in Hred;destr_hyps;red;
+      eapply tctx_comm_invert in Hred;destr_hyps;red;
       exists (ltt_recv p x4);split;try easy.
       Search tctxR M.find.
       eapply lem_6_10 with (r:=pt) in Hred;try easy. red;exists x;split;congruence;try easy.
@@ -683,7 +683,7 @@ typ_sess M gamma -> tctxR gamma (lcomm p q ell) gamma' ->
     exists gamma'' M' ell', tctxR gamma (lcomm p q ell') gamma'' /\ betaP_lbl M (lcomm p q ell') M' /\ typ_sess M' gamma''.
 Proof.
 	intros.
-	eapply lem_6_11c_tctx_comm_invert in H0 as Hinvert;destr_hyps.
+	eapply tctx_comm_invert in H0 as Hinvert;destr_hyps.
 	
 	assert(Hinp: InT p M) by (inversion H;subst;eapply H9; red;exists (ltt_send q x1);split;try easy).
 

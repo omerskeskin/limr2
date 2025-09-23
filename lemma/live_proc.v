@@ -17,7 +17,7 @@ Definition proc_path_valid_criteria := (fun x1 (l:label)  x2  =>
     | _=> False
   end).
 
-  From Coq Require Import IndefiniteDescription.
+From Coq Require Import IndefiniteDescription.
 
 Definition proc_valid_pathC := valid_path_GC proc_path_valid_criteria.
 
@@ -224,6 +224,32 @@ Qed.
 Definition extends_to_fair M := exists l xs, coseq_head xs = Some (M,l) /\ proc_valid_pathC xs /\ fair_path_proc xs.
 
 Definition fairness_feasible := forall M, extends_to_fair M.
+
+(*
+Definition trans_with_p_enabled p M := exists q ell M', 
+betaP_lbl M (lcomm p q ell) M' \/ betaP_lbl M (lcomm q p ell) M.
+
+Definition max_part (M:session) := list_max (flattenT M).
+
+Theorem trans_p_lem : forall p M, {trans_with_p_enabled p M} + {~ trans_with_p_enabled p M}.
+Admitted.
+(*
+Theorem trans_p_dec : forall p M, {trans_with_p_enabled p M} + {~ trans_with_p_enabled p M}.
+Admitted.
+*)
+Definition get_next_trans_with_p p M : 
+    option ({z | match z with (M',q,ell) => betaP_lbl M (lcomm p q ell) M' \/ betaP_lbl M (lcomm q p ell) M' end}).
+Proof.
+Admitted.
+
+Lemma fairness_feasible_proof : fairness_feasible.
+Proof.
+    red;intros;red;intros.
+
+CoFixpoint fair_scheduler (p_next : part) (M:session) : coseq (session * option label). 
+Proof.
+    destruct (get_next_trans_with_p p_next M).
+*)
 
 Lemma typ_path_exists: forall M gamma xs l, typ_sess M gamma -> proc_valid_pathC (cocons (M,l) xs) ->
     exists ys,  typ_pathC (cocons (M,l) xs) ys
@@ -1021,7 +1047,7 @@ exists M''', unfoldP M'' ((p <-- P')|||M''').
 Proof.
 	intros * Hsess Hgstep Hunf.
 	eapply typ_after_unfold in Hunf as Hsess';try exact Hsess.
-	eapply lem_6_11c_tctx_comm_invert in Hgstep as Hinvert;destr_hyps.
+	eapply tctx_comm_invert in Hgstep as Hinvert;destr_hyps.
 	
 	assert(Hinp: InT p M) by (
 		inversion Hsess;subst;eapply H7; red;exists (ltt_send q x1);split;try easy).
@@ -1110,7 +1136,7 @@ unfoldP M'' ((p <-- subst_expr_proc P' e 0 0)|||M''').
 Proof.
 	intros * Hsess Hgstep Hunf.
 	eapply typ_after_unfold in Hunf as Hsess';try exact Hsess.
-	eapply lem_6_11c_tctx_comm_invert in Hgstep as Hinvert;destr_hyps.
+	eapply tctx_comm_invert in Hgstep as Hinvert;destr_hyps.
 	
 	assert(Hinp: InT p M) by (
 		inversion Hsess;subst;eapply H7; red;exists (ltt_recv q x3);split;try easy).

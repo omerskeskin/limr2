@@ -142,7 +142,7 @@ Proof.
         destruct (Nat.eq_dec p prt_p). assumption.
         simpl in H.
         inversion H. subst. 
-        apply lem_6_11c_tctx_comm_invert in H0.
+        apply tctx_comm_invert in H0.
         destr_hyps.
         destruct (Nat.eq_dec p prt_q);
         destruct (Nat.eq_dec p prt_r); crush; 
@@ -155,7 +155,7 @@ Proof.
         destruct (Nat.eq_dec q prt_q). assumption.
         simpl in H.
         inversion H. subst. 
-        apply lem_6_11c_tctx_comm_invert in H0.
+        apply tctx_comm_invert in H0.
         destr_hyps.
         destruct (Nat.eq_dec q prt_p);
         destruct (Nat.eq_dec q prt_r); crush;
@@ -248,7 +248,7 @@ Lemma gamma_possible_comm: forall p q k gamma2, tctxR gamma (lcomm p q k) gamma2
     (p=prt_p /\ q=prt_q /\ k =0) \/ (p=prt_p /\ q=prt_q /\ k = 1).
 Proof.
     intros.
-    eapply lem_6_11c_tctx_comm_invert in H. destr_hyps.
+    eapply tctx_comm_invert in H. destr_hyps.
     rename x into s1, x0 into s2, x1 into xp, x3 into xq,x4 into Tq, x2 into Tp.
     destruct (Nat.eq_dec prt_p p);destruct (Nat.eq_dec prt_q q);crush.
     {
@@ -291,7 +291,7 @@ Lemma gamma'_possible_comm : forall q r k gamma2, tctxR gamma' (lcomm q r k) gam
     (q=prt_q /\ r =prt_r /\ k = 2 ).
 Proof.
     intros.
-    eapply lem_6_11c_tctx_comm_invert in H. destr_hyps.
+    eapply tctx_comm_invert in H. destr_hyps.
     rename x into s1, x0 into s2, x1 into xp, x3 into xq,x4 into Tq, x2 into Tp.
     
     destruct (Nat.eq_dec q prt_q);destruct (Nat.eq_dec r prt_r);subst.
@@ -330,7 +330,7 @@ Lemma gamma_end_possible_comm: forall p q k gamma2, tctxR gamma_end (lcomm p q k
     False.
 Proof.
     intros.
-    eapply lem_6_11c_tctx_comm_invert in H. destr_hyps.
+    eapply tctx_comm_invert in H. destr_hyps.
     rename x into s1, x0 into s2, x1 into xp, x3 into xq,x4 into Tq, x2 into Tp.
     unfold gamma_end in *.
     destruct (Nat.eq_dec p prt_p);

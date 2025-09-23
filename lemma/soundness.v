@@ -1539,7 +1539,7 @@ Proof.
                                     exists s5.
                                     assert (lct=ltt_end).
                                     {
-                                        apply lem_6_11c_tctx_comm_invert in Hex_red.
+                                        apply tctx_comm_invert in Hex_red.
                                         destr_hyps.
                                         rewrite Hgamma_k_same in H37;try easy.
                                         unfold assoc in Hex_assoc.
@@ -1563,7 +1563,7 @@ Proof.
                                     exists s5.
                                     assert (lct=ltt_end).
                                     {   
-                                        apply lem_6_11c_tctx_comm_invert in Hex_red.
+                                        apply tctx_comm_invert in Hex_red.
                                         destr_hyps.
                                         rewrite Hgamma_k_same in H38;try easy.
                                         unfold assoc in Hex_assoc.

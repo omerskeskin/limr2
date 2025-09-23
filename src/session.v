@@ -334,9 +334,9 @@ Proof.
     rewrite Hscong1 in Hnd.
     specialize (IHHscong1 Hnd').
     specialize (IHHscong2 Hnd).
-    assert(Htr: Transitive (@ M.Equal process)).
+    assert(Htr: Transitive ( @M.Equal process)).
     {
-      eapply SetoidList.eqatrans. eapply MF.Equal_equiv. 
+      eapply SetoidList.eqatrans.  eapply MF.Equal_equiv. 
     }
     eapply Htr;try exact IHHscong1;try easy.
   }
@@ -381,20 +381,7 @@ Proof.
   rewrite H1 in Hmn. rewrite H2 in Hmn. simpl in Hmn. inversion Hmn;subst;easy.
 Qed.
 
-(*Lemma scong_single : forall p P Q M M', NoDup (flattenT ((p <-- P)|||M)) ->
-    proc_of_p p P M -> 
-    scong M M' -> 
-    proc_of_p p Q M' ->
-    P=Q.
-  Proof.
-    intros * Hnd Hprocm Hsc Hprocq. revert Hprocm Hprocq Hnd. induction Hsc;intros.
-    {
 
-    }
-  Proof.
-    intros. dependent induction H;subst;try eauto with procs.
-    symmetry. eapply IHscong.
-    eapply IHscong.*)
 Lemma pc_par5 : forall M M' M'', unfoldP (M ||| (M' ||| M'')) ((M ||| M') ||| M'').
 Proof.
   intros.

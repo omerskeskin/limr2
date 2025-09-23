@@ -14,8 +14,8 @@ Proof.
     unfold weak_safety.
     intros.
     unfold tctxRE in *. destr_hyps.
-    eapply lem_6_11a_tctx_send_invert in H2.
-    eapply lem_6_11b_tctx_recv_invert in H3.
+    eapply tctx_send_invert in H2.
+    eapply tctx_recv_invert in H3.
     destr_hyps.
     rename x3 into xp, x1 into xq.
     assert (Hsubp: issubProj (ltt_send q xp) G p) by (apply assoc_inv_find with (gamma:=gamma);crush). 

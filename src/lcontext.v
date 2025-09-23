@@ -440,7 +440,7 @@ Qed.
 Ltac red_inv_destruct H := 
   destruct H as [H_comm  H'']; destruct H'' as [H_rec H_send].
 
-Lemma lem_6_11a_tctx_send_invert : forall g g' p q s ell, 
+Lemma tctx_send_invert : forall g g' p q s ell, 
   (tctxR g (lsend p q (Some s) ell) g' ->
   exists xs Tp', M.find p g = Some (ltt_send q xs) /\ 
   onth ell xs=Some (s, Tp') /\ M.find p g' = (Some Tp'))
@@ -462,7 +462,7 @@ Proof.
   unfold M.Equal in *. crush.
 Qed.
 
-Lemma lem_6_11b_tctx_recv_invert : forall g g' p q s ell, 
+Lemma tctx_recv_invert : forall g g' p q s ell, 
   (tctxR g (lrecv p q (Some s) ell) g' ->
   exists xs Tp', M.find p g = Some (ltt_recv q xs) /\ 
   onth ell xs=Some (s, Tp') /\ M.find p g' = (Some Tp')).
@@ -489,7 +489,7 @@ Ltac destr_hyps := repeat (match goal with
           end).
 
 
-Lemma lem_6_11c_tctx_comm_invert: forall g g' p q ell, 
+Lemma tctx_comm_invert: forall g g' p q ell, 
   tctxR g (lcomm p q ell) g' ->exists s s',
   (exists xsp Tp', M.find p g = Some (ltt_send q xsp) /\ 
   onth ell xsp=Some (s, Tp') /\ M.find p g' = (Some Tp')) /\
@@ -500,8 +500,8 @@ Proof.
   intros.
   dependent induction H.
   {
-    apply lem_6_11a_tctx_send_invert in H0.
-    apply lem_6_11b_tctx_recv_invert in H3.
+    apply tctx_send_invert in H0.
+    apply tctx_recv_invert in H3.
     destr_hyps.
     exists s, s'.
     split.
@@ -1090,11 +1090,11 @@ Proof.
   
   destruct l;rename n into p, n0 into q, n1 into n;
   unfold M.Equal;subst;intros; try (destruct o).  
-  send_rec_solve H H0 p y lem_6_11b_tctx_recv_invert.
+  send_rec_solve H H0 p y tctx_recv_invert.
   apply transition_sort_some_recv in H;crush.
-  send_rec_solve H H0 p y lem_6_11a_tctx_send_invert.
+  send_rec_solve H H0 p y tctx_send_invert.
   apply transition_sort_some_send in H;crush.
   destruct (Nat.eq_dec p y);destruct (Nat.eq_dec q y);subst.
-  1-3: apply lem_6_11c_tctx_comm_invert in H,H0; crush.
+  1-3: apply tctx_comm_invert in H,H0; crush.
   apply lem_6_10 with (r:=y) in H0,H;crush. 
 Qed.

@@ -367,7 +367,7 @@ Lemma local_step_implies_global_step: forall g gamma gamma' p q ell,
 Proof.
     intros * Hwfg Hproj Hwflt Hassoc Hred.
     destr_hyps.
-    eapply lem_6_11c_tctx_comm_invert in Hred.
+    eapply tctx_comm_invert in Hred.
     
     destruct Hred as [s [s' [Hred1 Hred2]]].
     destr_hyps.
@@ -414,7 +414,7 @@ exists g', partial_assoc gamma' g' /\ gttstepC g g' p q ell.
 Proof.
     intros * Hassoc Hwfg Hproj Hwfltt Hred.
     pose proof Hred as Hredinv.
-    eapply lem_6_11c_tctx_comm_invert in Hredinv.
+    eapply tctx_comm_invert in Hredinv.
     destr_hyps.
     rename x into s, x0 into s', x1 into xsp, x2 into Tp, x3 into xsq, x4 into Tq.
     Search gttstepC projectionC ltt_send ltt_recv.
