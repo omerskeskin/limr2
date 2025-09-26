@@ -442,7 +442,7 @@ Proof.
         [
         specialize (Hassoc p _ H)|
         specialize (Hassoc q _ H0)];try easy).
-    eapply lem_6_10 with (r:=p0) in Hred as Hrelv;[| crush].
+    eapply red_relevance with (r:=p0) in Hred as Hrelv;[| crush].
     specialize (Hassoc p0 _ H7) as Hassocp0. rewrite H7 in Hrelv. rewrite H6 in Hrelv. inversion Hrelv;subst.
     clear Hrelv. 
     eapply subproj_after_step_r with (x:=Tp0') (r:=p0)in Hpstep;easy.

@@ -544,7 +544,7 @@ Proof.
     induction H;crush.
 Qed.
 
-Lemma lem_6_16_simul_subproj: forall G p q xp xq, wfgC G -> isgPartsC p G ->
+Lemma simul_subproj: forall G p q xp xq, wfgC G -> isgPartsC p G ->
     issubProj (ltt_send q xp) G p ->
     issubProj (ltt_recv p xq) G q ->
     SList xp -> SList xq ->

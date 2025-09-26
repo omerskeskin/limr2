@@ -738,7 +738,7 @@ Proof.
     {
         eapply projection_implies_wf;try exact Hprojq;try easy.   
     }
-    eapply lem_6_16_simul_subproj with (p:=p) (q:=q) (xp:=xp) (xq:=xq) in Hwfg as Hsim;try easy.
+    eapply simul_subproj with (p:=p) (q:=q) (xp:=xp) (xq:=xq) in Hwfg as Hsim;try easy.
     eapply wfltt_slist_send in Hwflp. eapply slist_implies_some in Hwflp. destr_hyps.
     eapply Forall2R_prop in Hsim;try exact H;tac_sanitize.
     eapply typ_after_step_step in Hprojp as Htypstep;try exact Hprojp;try exact Hprojq;try exact H;try exact H2;try easy.

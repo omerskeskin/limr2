@@ -222,7 +222,7 @@ Proof.
     intros * Hwf Hstep Hfat Hinq Hinp0. constructor. cbv in Hinq, Hinp0.
     assert(Hnq: n=q -> False ) by (intros;tauto).
     assert(Hnp: n=p0 -> False ) by (intros;tauto).
-    eapply lem_6_10 with (r:=n) in Hstep;
+    eapply red_relevance with (r:=n) in Hstep;
     try solve [red;intros;simpl in H;destruct H;subst;tauto].
     inversion Hfat;subst. destr_hyps. exists x. repeat split;try congruence;try easy. 
   }

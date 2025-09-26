@@ -90,6 +90,8 @@ Definition weak_untilC {A:Type} (F: coseq A -> Prop) G := paco1 (weak_untilI F G
 
 Definition alwaysCG {A:Type} (F: coseq A -> Prop) := paco1 (alwaysG F) bot1.
 
+
+
 Lemma always_mon {A:Type}: forall (F: coseq A -> Prop), monotone1 (alwaysG F).
 Proof.
   red;intros. induction IN;try constructor;try easy. eapply LE. easy.
@@ -127,9 +129,7 @@ Definition headComm (p q: part) (pt: local_path): Prop :=
 
 Definition fair_path_local_inner (pt: local_path): Prop :=
   forall p q n, to_path_prop (tctxRE (lcomm p q n)) False pt ->  eventually (headComm p q) pt.
-
 Definition fair_path := alwaysCG fair_path_local_inner.
-
 Definition live_path_inner (pt: local_path) : Prop := forall p q s n, 
 (to_path_prop (tctxRE (lsend p q (Some s) n)) False pt -> eventually (headComm p q) pt) /\
 (to_path_prop (tctxRE (lrecv p q (Some s) n)) False pt -> eventually (headComm q p) pt).
@@ -142,7 +142,7 @@ forall p q s s'  k k', tctxRE (lsend p q (Some s) k) c -> tctxRE (lrecv q p (Som
 Inductive safe (R: tctx -> Prop): tctx -> Prop :=
   | safety_red :  forall c, weak_safety c -> (forall p q c' k, 
     tctxR c (lcomm p q k) c' -> 
-    (weak_safety c' /\ (exists c'', M.Equal c' c'' /\ R c''))) 
+    ((exists c'', M.Equal c' c'' /\ R c''))) 
     ->  safe R c.
                                (*
 Definition weak_safe_tctx := {c | weak_safety c}.
@@ -160,15 +160,9 @@ Proof.
   induction IN. 
   eapply safety_red with (c:=c) ;try easy.
   intros.
-  eapply H0 in H1. destr_hyps. split; try easy.
-  intros. exists x. split;try easy. eapply LE;easy.  
+  eapply H0 in H1. destr_hyps. exists x. split;try easy. eapply LE;easy.
 Qed.
 
-#[global] Instance RWMTCTXR: Proper (( @M.Equal ltt) ==> (eq) ==> ( @M.Equal ltt) ==> (iff)) tctxR.
-Proof. unfold "==>". constructor; intros; subst. 
-apply Rstruct with (g1:=y) (g2:=y1) (g1':=x) (g2':=x1);crush. 
-apply Rstruct with (g1:=x) (g2:=x1) (g1':=y) (g2':=y1);crush.
-Qed.
 Lemma weak_safe_meq_invariant: forall c c', weak_safety c -> M.Equal c c' -> 
   weak_safety c'.
 Proof.
@@ -198,12 +192,9 @@ Proof.
     pinversion H;try apply safe_monotone;subst. setoid_rewrite <- H0 in H1.
     pose proof H1 as Htx.
     eapply H3 in H1.
+    destr_hyps. exists x.
     split;try easy.
-    
-    destr_hyps.
-    exists x;crush.
-    left.
-    eapply paco1_mon_bot with (gf:=safe);pclearbot;try easy.
+    left. eapply paco1_mon_bot with (gf:=safe);pclearbot;try easy.
   }
 Qed.
 

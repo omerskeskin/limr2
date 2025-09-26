@@ -39,6 +39,7 @@ lemma/multigrafting.v
 lemma/completeness.v
 lemma/liveness_helpers.v
 lemma/liveness.v
+lemma/live_proc.v
 cpdtlib/CpdtTactics.v
 cpdtlib/DepList.v
 cpdtlib/MoreSpecif.v

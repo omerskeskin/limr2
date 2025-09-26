@@ -1034,7 +1034,7 @@ Proof.
   rewrite M.remove_spec2;try rewrite M.remove_spec1;crush.
 Qed.
 
-Lemma lem_6_10 : forall r g l g' , tctxR g l g' ->
+Lemma red_relevance : forall r g l g' , tctxR g l g' ->
      ~ ispSubjl r l ->
      M.find r g = M.find r g'.
 Proof.
@@ -1084,7 +1084,7 @@ Proof.
   apply invert in H; destr_hyps; 
   try rewrite M.add_spec1 in *; crush |
 
-  apply lem_6_10 with (r:=y) in H0,H; try rewrite M.add_spec2 in H0; 
+  apply red_relevance with (r:=y) in H0,H; try rewrite M.add_spec2 in H0; 
   try rewrite M.empty_spec in H;
   try rewrite M.add_spec2; try rewrite M.empty_spec; crush].
   
@@ -1096,5 +1096,5 @@ Proof.
   apply transition_sort_some_send in H;crush.
   destruct (Nat.eq_dec p y);destruct (Nat.eq_dec q y);subst.
   1-3: apply tctx_comm_invert in H,H0; crush.
-  apply lem_6_10 with (r:=y) in H0,H;crush. 
+  apply red_relevance with (r:=y) in H0,H;crush. 
 Qed.

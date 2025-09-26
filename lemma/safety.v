@@ -21,7 +21,7 @@ Proof.
     assert (Hsubp: issubProj (ltt_send q xp) G p) by (apply assoc_inv_find with (gamma:=gamma);crush). 
     assert (Hsubq: issubProj (ltt_recv p xq) G q) by (apply assoc_inv_find with (gamma:=gamma);crush).
 
-    eapply lem_6_16_simul_subproj with (xq:=xq) in Hsubp;try easy.
+    eapply simul_subproj with (xq:=xq) in Hsubp;try easy.
     eapply Forall2R_prop with (l:=k) (p:=(s,x4)) in Hsubp;try easy. destr_hyps.
     destruct H9;try easy. destr_hyps;crush.
     rename x5 into Tp, x7 into Tq, x3 into s1, x6 into s2.
@@ -60,8 +60,5 @@ Proof.
         apply assoc_implies_projectable in Hassoc as Hproj;try easy.
     }
      destr_hyps.
-     split. apply assoc_implies_weak_safety with (G:=x);try easy.
-    exists c'.
-    split;try easy. 
-    right. eapply CIH with (G:=x);try easy.
+     exists c'. split;try easy. right. eapply CIH with (G:=x);try easy.
 Qed.

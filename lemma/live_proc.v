@@ -18,8 +18,11 @@ Definition proc_path_valid_criteria := (fun x1 (l:label)  x2  =>
     | (g1,(lcomm p q ell), g2) => betaP_lbl g1 (lcomm p q ell) g2 /\ typable g1
     | _=> False
   end).
-
+From Coq Require Import ClassicalDescription.
 From Coq Require Import IndefiniteDescription.
+
+Locate excluded_middle_informative.
+Locate constructive_indefinite_description.
 
 Definition proc_valid_pathC := valid_path_GC proc_path_valid_criteria.
 
@@ -27,7 +30,6 @@ Definition betaRtc := clos_refl_trans session betaP.
 
 Print path_assoc.
 
-Search "local" "path".
 
 Variant typ_path  (R: coseq (session * option label) -> coseq (tctx * option label) -> Prop) :  coseq (session * option label) -> coseq (tctx * option label) -> Prop :=
     | typ_nil : typ_path R conil conil
@@ -85,8 +87,10 @@ Definition head_trans_proc p q ell (xs:coseq (session * option label)) := match 
   | cocons (_, Some (lcomm p' q' ell')) _ => p=p' /\ q=q' /\ ell =ell'
   | _ => False end.
 
+Print live_path_inner.
+
 Definition fairness_proc_inner xs := forall p q ell, head_comm_enabled_proc p q ell xs ->
-eventually (head_trans_proc p q ell) xs.
+exists ell',eventually (head_trans_proc p q ell') xs.
 
 Definition fair_path_proc := alwaysCG fairness_proc_inner.
 
@@ -215,9 +219,14 @@ Proof.
 	constructor. red;intros. simpl in H1. red in H1;destr_hyps.
 	eapply sess_fidelity in H1 as Hfid;try exact H;try easy;destr_hyps.
 	red in Hfair.
-	pinversion Hfair;subst. red in H7. specialize (H7 p q x2). 
-	eapply typ_path_preserves_fairness_helper with (xs:=cocons (M,l) ms) (ell:=x2). pfold. easy.
-	eapply H7;red. exists x1;easy.
+	pinversion Hfair;subst. red in H7. specialize (H7 p q x2).
+    Print fair_path_local_inner.
+    assert(Hra : head_comm_enabled_proc p q x2 (cocons (M, l) ms)) by 
+    (red;simpl;exists x1;easy).
+    specialize (H7 Hra). destr_hyps. 
+	eapply typ_path_preserves_fairness_helper with (xs:=cocons (M,l) ms) (ell:=x3). 
+    pfold. easy.
+    easy. 
 	right. eapply CIH with (xs:=ms). pinversion Hvalid;try eapply valid_path_mon;subst;try easy. pfold. constructor.
 	pinversion Hfair;subst. easy.
 	easy.
@@ -225,7 +234,8 @@ Qed.
 	
 Definition extends_to_fair M := exists l xs, coseq_head xs = Some (M,l) /\ proc_valid_pathC xs /\ fair_path_proc xs.
 
-Definition fairness_feasible := forall M, extends_to_fair M.
+Definition fairness_feasible := forall M, typable M -> extends_to_fair M.
+
 
 (*
 Definition trans_with_p_enabled p M := exists q ell M', 
@@ -239,18 +249,9 @@ Admitted.
 Theorem trans_p_dec : forall p M, {trans_with_p_enabled p M} + {~ trans_with_p_enabled p M}.
 Admitted.
 *)
-Definition get_next_trans_with_p p M : 
-    option ({z | match z with (M',q,ell) => betaP_lbl M (lcomm p q ell) M' \/ betaP_lbl M (lcomm q p ell) M' end}).
-Proof.
-Admitted.
 
-Lemma fairness_feasible_proof : fairness_feasible.
-Proof.
-    red;intros;red;intros.
 
-CoFixpoint fair_scheduler (p_next : part) (M:session) : coseq (session * option label). 
-Proof.
-    destruct (get_next_trans_with_p p_next M).
+
 *)
 
 Lemma typ_path_exists: forall M gamma xs l, typ_sess M gamma -> proc_valid_pathC (cocons (M,l) xs) ->
@@ -1041,6 +1042,14 @@ Proof.
     eapply p_send_no_tau in H0;subst;try easy. exists x0;easy.
 Qed.
 
+Lemma unfold_ooo_lemma : forall p q P M M', InT q M -> unfoldP M ((p<-- P) |||M') ->
+    p=q \/ InT q M'.
+    Proof.
+        intros * Hinq Hunf.
+        eapply part_after_unf in Hunf;try exact Hinq. red in Hunf. simpl in Hunf.
+        destruct Hunf;try tauto.
+    Qed. 
+
 Theorem sess_fidelity_strong : forall M gamma M' e p q ell ell' P' gamma', 
 typ_sess M gamma -> tctxR gamma (lcomm p q ell) gamma' ->
 unfoldP M ((p <-- p_send q ell' e P') |||M') ->
@@ -1074,14 +1083,8 @@ Proof.
 	{
 		red in H6. specialize (H6 _ _ H0). pinversion H6;try apply wfltt.wfltt_mon;try easy.
 	}
-	eapply assoc.lem_6_16_simul_subproj in Hsub1 as Hsim;try exact Hsub2;try easy.
-	Lemma unfold_ooo_lemma : forall p q P M M', InT q M -> unfoldP M ((p<-- P) |||M') ->
-    p=q \/ InT q M'.
-    Proof.
-        intros * Hinq Hunf.
-        eapply part_after_unf in Hunf;try exact Hinq. red in Hunf. simpl in Hunf.
-        destruct Hunf;try tauto.
-    Qed. 
+	eapply assoc.simul_subproj in Hsub1 as Hsim;try exact Hsub2;try easy.
+	
     eapply unfold_ooo_lemma in Hinq as Hinq';try exact Hunf.
     destruct Hinq';try easy.
     eapply move_forward_h in H10. destr_hyps.
@@ -1164,8 +1167,8 @@ Proof.
 	{
 		red in H6. specialize (H6 _ _ H0). pinversion H6;try apply wfltt.wfltt_mon;try easy.
 	}
-    Check assoc.lem_6_16_simul_subproj.
-	eapply assoc.lem_6_16_simul_subproj in Hsub1 as Hsim;try exact Hsub2;try easy.
+    Check assoc.simul_subproj.
+	eapply assoc.simul_subproj in Hsub1 as Hsim;try exact Hsub2;try easy.
 	
     eapply unfold_ooo_lemma in Hinq as Hinq';try exact Hunf.
     destruct Hinq';try easy.
@@ -1553,7 +1556,13 @@ Proof.
 	intros Ax_fairness * Hsess. red. intros. split.
 	{
 		intros * Hpq H0.
-		specialize (Ax_fairness ((p <-- p_send q ell e P') ||| M')). red in Ax_fairness. destr_hyps.
+		specialize (Ax_fairness ((p <-- p_send q ell e P') ||| M')). red in Ax_fairness.
+        assert(Htypr : typable ((p <-- p_send q ell e P') ||| M')).
+        {
+            red. eapply sub_red_Rtc in H;
+            try exact Hsess;destr_hyps. eapply typ_after_unfold in H0;try exact H. exists x;easy.   
+        }
+        specialize (Ax_fairness Htypr). destr_hyps.
 		destruct x0;try easy. destruct p0;try easy. simpl in H1;inversion H1;subst;clear H1.
 		eapply sub_red_Rtc in Hsess;try exact H.
 		destruct Hsess as [gamma' Hsess].
@@ -1691,8 +1700,14 @@ Proof.
     }
     {
 		intros * Hpq H0.
-		specialize (Ax_fairness ((p <-- p_recv q llp) ||| M')). red in Ax_fairness. destr_hyps.
-		destruct x0;try easy. destruct p0;try easy. simpl in H1;inversion H1;subst;clear H1.
+		specialize (Ax_fairness ((p <-- p_recv q llp) ||| M')). red in Ax_fairness. 
+        assert(Htypr : typable ((p <-- p_recv q llp) ||| M')).
+        {
+            red. eapply sub_red_Rtc in H;
+            try exact Hsess;destr_hyps. eapply typ_after_unfold in H0;try exact H. exists x;easy.   
+        }
+        specialize (Ax_fairness Htypr). destr_hyps.
+        destruct x0;try easy. destruct p0;try easy. simpl in H1;inversion H1;subst;clear H1.
 		eapply sub_red_Rtc in Hsess;try exact H.
 		destruct Hsess as [gamma' Hsess].
 		eapply typ_path_exists in H2 as Htypp;try exact Hsess. destr_hyps.

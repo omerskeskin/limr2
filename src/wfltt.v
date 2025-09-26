@@ -66,7 +66,7 @@ Proof.
         eapply wfltt_onth_wfltt_send with (p:=q) in H0;try easy.
         }
         {
-            eapply lem_6_10 with (r:= p0) in Hred.
+            eapply red_relevance with (r:= p0) in Hred.
             rewrite H2 in Hred.
             specialize (Hwf p0 _ Hred). easy.
             crush.
@@ -87,7 +87,7 @@ Proof.
         eapply wfltt_onth_wfltt_recv with (p:=q) in H0;try easy.
         }
         {
-            eapply lem_6_10 with (r:= p0) in Hred.
+            eapply red_relevance with (r:= p0) in Hred.
             rewrite H2 in Hred.
             specialize (Hwf p0 _ Hred). easy.
             crush.
@@ -110,7 +110,7 @@ Proof.
        
     }
     {
-        eapply lem_6_10 with (r:=p0) in Hred.
+        eapply red_relevance with (r:=p0) in Hred.
         rewrite H6 in Hred. specialize (Hwf p0 _ Hred). easy. crush.
     }
 Qed.

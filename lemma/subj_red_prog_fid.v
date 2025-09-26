@@ -24,7 +24,7 @@ Lemma active_parts_subset: forall gamma pt p q ell gamma',
       eapply tctx_comm_invert in Hred;destr_hyps;red;
       exists (ltt_recv p x4);split;try easy.
       Search tctxR M.find.
-      eapply lem_6_10 with (r:=pt) in Hred;try easy. red;exists x;split;congruence;try easy.
+      eapply red_relevance with (r:=pt) in Hred;try easy. red;exists x;split;congruence;try easy.
       simpl. red;intros. destruct H1;subst;tauto.
     Qed.
 
@@ -122,7 +122,7 @@ Proof.
       tac_use_assoc Hassoc p Hispartsp;destr_hyps. 
       rewrite Htp in H3;inversion H3;subst;easy.
     }
-    eapply assoc.lem_6_16_simul_subproj with (q:=p) (xp:=x3) (xq:=x2) 
+    eapply assoc.simul_subproj with (q:=p) (xp:=x3) (xq:=x2) 
     in Hispartsq as Hsim;try easy;try solve [tac_wfl_to_slist
 
     | 
@@ -252,7 +252,7 @@ Proof.
       tac_use_assoc Hassoc p Hispartsp;destr_hyps. 
       rewrite Htp in H3;inversion H3;subst;easy.
     }
-    eapply assoc.lem_6_16_simul_subproj with (q:=p) (xp:=x3) (xq:=x2) 
+    eapply assoc.simul_subproj with (q:=p) (xp:=x3) (xq:=x2) 
     in Hispartsq as Hsim;try easy;try solve [tac_wfl_to_slist
 
     | 
@@ -381,7 +381,7 @@ Proof.
       tac_use_assoc Hassoc p Hispartsp;destr_hyps. 
       rewrite Htp in H3;inversion H3;subst;easy.
     }
-    eapply assoc.lem_6_16_simul_subproj with (q:=p) (xp:=x3) (xq:=x2) 
+    eapply assoc.simul_subproj with (q:=p) (xp:=x3) (xq:=x2) 
     in Hispartsq as Hsim;try easy;try solve [tac_wfl_to_slist
 
     | 
@@ -586,7 +586,7 @@ Proof.
 					red in Hsubp;destr_hyps. eapply assoc.subtype_send_inv1 in H14. destr_hyps;subst.
 					pinversion H13;subst;try easy;try apply proj_mon.
 				}
-				eapply assoc.lem_6_16_simul_subproj in Hsubp as Hsimul;try exact Hsubq;try easy.
+				eapply assoc.simul_subproj in Hsubp as Hsimul;try exact Hsubq;try easy.
 				move H7 at bottom. eapply subtype_send_inv in H7.
 				assert(Honthl: onth ell (extendLis ell (Some (se, Tpc)))=Some (se,Tpc)) by (rewrite extendExtract;easy).
 				eapply Forall2R_prop in H7;try exact Honthl;tac_sanitize.
@@ -719,7 +719,7 @@ Proof.
 	{
 		red in H8. specialize (H8 _ _ H11). pinversion H8;try apply wfltt.wfltt_mon;try easy.
 	}
-	eapply assoc.lem_6_16_simul_subproj in Hsub1 as Hsim;try exact Hsub2;try easy.
+	eapply assoc.simul_subproj in Hsub1 as Hsim;try exact Hsub2;try easy.
 	eapply typ_after_tauRtc in H21 as Ht2;try exact H17. eapply inv_proc_send in Ht2;try reflexivity;destr_hyps.
 	eapply subtype_send_inv in H24.
 	assert(onth x6 (extendLis x6 (Some (x10,x11)))=(Some (x10,x11))) by (rewrite extendExtract;easy).

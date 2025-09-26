@@ -920,7 +920,7 @@ Proof.
     eapply assoc_inv_find with (g:=g) in H2;try easy.
     pose proof H14 as H214.
     eapply assoc_inv_find with (g:=g) in H14;try easy.
-    eapply lem_6_16_simul_subproj with (xp:=xs) in H14;try easy.
+    eapply simul_subproj with (xp:=xs) in H14;try easy.
     eapply Forall2R_prop with (l:=ell') (p:=(s1,Tp)) in H14;try easy.
     destr_hyps.
     destruct H7;try easy.
@@ -1010,7 +1010,7 @@ Proof.
         pose proof H3 as Htctx_wf.
         unfold tctx_wf in H3.  eapply H3 in H7. eapply H3 in H6.
         pose proof Hsubp as Hsims.
-        eapply lem_6_16_simul_subproj with (xq:=xq) in Hsims; try apply decidable_helper.triv_pt_p; try easy.
+        eapply simul_subproj with (xq:=xq) in Hsims; try apply decidable_helper.triv_pt_p; try easy.
         pose proof H7 as xpSlist. pose proof H6 as xqSlist.
         rewrite Hpgamma in Hmfindp. apply eq_sym in Hmfindp;inversion Hmfindp. subst.
         apply opt_lem1 in Hellsome.
