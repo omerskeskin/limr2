@@ -145,6 +145,17 @@ Definition no_trans_involving p M := forall q ell M',
 Definition trans_involving p M := exists q ell M', 
 (betaP_lbl M (lcomm p q ell) M' \/ betaP_lbl M (lcomm q p ell) M').
 
+Lemma transes_neg : forall p M, no_trans_involving p M <-> ~ trans_involving p M.
+Proof.
+    split;intros.
+    red in H. red;intros. red in H0. destr_hyps.
+    specialize (H x x0 x1). tauto.
+    
+    red. intros. red in H. unfold trans_involving in H.
+    split;red;intros; eapply H. exists q, ell, M'. tauto.
+    exists q, ell, M'. tauto.
+Qed.
+
 Definition to_coseq_prop {A:Type} (P:A -> Prop) := fun u=> match u with conil => False | cocons x xs => P x end.
 
 Lemma ev_expansion {A:Type}: forall P (x:A) xs, eventually P (cocons x xs) -> 
@@ -164,13 +175,24 @@ Proof.
 Qed.
 
 Lemma get_first_P_stream P (xs:coseq nat) (Hinv: eventually (to_coseq_prop P) xs) :
-    exists c, is_suffix c xs /\ to_coseq_prop P c.
+    exists c, is_suffix c xs /\ until (to_coseq_prop (fun x=> ~ P x)) 
+    (fun u=> u=c) xs /\
+    to_coseq_prop P c.
 Proof.
     induction Hinv.
-    exists xs;split;try easy;constructor.
+    exists xs;split;try easy. constructor. constructor; try easy. constructor. easy.
+
     destr_hyps.
-    exists x0. split;try easy. constructor. easy.
+    destruct (classic (P x)).
+    {
+        exists (cocons x xs). split;try easy.
+        constructor. constructor; try easy. constructor. easy.   
+    }
+    exists x0. split;try easy. constructor 2. easy.
+    constructor. constructor 2. easy.
+    easy. easy.
 Qed.
+
 
 Lemma transition_eventually_in_stream : forall M xs,
 has_transition_left M -> 
@@ -205,6 +227,14 @@ Proof.
     eapply always_suffix;try exact H. red in H0. eapply H0;try easy.
 Qed.
 
+Lemma until_proper_props {A:Type}: forall (P: coseq A -> Prop) P' Q Q', (forall x, P x <-> P' x) ->
+(forall x, Q x <-> Q' x) -> forall xs, (until P Q xs) <-> (until P' Q' xs).
+Proof.
+    intros * Hex1 Hex2.
+    split;intros;induction H. constructor. rewrite <- Hex2. easy.
+    constructor 2. rewrite <- Hex1. easy. easy.
+    constructor. rewrite Hex2. easy. constructor 2. rewrite Hex1. easy. easy.
+Qed.
 
 Ltac indef_destruct H := let tth := type of H in match tth with 
      | ex _  => let nx := fresh "x" in let nh:= fresh "H" in  
@@ -213,44 +243,32 @@ Ltac indef_destruct H := let tth := type of H in match tth with
 Definition get_first_available_trans (parts:coseq nat) M  (Hpn : is_part_stream M parts): 
     has_transition_left M ->
     parts <> conil ->
-    {z | match z with (M',p,q,ell,cd) => 
-    (*encode the *first* condition here*)
-    betaP_lbl M (lcomm p q ell) M' /\ is_part_stream M cd end}.
+    {cd | until (fun u=> 
+            match u with cocons x xs => no_trans_involving x M 
+            | conil => False end
+            ) (fun u=> match u with cocons x xs => trans_involving x M /\ cd = cocons x xs 
+                | conil=>False end) 
+            parts}.
 Proof.
     destruct parts;intros;try easy.
     eapply transition_eventually_in_stream in H as Hin1;try exact Hpn.
     eapply get_first_P_stream in Hin1.
     indef_destruct Hin1. destr_hyps.
-    destruct x;simpl in H2;try easy. red in H2.
-    indef_destruct H2.
-    eapply or_to_plus in H5. destruct H5.
-    exists (x2,n0, x0,x1,cocons n0 x). split;try easy. eapply is_part_stream_suf;try exact H1;try easy.
-    exists (x2,x0, n0,x1,cocons n0 x). split;try easy. eapply is_part_stream_suf;try exact H1;try easy.
+    destruct x;simpl in H2;try easy. simpl in H3. red in H3.
+    indef_destruct H3.
+    eapply or_to_plus in H6; destruct H6;
+    exists (cocons n0 x);
+    try solve 
+    [
+        eapply until_proper_props;try exact H2;
+        intros; destruct x3; simpl;try  easy;
+        try solve [eapply transes_neg];
+        split;intros;destr_hyps; 
+        [ inversion H4;subst;try easy |
+        inversion H3;subst; split;try easy; red; exists x0, x1, x2; tauto]
+    ].
 Qed.
 
-(*
-Lemma trans_enable_coheres_stream : forall M , has_transition_left M ->
-eventually (fun u=> match u with cocons a b => 
-    exists q ell M', betaP_lbl M (lcomm a q ell) M' \/
-    betaP_lbl M (lcomm q a ell) M'
-    | _ => False
-    end) (inf_part_list M ).
-Proof.
-    intros.
-    red in H. destr_hyps.
-    eapply betaP_lbl_means_part in H as [Hp1 Hp2].
-    set (parts_stream:=(inf_part_list M Hnemp)).
-    assert(Hev:eventually (fun u=> 
-        match u with conil => False | cocons a _ => a= x end) parts_stream ).
-    {
-        unfold parts_stream. unfold inf_part_list.
-        unfold InT in *.
-        pose proof Hnemp as Hnemp2.
-        rewrite (coseq_eq (repeat_list _ _ _)). simpl.
-        assert(exists p ps, flattenT M = p::ps ).
-        destruct (flattenT M);try easy. 
-    }
-*)
 
 Lemma part_after_beta : forall M p q ell M' r, betaP_lbl M (lcomm p q ell) M' -> 
     InT r M ->
@@ -280,8 +298,7 @@ Proof.
     {
         eapply get_first_available_trans in h as htr;try exact Hpartst.
         destruct htr.
-        destruct x as [[[[M' p]  q]ell] cd].
-        destr_hyps. 
+        red in h. destr
         assert(Hpa2: is_part_stream M' cd).
         {
             red;intros.
