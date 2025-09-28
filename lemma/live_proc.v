@@ -18,10 +18,8 @@ Definition proc_path_valid_criteria := (fun x1 (l:label)  x2  =>
     | (g1,(lcomm p q ell), g2) => betaP_lbl g1 (lcomm p q ell) g2 /\ typable g1
     | _=> False
   end).
-From Coq Require Import ClassicalDescription.
 From Coq Require Import IndefiniteDescription.
 
-Locate excluded_middle_informative.
 Locate constructive_indefinite_description.
 
 Definition proc_valid_pathC := valid_path_GC proc_path_valid_criteria.
