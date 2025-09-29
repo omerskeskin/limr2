@@ -145,6 +145,16 @@ Definition no_trans_involving p M := forall q ell M',
 Definition trans_involving p M := exists q ell M', 
 (betaP_lbl M (lcomm p q ell) M' \/ betaP_lbl M (lcomm q p ell) M').
 
+
+
+Definition trans_involving_strong p M:= sum {z | 
+        match z with (q, ell, M') =>
+        betaP_lbl M (lcomm p q ell) M' end}
+        {z | 
+        match z with (q, ell, M') =>
+        betaP_lbl M (lcomm q p ell) M' end}
+        .
+
 Lemma transes_neg : forall p M, no_trans_involving p M <-> ~ trans_involving p M.
 Proof.
     split;intros.
@@ -240,6 +250,20 @@ Ltac indef_destruct H := let tth := type of H in match tth with
      | ex _  => let nx := fresh "x" in let nh:= fresh "H" in  
     destruct (constructive_indefinite_description _ H) as [nx nh];try indef_destruct nh;clear H end.
 
+Lemma until_to_eventually {A:Type}: forall  Q P (xs : coseq A), 
+    until Q P xs -> eventually P xs.
+Proof.
+    intros.
+    induction H. constructor;easy.
+    constructor 2. easy.
+Qed.
+
+Lemma ev_equals_suf {A:Type}: forall (xs ys : coseq A), eventually (fun u=> u= ys) xs -> is_suffix ys xs.
+Proof.
+    intros.
+    induction H;subst. constructor. constructor 2. easy.
+Qed.
+
 Definition get_first_available_trans (parts:coseq nat) M  (Hpn : is_part_stream M parts): 
     has_transition_left M ->
     parts <> conil ->
@@ -248,7 +272,10 @@ Definition get_first_available_trans (parts:coseq nat) M  (Hpn : is_part_stream 
             | conil => False end
             ) (fun u=> match u with cocons x xs => trans_involving x M /\ cd = cocons x xs 
                 | conil=>False end) 
-            parts}.
+            parts /\ 
+            (match cd with cocons x xs => trans_involving x M | _ => False end)
+            /\ is_suffix cd parts
+            }.
 Proof.
     destruct parts;intros;try easy.
     eapply transition_eventually_in_stream in H as Hin1;try exact Hpn.
@@ -257,7 +284,7 @@ Proof.
     destruct x;simpl in H2;try easy. simpl in H3. red in H3.
     indef_destruct H3.
     eapply or_to_plus in H6; destruct H6;
-    exists (cocons n0 x);
+    exists (cocons n0 x);split;try split;
     try solve 
     [
         eapply until_proper_props;try exact H2;
@@ -266,7 +293,8 @@ Proof.
         split;intros;destr_hyps; 
         [ inversion H4;subst;try easy |
         inversion H3;subst; split;try easy; red; exists x0, x1, x2; tauto]
-    ].
+    | exists x0,x1,x2;tauto
+    | eapply ev_equals_suf;eapply until_to_eventually;try exact H2].
 Qed.
 
 
@@ -292,24 +320,45 @@ Proof.
     eapply part_before_unf;try exact H;try easy. 
 Qed.
 
+Lemma has_transition_left_means_parts_some : forall M parts, has_transition_left M -> is_part_stream M parts ->
+    parts <> conil.
+Proof.
+    intros.
+    red in H. destr_hyps. eapply betaP_lbl_means_part in H. destr_hyps.
+        red in H0. eapply H0 in H.
+        destruct parts;try easy. pinversion H. red in H2.  inversion H2;subst.
+        simpl in H3. easy.
+Qed.
+
 CoFixpoint fair_scheduler parts (M:session) (Hpartst: is_part_stream M parts): coseq (session * option label). 
 Proof.
     destruct (excluded_middle_informative (has_transition_left M)).
     {
-        eapply get_first_available_trans in h as htr;try exact Hpartst.
+        eapply get_first_available_trans in h as htr;try exact Hpartst;
+        try solve [eapply has_transition_left_means_parts_some in Hpartst;try easy].
         destruct htr.
-        red in h. destr
-        assert(Hpa2: is_part_stream M' cd).
+        destruct x;try easy.
+        destruct a. destr_hyps.
+        red in H0.  indef_destruct H0.
+        eapply or_to_plus in H4. destruct H4.
+        assert(Hpa2: is_part_stream x2 x).
         {
             red;intros.
-            red in H0. eapply part_before_beta in H;try exact H1.
-            eapply H0 in H. easy.
+            red in H0. eapply part_before_beta in b;try exact H0.
+            eapply suffix_tail in H1.
+            eapply always_suffix;try exact H1. eapply Hpartst;easy.
         }
-        exact (cocons (M,Some (lcomm p q ell)) (fair_scheduler cd M' Hpa2)).
-        red in h. destr_hyps. eapply betaP_lbl_means_part in H. destr_hyps.
-        red in Hpartst. eapply Hpartst in H.
-        destruct parts;try easy. pinversion H. red in H1. inversion H1;subst.
-        simpl in H2. easy.         
+        exact (cocons (M,Some (lcomm n x0 x1)) (fair_scheduler x x2 Hpa2)).
+
+        assert(Hpa2: is_part_stream x2 x).
+        {
+            red;intros.
+            red in H0. eapply part_before_beta in b;try exact H0.
+            eapply suffix_tail in H1.
+            eapply always_suffix;try exact H1. eapply Hpartst;easy.
+        }
+        exact (cocons (M,Some (lcomm x0 n x1)) (fair_scheduler x x2 Hpa2)).
+
     }
     {
         exact (cocons (M, None) conil).   
@@ -322,8 +371,45 @@ Proof.
 Qed.
 
 
-Lemma fair_scheduler_valid : forall M, 
-    proc_valid_pathC (fair_scheduler (inf_part_list M) M (inf_parts_is_parts_stream M)).
+Lemma fair_scheduler_head: forall M xs Ht, exists l tl,
+    fair_scheduler xs M Ht = cocons (M,l) tl.
+Proof.
+    intros.  rewrite (coseq_eq (fair_scheduler xs M Ht)).
+    simpl.
+    destruct(excluded_middle_informative (has_transition_left M)).
+    destruct (get_first_available_trans xs M Ht h
+(has_transition_left_means_parts_some M xs h Ht)). destruct x;try easy.
+    destruct a. destruct a. 
+    destruct (constructive_indefinite_description
+(fun q : opt_lbl =>
+exists (ell : opt_lbl) (M' : session),
+betaP_lbl M (lcomm n q ell) M' \/
+betaP_lbl M (lcomm q n ell) M') t).
+    destruct (constructive_indefinite_description
+(fun ell : opt_lbl =>
+exists M' : session,
+betaP_lbl M (lcomm n x0 ell) M' \/
+betaP_lbl M (lcomm x0 n ell) M') e).
+    destruct (constructive_indefinite_description
+(betaP_lbl M (lcomm n x0 x1) \1/ betaP_lbl M (lcomm x0 n
+x1)) e0).
+    destruct (or_to_plus (betaP_lbl M (lcomm n x0 x1) x2)
+(betaP_lbl M (lcomm x0 n x1) x2) o).
+    simpl. exists (Some (lcomm n x0 x1)), (fair_scheduler x x2
+(fun (p : opt_lbl) (H : InT p x2) =>
+always_suffix (in_stream p) x xs
+(Ht p (part_before_beta M n x0 x1 x2 p b H))
+(suffix_tail n xs x i))). easy.
+    simpl. exists (Some (lcomm x0 n x1)), (fair_scheduler x x2
+(fun (p : opt_lbl) (H : InT p x2) =>
+always_suffix (in_stream p) x xs
+(Ht p (part_before_beta M x0 n x1 x2 p b H))
+(suffix_tail n xs x i))). easy.
+    exists None, conil. easy.
+Qed.
+
+Lemma fair_scheduler_valid : forall M (Htyp: typable M) inf_pl Hstream_parts, 
+    proc_valid_pathC (fair_scheduler inf_pl M (Hstream_parts)).
 Proof.
     pcofix CIH. intros.
     pfold.    
@@ -331,23 +417,107 @@ Proof.
         rewrite coseq_eq. simpl.
     destruct (excluded_middle_informative (has_transition_left M)).
     {
-        assert(exists pt ps, flattenT M = pt ::ps).
+        destruct (get_first_available_trans inf_pl M Hstream_parts h
+            (has_transition_left_means_parts_some M inf_pl
+            h Hstream_parts)).
+        destruct x;try easy. 
+        destruct a;try easy.
+        destruct a;try easy.
+        destruct (constructive_indefinite_description
+        (fun q : opt_lbl =>
+        exists (ell : opt_lbl) (M' : session),
+        betaP_lbl M (lcomm n q ell) M' \/
+        betaP_lbl M (lcomm q n ell) M') t).
+        destruct (constructive_indefinite_description
+        (fun ell : opt_lbl =>
+        exists M' : session,
+        betaP_lbl M (lcomm n x0 ell) M' \/
+        betaP_lbl M (lcomm x0 n ell) M') e).
+        destruct (constructive_indefinite_description
+        (betaP_lbl M (lcomm n x0 x1) \1/ betaP_lbl M (lcomm x0 n
+        x1)) e0).
+        destruct (or_to_plus (betaP_lbl M (lcomm n x0 x1) x2)
+        (betaP_lbl M (lcomm x0 n x1) x2) o).
+        (*p1*)
+        specialize fair_scheduler_head with (M:=x2) (xs:=x) (Ht:= (fun (p : opt_lbl) (H : InT p x2) =>
+        always_suffix (in_stream p) x inf_pl
+        (Hstream_parts p (part_before_beta M n x0 x1 x2 p b H))
+        (suffix_tail n inf_pl x i))) as fsd.
+        destr_hyps.
+        rewrite H. constructor. 
         {
-            destruct (flattenT M) eqn:Ht. red in h. destr_hyps. eapply betaP_lbl_means_part in H;destr_hyps.
-            red in H. rewrite Ht in H. inversion H.
-            exists n,l. easy. 
+            right. rewrite <- H. eapply CIH.
+            red in Htyp. 
+            destr_hyps. eapply sub_red_strong_labelled in b as hbt;try exact H2. destr_hyps.
+            exists x9. easy.
         }
-        
-        destr_hyps. 
-        
-        red in h. destr_hyps. simpl.
-        rewrite -> H.
-        destruct (betaP_lbl_means_part M x4 x1 x2 x3 b).
-        simpl.
-        rewrite -> H.
+        {
+            red. split;try easy.
+        }    
+        specialize fair_scheduler_head with (M:=x2) (xs:=x) (Ht:= (fun (p : opt_lbl) (H : InT p x2) =>
+        always_suffix (in_stream p) x inf_pl
+        (Hstream_parts p (part_before_beta M x0 n x1 x2 p b H))
+        (suffix_tail n inf_pl x i))) as fsd.
+        destr_hyps.
+        rewrite H. constructor. 
+        {
+            right. rewrite <- H. eapply CIH.
+            red in Htyp. 
+            destr_hyps. eapply sub_red_strong_labelled in b as hbt;try exact H2. destr_hyps.
+            exists x9. easy.
+        }
+        {
+            red. split;try easy.
+        }
+    }    
+    {
+        constructor.   
     }
-    constructor.
+Qed.
 
-Lemma fair_scheduler_fair : forall M, 
-    fair_path_proc (fair_scheduler (inf_part_list M) M (inf_parts_is_parts_stream M)).
+Fixpoint stream_nth {A:Type} n (xs:coseq A) := 
+    match xs with conil => None |
+    cocons x xs => match n with 0 => Some x
+                    | S y => stream_nth y xs end
+                end.
+     
 
+
+Definition distance_to_p : forall p M xs, InT p M -> is_part_stream M xs ->
+    exists n, stream_nth n xs = Some p /\ until 
+        (fun u=>match u with cocons x xs => x <> p | _ => False end)
+        (fun u=>match u with cocons x xs => x = p | _ => False end)
+        xs.
+Proof.
+    intros * Hinm Hstream. red in Hstream. 
+    eapply Hstream in Hinm.
+    assert(Hinst: in_stream p xs). 
+    {
+        pinversion Hinm;subst;red in H. 
+        inversion H;subst. simpl in H0. easy. easy.
+    }
+    red in Hinst. induction Hinst.
+    {
+        destruct xs;try easy.
+        red in H;subst. exists 0. split;try easy. constructor 1. easy.   
+    }
+    {
+        destruct (Nat.eq_dec x p);subst.
+        exists 0. split;simpl;try easy. constructor. easy.
+        
+        pinversion Hinm;subst. eapply IHHinst in H2. destr_hyps.
+        exists (S x0).
+        split. simpl. easy. constructor 2;try easy.
+        intros.
+        eapply Hstream in H. pinversion H;subst;easy.
+    }
+Qed.
+
+
+
+Lemma fair_scheduler_fair : forall M (Htyp:typable M) inf_pl Hplt, 
+    fair_path_proc (fair_scheduler inf_pl M Hplt).
+Proof.
+    pcofix CIH.
+    intros. 
+    pfold.  
