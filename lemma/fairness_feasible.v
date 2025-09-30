@@ -12,6 +12,7 @@ lemma.liveness_helpers lemma.liveness lemma.live_proc.
 
 From Coq Require Import ClassicalDescription.
 From Coq Require Import IndefiniteDescription.
+From Coq Require Import Lia.
 
 Definition has_transition_left M := exists p q ell M', betaP_lbl M (lcomm p q ell) M'.
 
@@ -140,20 +141,11 @@ Qed.
 Definition is_part_stream M xs := forall p, InT p M -> alwaysCG (in_stream p) xs.
 
 Definition no_trans_involving p M := forall q ell M', 
-(~betaP_lbl M (lcomm p q ell) M' /\ ~ betaP_lbl M (lcomm q p ell) M').
+(~betaP_lbl M (lcomm p q ell) M').
 
 Definition trans_involving p M := exists q ell M', 
-(betaP_lbl M (lcomm p q ell) M' \/ betaP_lbl M (lcomm q p ell) M').
+(betaP_lbl M (lcomm p q ell) M').
 
-
-
-Definition trans_involving_strong p M:= sum {z | 
-        match z with (q, ell, M') =>
-        betaP_lbl M (lcomm p q ell) M' end}
-        {z | 
-        match z with (q, ell, M') =>
-        betaP_lbl M (lcomm q p ell) M' end}
-        .
 
 Lemma transes_neg : forall p M, no_trans_involving p M <-> ~ trans_involving p M.
 Proof.
@@ -162,8 +154,8 @@ Proof.
     specialize (H x x0 x1). tauto.
     
     red. intros. red in H. unfold trans_involving in H.
-    split;red;intros; eapply H. exists q, ell, M'. tauto.
-    exists q, ell, M'. tauto.
+
+    red;intros; eapply H. exists q, ell, M'. tauto.
 Qed.
 
 Definition to_coseq_prop {A:Type} (P:A -> Prop) := fun u=> match u with conil => False | cocons x xs => P x end.
@@ -283,7 +275,6 @@ Proof.
     indef_destruct Hin1. destr_hyps.
     destruct x;simpl in H2;try easy. simpl in H3. red in H3.
     indef_destruct H3.
-    eapply or_to_plus in H6; destruct H6;
     exists (cocons n0 x);split;try split;
     try solve 
     [
@@ -340,25 +331,14 @@ Proof.
         destruct x;try easy.
         destruct a. destr_hyps.
         red in H0.  indef_destruct H0.
-        eapply or_to_plus in H4. destruct H4.
         assert(Hpa2: is_part_stream x2 x).
         {
             red;intros.
-            red in H0. eapply part_before_beta in b;try exact H0.
+            red in H0. eapply part_before_beta in H4;try exact H0.
             eapply suffix_tail in H1.
             eapply always_suffix;try exact H1. eapply Hpartst;easy.
         }
         exact (cocons (M,Some (lcomm n x0 x1)) (fair_scheduler x x2 Hpa2)).
-
-        assert(Hpa2: is_part_stream x2 x).
-        {
-            red;intros.
-            red in H0. eapply part_before_beta in b;try exact H0.
-            eapply suffix_tail in H1.
-            eapply always_suffix;try exact H1. eapply Hpartst;easy.
-        }
-        exact (cocons (M,Some (lcomm x0 n x1)) (fair_scheduler x x2 Hpa2)).
-
     }
     {
         exact (cocons (M, None) conil).   
@@ -378,33 +358,22 @@ Proof.
     simpl.
     destruct(excluded_middle_informative (has_transition_left M)).
     destruct (get_first_available_trans xs M Ht h
-(has_transition_left_means_parts_some M xs h Ht)). destruct x;try easy.
+    (has_transition_left_means_parts_some M xs h Ht)). destruct x;try easy.
     destruct a. destruct a. 
     destruct (constructive_indefinite_description
-(fun q : opt_lbl =>
-exists (ell : opt_lbl) (M' : session),
-betaP_lbl M (lcomm n q ell) M' \/
-betaP_lbl M (lcomm q n ell) M') t).
+    (fun q : opt_lbl =>
+    exists (ell : opt_lbl) (M' : session),
+    betaP_lbl M (lcomm n q ell) M') t).
     destruct (constructive_indefinite_description
-(fun ell : opt_lbl =>
-exists M' : session,
-betaP_lbl M (lcomm n x0 ell) M' \/
-betaP_lbl M (lcomm x0 n ell) M') e).
-    destruct (constructive_indefinite_description
-(betaP_lbl M (lcomm n x0 x1) \1/ betaP_lbl M (lcomm x0 n
-x1)) e0).
-    destruct (or_to_plus (betaP_lbl M (lcomm n x0 x1) x2)
-(betaP_lbl M (lcomm x0 n x1) x2) o).
-    simpl. exists (Some (lcomm n x0 x1)), (fair_scheduler x x2
-(fun (p : opt_lbl) (H : InT p x2) =>
-always_suffix (in_stream p) x xs
-(Ht p (part_before_beta M n x0 x1 x2 p b H))
-(suffix_tail n xs x i))). easy.
-    simpl. exists (Some (lcomm x0 n x1)), (fair_scheduler x x2
-(fun (p : opt_lbl) (H : InT p x2) =>
-always_suffix (in_stream p) x xs
-(Ht p (part_before_beta M x0 n x1 x2 p b H))
-(suffix_tail n xs x i))). easy.
+    (fun ell : opt_lbl =>
+    exists M' : session, betaP_lbl M (lcomm n x0 ell) M') e).
+    destruct (constructive_indefinite_description (betaP_lbl M
+    (lcomm n x0 x1)) e0).
+    exists (Some (lcomm n x0 x1)), (fair_scheduler x x2
+    (fun (p : opt_lbl) (H : InT p x2) =>
+    always_suffix (in_stream p) x xs
+    (Ht p (part_before_beta M n x0 x1 x2 p b H))
+    (suffix_tail n xs x i))). easy.    
     exists None, conil. easy.
 Qed.
 
@@ -426,37 +395,17 @@ Proof.
         destruct (constructive_indefinite_description
         (fun q : opt_lbl =>
         exists (ell : opt_lbl) (M' : session),
-        betaP_lbl M (lcomm n q ell) M' \/
-        betaP_lbl M (lcomm q n ell) M') t).
+        betaP_lbl M (lcomm n q ell) M') t).
         destruct (constructive_indefinite_description
         (fun ell : opt_lbl =>
         exists M' : session,
-        betaP_lbl M (lcomm n x0 ell) M' \/
-        betaP_lbl M (lcomm x0 n ell) M') e).
+        betaP_lbl M (lcomm n x0 ell) M') e).
         destruct (constructive_indefinite_description
-        (betaP_lbl M (lcomm n x0 x1) \1/ betaP_lbl M (lcomm x0 n
-        x1)) e0).
-        destruct (or_to_plus (betaP_lbl M (lcomm n x0 x1) x2)
-        (betaP_lbl M (lcomm x0 n x1) x2) o).
+        (betaP_lbl M (lcomm n x0 x1)) e0).
         (*p1*)
         specialize fair_scheduler_head with (M:=x2) (xs:=x) (Ht:= (fun (p : opt_lbl) (H : InT p x2) =>
         always_suffix (in_stream p) x inf_pl
         (Hstream_parts p (part_before_beta M n x0 x1 x2 p b H))
-        (suffix_tail n inf_pl x i))) as fsd.
-        destr_hyps.
-        rewrite H. constructor. 
-        {
-            right. rewrite <- H. eapply CIH.
-            red in Htyp. 
-            destr_hyps. eapply sub_red_strong_labelled in b as hbt;try exact H2. destr_hyps.
-            exists x9. easy.
-        }
-        {
-            red. split;try easy.
-        }    
-        specialize fair_scheduler_head with (M:=x2) (xs:=x) (Ht:= (fun (p : opt_lbl) (H : InT p x2) =>
-        always_suffix (in_stream p) x inf_pl
-        (Hstream_parts p (part_before_beta M x0 n x1 x2 p b H))
         (suffix_tail n inf_pl x i))) as fsd.
         destr_hyps.
         rewrite H. constructor. 
@@ -482,11 +431,14 @@ Fixpoint stream_nth {A:Type} n (xs:coseq A) :=
                 end.
      
 
+                
+Definition until_indexed {A:Type} P Q n (xs : coseq A) := Q (stream_nth n xs) /\ forall i, i < n -> P (stream_nth i xs).
 
 Definition distance_to_p : forall p M xs, InT p M -> is_part_stream M xs ->
-    exists n, stream_nth n xs = Some p /\ until 
+    exists n, until_indexed 
         (fun u=>match u with cocons x xs => x <> p | _ => False end)
         (fun u=>match u with cocons x xs => x = p | _ => False end)
+        n
         xs.
 Proof.
     intros * Hinm Hstream. red in Hstream. 
@@ -513,6 +465,184 @@ Proof.
     }
 Qed.
 
+Definition distance_to_p_comp : forall p M xs, InT p M -> is_part_stream M xs ->
+    {n | stream_nth n xs = Some p /\ until 
+        (fun u=>match u with cocons x xs => x <> p | _ => False end)
+        (fun u=>match u with cocons x xs => x = p | _ => False end)
+        xs}.
+Proof.
+    intros. eapply distance_to_p in H0;try easy;try exact H. 
+    indef_destruct H0. exists x. easy.
+Qed.
+
+Lemma betaP_lbl_trans_enabled_after_distinct : forall M gamma Mpq Mst p q ell ell' s t,
+    typ_sess M gamma -> p <> s -> q <> t ->  betaP_lbl M (lcomm p q ell) Mpq -> 
+    betaP_lbl M (lcomm s t ell') Mst -> exists M' ell'', 
+    betaP_lbl Mst (lcomm p q ell'') M'.
+Proof.
+    intros * Htyp Hps Hqt  Hbetpq Hbetst.
+    assert(Hpt:  p <> t).
+    {
+        eapply sub_red_strong_labelled in Hbetpq as Hsubpq;try exact Htyp.
+        eapply sub_red_strong_labelled in Hbetst as Hsubst;try exact Htyp.
+        
+        destruct Hsubpq as [gamma_pq [Hsesspq Htcpq]].
+        destruct Hsubst as [gamma_st [Hsessst Htcst]].
+        destruct (Nat.eq_dec p t);try easy;subst.
+        eapply tctx_comm_invert in Htcpq, Htcst. destr_hyps.
+        congruence.         
+    }
+    assert(Hqs: q <> s).
+    {
+        eapply sub_red_strong_labelled in Hbetpq as Hsubpq;try exact Htyp.
+        eapply sub_red_strong_labelled in Hbetst as Hsubst;try exact Htyp.
+        
+        destruct Hsubpq as [gamma_pq [Hsesspq Htcpq]].
+        destruct Hsubst as [gamma_st [Hsessst Htcst]].
+        destruct (Nat.eq_dec q s);try easy;subst.
+        eapply tctx_comm_invert in Htcpq, Htcst. destr_hyps.
+        congruence. 
+    }
+    eapply sub_red_strong_labelled in Hbetpq as Hsubpq;try exact Htyp.
+    eapply sub_red_strong_labelled in Hbetst as Hsubst;try exact Htyp.
+    
+    destruct Hsubpq as [gamma_pq [Hsesspq Htcpq]].
+    destruct Hsubst as [gamma_st [Hsessst Htcst]].
+    pose proof Htcpq as Hctpq'.
+    pose proof Htcst as Htcst'.
+    eapply tctx_comm_invert in Htcpq, Htcst.
+    destr_hyps.
+    assert(exists ellt gamma', tctxR gamma_st (lcomm p q ellt) gamma').
+    {
+        eapply red_relevance with (r:=p) in Htcst' as Hredr1;
+        eapply red_relevance with (r:=q) in Htcst' as Hredr2;
+         try solve [red;intros Hfl;destruct Hfl;subst;easy].
+         evar (ellt : opt_lbl). evar (gamma':tctx).
+         exists ellt, gamma'. 
+        eapply simple_red_comm with (xp:=x7) (xq:=x9);try exact H11;try exact H9;try congruence.   
+    }
+    destr_hyps.
+    eapply sess_fidelity in H13;try exact Hsessst. destr_hyps. exists x14, x15.
+    easy.
+Qed.
+
+Lemma fair_scheduler_fair_helper : forall p q ell M M' (Htyp:typable M) inf_pl Hplt,
+    betaP_lbl M (lcomm p q ell) M' -> eventually 
+    (fun u=> exists ell', head_trans_proc p q ell' u) 
+    (fair_scheduler inf_pl M Hplt).
+Proof.
+    intros * Htyp * Htrans.
+    assert(Hinp : InT p M). eapply betaP_lbl_means_part in Htrans;tauto.
+    eapply distance_to_p in Hinp as Hdist;try exact Hplt.
+    destruct Hdist as [n Hdist].
+    generalize dependent inf_pl.
+    generalize dependent M'.
+    
+    generalize dependent M.
+    revert p q ell.
+    induction n  as [n IH] using (lt_wf_ind).
+    {
+        destruct n.
+        {
+            constructor.
+            rewrite (coseq_eq (fair_scheduler _  _ _)). simpl.  
+            destruct (excluded_middle_informative (has_transition_left M)). 
+            destruct (get_first_available_trans inf_pl M Hplt h (has_transition_left_means_parts_some M inf_pl h Hplt)).
+            destruct x;try easy.
+            destruct a;destruct a;try easy.
+            
+            destruct (constructive_indefinite_description
+            (fun q0 : opt_lbl =>
+            exists (ell0 : opt_lbl) (M'0 : session),
+            betaP_lbl M (lcomm n q0 ell0) M'0) t).
+            destruct (constructive_indefinite_description
+            (fun ell0 : opt_lbl =>
+            exists M'0 : session, betaP_lbl M (lcomm n x0 ell0)
+            M'0) e).
+            destruct (constructive_indefinite_description
+            (betaP_lbl M (lcomm n x0 x1)) e0). 
+            destruct u. 
+            {
+                destruct xs;try easy.
+                destr_hyps. inversion H2;subst. simpl in H3;inversion H3;subst.
+                destruct Htyp as [gamma Htyp].
+                eapply betaP_lbl_send_unique in b as Hbt ;try exact Htrans;try exact Htyp;subst.
+                exists x1. simpl. tauto.
+            }
+            {
+                destr_hyps. simpl in H2;inversion H2;subst.
+                red in H. eapply H in Htrans. easy.   
+            }
+            exfalso;eapply n. red. exists p,q,ell,M'. easy.
+        }
+        {
+            intros.
+             rewrite (coseq_eq (fair_scheduler _  _ _)). simpl.  
+            destruct (excluded_middle_informative (has_transition_left M)). 
+            {
+                destruct (get_first_available_trans inf_pl M Hplt h (has_transition_left_means_parts_some M inf_pl h Hplt)).
+                destruct x;try easy.
+                destruct a;destruct a;try easy.
+                
+                destruct (constructive_indefinite_description
+                (fun q0 : opt_lbl =>
+                exists (ell0 : opt_lbl) (M'0 : session),
+                betaP_lbl M (lcomm n0 q0 ell0) M'0) t).
+                destruct (constructive_indefinite_description
+                (fun ell0 : opt_lbl =>
+                exists M'0 : session, betaP_lbl M (lcomm n0 x0 ell0)
+                M'0) e).
+                destruct (constructive_indefinite_description
+                (betaP_lbl M (lcomm n0 x0 x1)) e0).
+                destruct (Nat.eq_dec n0 p).
+                {
+                    subst. destruct Htyp as [gamma Htyp]. eapply betaP_lbl_send_unique in b as Htr;
+                    try exact Htrans;try exact Htyp;subst. constructor. exists x1. simpl.
+                    tauto.   
+                }
+                {
+                    assert(Hhelp : exists n', (S n') < (S n) /\ stream_nth (S n') (cocons n0 x) = Some p /\
+                    until
+                    (fun u : coseq opt_lbl =>
+                    match u with
+                    | conil => False
+                    | cocons x _ => x <> p
+                    end)
+                    (fun u : coseq opt_lbl =>
+                    match u with
+                    | conil => False
+                    | cocons x _ => x = p
+                    end) (cocons n0 x)).
+                    {
+                        eapply is_part_stream_suf in i as Hit;try exact Hplt.
+
+                        eapply distance_to_p with (p:=p) in Hit;try easy.
+                        destruct Hit as [sn' [Hits1 Hits2]].
+                        destruct sn'. simpl in Hits1;congruence.
+                        exists sn'.
+                        split;try easy.
+                    }
+                    destr_hyps.
+                    destruct Htyp as [gamma Htyp].
+                    assert(Htrans2: exists M'' ellt, betaP_lbl x2 (lcomm p q ellt) M'').
+                    {
+                        destruct (Nat.eq_dec q x0);subst. admit.
+                        
+                        eapply betaP_lbl_trans_enabled_after_distinct in b as Hbt;try exact Htrans;try exact Htyp;try easy.
+                    }
+                    destruct Htrans2 as [M'' [ell' Htrans2]].
+                    constructor 2.
+                    eapply IH with (m:=  x3) (inf_pl := x);try exact Htrans2;try easy;try lia.
+                    eapply sub_red_strong_labelled in b as Hbt;try exact Htyp. destr_hyps.
+                    exists x7. easy.
+                    eapply part_after_beta;try exact b. 
+                    eapply betaP_lbl_means_part in Htrans;easy.
+                    split;try easy.
+                    inversion H3;subst;try easy.  
+                } 
+            }
+        }
+    }
 
 
 Lemma fair_scheduler_fair : forall M (Htyp:typable M) inf_pl Hplt, 
