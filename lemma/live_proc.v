@@ -368,6 +368,25 @@ Proof.
     destr_hyps. pinversion H28;subst;pinversion H26;subst;try apply sub_mon. easy.
 Qed.
 
+Lemma betaP_lbl_recv_unique : forall M M' M'' gamma p q ell ell' p', 
+typ_sess M gamma ->
+betaP_lbl M (lcomm p q ell) M' -> betaP_lbl M (lcomm p' q ell') M'' ->
+p = p'.
+Proof.
+    intros * Hsess Hbeta1 Hbeta2.
+    eapply betaP_lbl_invert in Hbeta1;try exact Hsess.
+    
+    eapply betaP_lbl_invert in Hbeta2;try exact Hsess.
+    destr_hyps.
+    eapply typ_after_unfold in H0 as Ht1;try exact Hsess.
+    eapply typ_after_unfold in H as Ht2;try exact Hsess.
+    inversion Ht1;inversion Ht2;subst.
+    repeat destruct_forallT;destr_hyps.
+    assert(x10 =x8) by congruence;subst.
+    eapply inv_proc_recv in H17, H21;try reflexivity.
+    destr_hyps. pinversion H28;subst;pinversion H25;subst;try apply sub_mon. easy.
+Qed.
+
 Lemma typ_after_scong : forall M M' G, typ_sess M G -> scong M M' -> typ_sess M' G.
 Proof.
   intros * Hsess Hcong.

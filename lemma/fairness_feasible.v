@@ -426,7 +426,7 @@ Qed.
 
 Fixpoint stream_nth {A:Type} n (xs:coseq A) := 
     match xs with conil => None |
-    cocons x xs => match n with 0 => Some x
+    cocons x xs => match n with 0 => Some (cocons  x xs)
                     | S y => stream_nth y xs end
                 end.
      
@@ -436,8 +436,8 @@ Definition until_indexed {A:Type} P Q n (xs : coseq A) := Q (stream_nth n xs) /\
 
 Definition distance_to_p : forall p M xs, InT p M -> is_part_stream M xs ->
     exists n, until_indexed 
-        (fun u=>match u with Some x => x <> p | _ => False end)
-        (fun u=>match u with Some x => x = p | _ => False end)
+        (fun u=>match u with Some (cocons x xs) => x <> p | _ => False end)
+        (fun u=>match u with Some (cocons x xs)  => x = p | _ => False end)
         n
         xs.
 Proof.
@@ -467,7 +467,6 @@ Proof.
     }
 Qed.
 
-Lemma until_to_until_indexed : forall 
 
 (*
 Definition distance_to_p_comp : forall p M xs, InT p M -> is_part_stream M xs ->
@@ -530,6 +529,80 @@ Proof.
     eapply sess_fidelity in H13;try exact Hsessst. destr_hyps. exists x14, x15.
     easy.
 Qed.
+
+Lemma until_mono {A:Type}: forall P P' Q Q' (xs:coseq A), 
+    (forall a, P a -> P' a) -> (forall a, Q a -> Q' a) ->
+    until P Q xs -> until P' Q' xs.
+Proof.
+    intros. induction H1. constructor. eapply H0;easy.
+    constructor 2. eapply H;easy. easy.
+Qed.  
+
+Lemma stream_nth_conil {A:Type}: forall m, stream_nth m (conil: coseq A) = None.
+Proof.
+    intros.
+    simpl.
+    destruct m;simpl;easy.
+Qed.
+
+Lemma until_to_until_indexed {A:Type}: forall P Q (xs : coseq A), 
+    until P Q xs -> 
+    ~ Q conil ->
+    exists n',
+    until_indexed
+    (fun u=> match u with Some r => P r | _ => False end) 
+    (fun u=>match u with Some r => Q r | _ => False end) n' xs.
+Proof.
+    intros * H Hqc.
+    induction H. exists 0. red;split;simpl;intros;try lia. 
+    destruct xs;try easy.
+    destr_hyps.
+    destruct (classic (Q (cocons x xs))).
+    exists 0. split;simpl;try easy.
+    exists (S x0).
+    unfold until_indexed in *;destr_hyps.
+    split. simpl. easy. intros.
+    destruct i. simpl. easy.
+    simpl. eapply H3. lia.
+Qed.
+
+Lemma stream_nth_sum : forall n m (xs : coseq nat), stream_nth m 
+    ((fun u=> match u with Some x => x | _ => conil end)(stream_nth n xs)) = stream_nth (m+n) xs.
+Proof.
+    induction n;intros.
+    assert(m+0=m) by  lia.
+    destruct xs;simpl;try congruence.
+
+    destruct xs. simpl. repeat rewrite stream_nth_conil. easy.
+    rewrite <- plus_n_Sm.
+    simpl.
+    eapply IHn.
+Qed.
+
+
+Lemma suffix_index_lift : forall n xs sh ss, ((fun u : option (coseq opt_lbl) =>
+    match u with
+    | Some r => r = cocons sh ss
+    | None => False
+    end)) (stream_nth n xs) ->  
+    forall m, stream_nth (n+m) xs = stream_nth m (cocons sh ss).
+Proof.
+    intros * Hsuf *.
+    simpl in Hsuf.
+    rewrite Nat.add_comm.
+    rewrite <- stream_nth_sum.
+    destruct (stream_nth n xs) eqn:Hyg;simpl. subst;easy.
+    easy.
+Qed.
+
+ Lemma until_progress {A:Type}: forall P (xs : coseq A) h tl, until P (fun u=> u= cocons h tl) xs ->
+                        P (cocons h tl) -> until P (fun u=>u=tl) xs.
+                        Proof.
+                            intros * Hun Hph.
+                            induction Hun;subst. constructor 2;try easy. constructor 1. easy.
+                            constructor 2;try easy.
+                        Qed.    
+
 
 Lemma fair_scheduler_fair_helper : forall p q ell M M' (Htyp:typable M) inf_pl Hplt,
     betaP_lbl M (lcomm p q ell) M' -> exists ell', eventually 
@@ -608,10 +681,10 @@ Proof.
                     tauto.   
                 }
                 {
-                    assert(Hhelp : exists n', (S n') < (S n)  /\
+                    assert(Hhelp : exists n', (S n') <= (S n)  /\
                    until_indexed 
-                    (fun u=>match u with Some x => x <> p | _ => False end)
-                    (fun u=>match u with Some x => x = p | _ => False end)
+                    (fun u=>match u with Some (cocons x xs) => x <> p | _ => False end)
+                    (fun u=>match u with Some (cocons x xs) => x = p | _ => False end)
                     (S n') (cocons n0 x)).
                     {
                         eapply is_part_stream_suf in i as Hit;try exact Hplt.
@@ -620,13 +693,100 @@ Proof.
                         destruct Hit as [sn' [Hits1 Hits2]].
                         destruct sn'. simpl in Hits1;congruence.
                         exists sn'.
-                        split;try easy. admit.
+                        split;try easy. 
+                        assert(Hnop : until (fun u=> match u with cocons x xs => x <> p | _ => False end) 
+                        (fun u=> u=cocons n0 x) inf_pl).
+                        {
+                            eapply until_mono;try exact u;
+                            intros;simpl. destruct a;try easy. red;intros;subst. red in H.
+                            eapply H;try exact Htrans. simpl in H. destruct a;try easy.
+                        }
+                       
+                        eapply until_to_until_indexed in Hnop as 
+                        Hnop_ind;destr_hyps;try easy.
+                        rename x3 into xsuf.
+                        assert(Hnop2 :  until_indexed
+                        (fun u : option (coseq opt_lbl) =>
+                        match u with
+                        | Some (cocons x _) => x <> p
+                        | _ => False
+                        end)
+                        (fun u : option (coseq opt_lbl) =>
+                        match u with
+                        | Some r => r =  x
+                        | None => False
+                        end) (S xsuf) inf_pl).
+                        {
+                            
+                            red in H;destr_hyps.
+                            assert(stream_nth (S xsuf) inf_pl = Some x).
+                            {
+                                assert(Hr': S xsuf = 1+xsuf) by lia.
+                                rewrite Hr'.
+                                rewrite <- stream_nth_sum. destruct (stream_nth xsuf inf_pl);try easy;subst.
+                                simpl.
+                                destruct x;try easy.    
+                                assert(is_suffix conil inf_pl).
+                                eapply suffix_tail;try exact i.
+                                
+                                eapply is_part_stream_suf in Hplt;try exact H.
+                                red in Hplt.
+                                specialize (Hplt _ Hinp).
+                                pinversion Hplt. red in H3.
+                                inversion H3;subst. easy.
+                            }
+                            split;simpl.
+                            destruct inf_pl;try easy. simpl in H3. rewrite H3. easy.
+                            intros.
+                            rewrite Nat.lt_succ_r in H4.
+                            destruct H4. destruct (stream_nth i0 inf_pl);try easy;subst.
+                            easy.
+                            eapply H2. lia.   
+                        }
+
+                        assert(Hsmall1: (S xsuf) <= S n).
+                        {
+                            specialize (Nat.lt_trichotomy (S xsuf) (S n)) as Htr.
+                            destruct Htr as [Htr | [Htr | Htr]];try lia.
+                            destruct Hdist as [Hd1 Hd2].
+                            red in H, Hnop2;destr_hyps.
+                            eapply H3 in Htr as Hsa.
+
+                            destruct (stream_nth ( S n) inf_pl) eqn:Hyg;simpl;try easy.
+                            destruct c;simpl;try easy.
+                        }
+                        assert (Hr: (S xsuf) + (S n - S xsuf) = S n) by lia.
+                        assert(xsuf + (S sn') <= S n).
+                        {
+                            
+                            specialize (Nat.lt_trichotomy (S sn' +  xsuf) (S n)) as Htr.
+                            destruct Htr as [Htr | [Htr | Htr]];try lia.
+                            move Hdist at bottom.
+                            destruct Hdist as [Hd1 Hd2].
+                            rewrite <- Hr in Hd1.
+                            
+                            rewrite <- Nat.add_comm in Hd1.
+                            rewrite <- stream_nth_sum in Hd1.       
+                            move Hnop2 at bottom. red in Hnop2;destr_hyps.
+                            destruct(stream_nth (S xsuf) inf_pl) eqn:Hyg;try easy;subst.
+                            assert(Hs2: S n - xsuf < S sn') by lia.
+                            eapply Hits2 in Hs2.
+                            assert(S n - xsuf = S (n-xsuf)) by lia.
+                            rewrite H2 in Hs2. simpl in Hs2.
+                            assert(S n - S xsuf = n- xsuf) by lia.
+                            rewrite H4 in Hd1. 
+                            destruct (stream_nth (n-xsuf) x) eqn:Hyg';try easy.
+                            destruct c;try easy.
+   
+                        }
+                        lia.
                     }
                     destr_hyps.
                     destruct Htyp as [gamma Htyp].
                     assert(Htrans2: exists M'' ellt, betaP_lbl x2 (lcomm p q ellt) M'').
                     {
-                        destruct (Nat.eq_dec q x0);subst. admit.
+                        destruct (Nat.eq_dec q x0);subst.
+                        eapply betaP_lbl_recv_unique in Htrans;try exact b;try exact Htyp;try easy.
                         
                         eapply betaP_lbl_trans_enabled_after_distinct in b as Hbt;try exact Htrans;try exact Htyp;try easy.
                     }
@@ -649,7 +809,7 @@ Proof.
             }
         }
     }
-Admitted.
+Qed.
 
 
 Lemma fair_scheduler_fair : forall M (Htyp:typable M) inf_pl Hplt, 
