@@ -9,8 +9,8 @@ From SST Require Import lemma.inversion lemma.path_assoc lemma.inversion_expr le
 lemma.projection_helper lemma.subj_red_prog_fid lemma.projection lemma.subj_red_helpers lemma.soundness 
 lemma.liveness_helpers lemma.liveness.
 
-Search usedCtx onth.
-
+Search gttstepH.
+Locate graft_height_after_step.
 Definition typable M := exists gamma, typ_sess M gamma. 
 
 Definition proc_path_valid_criteria := (fun x1 (l:label)  x2  =>
@@ -268,7 +268,8 @@ Proof.
 Qed.
 
 
-Definition live_sess Mp := forall M, betaRtc Mp M -> (forall p q ell e P' M', p <>q -> unfoldP M ( (p <-- p_send q ell e P') ||| M') -> exists M'',
+Definition live_sess Mp := forall M, betaRtc Mp M -> 
+(forall p q ell e P' M', p <>q -> unfoldP M ( (p <-- p_send q ell e P') ||| M') -> exists M'',
 betaRtc M ((p <-- P')|||M''))
 /\
 (forall p  q llp M', p <>q -> unfoldP M ( (p <-- p_recv q llp) ||| M') -> 
