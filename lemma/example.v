@@ -5,7 +5,8 @@ Import ListNotations.
 Open Scope list_scope.
 From Paco Require Import paco.
 Import ListNotations. 
-From SST Require Import src.header src.sim src.expr src.lcontext src.process src.local src.global src.balanced src.typecheck src.part src.gttreeh src.step src.merge src.projection src.session.  
+Require Import Lia.
+From SST Require Import src.header src.sim src.assoc src.expr src.lcontext src.process src.local src.global src.balanced src.typecheck src.part src.gttreeh src.step src.merge src.projection src.session.  
 From SST Require Import lemma.inversion lemma.inversion_expr lemma.substitution_helper lemma.substitution lemma.decidable_helper lemma.decidable lemma.expr lemma.part lemma.step
 lemma.projection_helper lemma.projection lemma.subj_red_helpers lemma.subj_red_prog_fid.
 
@@ -1967,169 +1968,179 @@ Proof. unfold wfgC.
        apply balG.
 Qed.
 
+Definition Gtype:=(g_send 0 1
+         [Some (snat, g_send 1 2 [Some (snat, g_send 2 0 [Some (snat, g_end)])]);
+          Some (snat, g_send 1 2 [Some (snat, g_send 2 0 [Some (snat, g_end)])])]).
+
+Lemma gttTC_G : gttTC Gtype G.
+Proof.
+  unfold G.
+  
+       pfold. constructor.
+       constructor.
+       right.
+       exists snat.
+       exists(g_send 1 2 [Some (snat, g_send 2 0 [Some (snat, g_end)])]).
+       exists(gtt_send 1 2 [Some (snat, gtt_send 2 0 [Some (snat, gtt_end)])]).
+       split. easy. split. easy.
+       left. pfold.
+       constructor.
+       constructor.
+       right.
+       exists snat.
+       exists(g_send 2 0 [Some (snat, g_end)]).
+       exists(gtt_send 2 0 [Some (snat, gtt_end)]).
+       split. easy. split. easy.
+       left. pfold. 
+       constructor.
+       constructor.
+       right. exists snat.
+       exists g_end.
+       exists gtt_end.
+       split. easy. split. easy.
+       left. pfold. constructor.
+       constructor.
+       constructor.
+       constructor.
+       right.
+       exists snat.
+       exists(g_send 1 2 [Some (snat, g_send 2 0 [Some (snat, g_end)])]).
+       exists(gtt_send 1 2 [Some (snat, gtt_send 2 0 [Some (snat, gtt_end)])]).
+       split. easy. split. easy.
+       left. pfold.
+       constructor.
+       constructor.
+       right.
+       exists snat.
+       exists(g_send 2 0 [Some (snat, g_end)]).
+       exists(gtt_send 2 0 [Some (snat, gtt_end)]).
+       split. easy. split. easy.
+       left. pfold. 
+       constructor.
+       constructor.
+       right. exists snat.
+       exists g_end.
+       exists gtt_end.
+       split. easy. split. easy.
+       left. pfold. constructor.
+       constructor.
+       constructor.
+       constructor.
+Qed.
+
 Definition gamma := M.add 0 TAlice (M.add 1 TBob (M.add 2 TCarol M.empty)).
 
-Lemma TypM: typ_sess M G.
-Proof. constructor.
-       apply wfgCG.
-       apply pwf.
-       
-       unfold M.
-       simpl.
+Lemma G_allGuarded: forall n, exists m, guardG n m Gtype.
+Proof.
+  intro n. exists 0.
+       destruct n; constructor.
+       constructor. right.
+       exists snat.
+       exists(g_send 1 2 [Some (snat, g_send 2 0 [Some (snat, g_end)])]).
+       split. easy.
+       destruct n; constructor.
        constructor.
-       intro H.
-       inversion H. easy. inversion H0. easy. easy.
+       right. exists snat. 
+       exists(g_send 2 0 [Some (snat, g_end)]).
+       split. easy.
+       destruct n; constructor.
+       constructor. right.
+       exists snat.
+       exists g_end.
+       split. easy. constructor.
        constructor.
-       intro H.
-       inversion H. easy. easy.
-       constructor.
-       intro H. inversion H. constructor.
-     
-       
-       unfold G, M.
-       constructor.
-       constructor.
-       constructor.
-       exists T'Alice.
-       split.
-       apply GPAlice.
-       split.
-       apply tc_sub with (t := TAlice).
-       apply TypAlice.
-       apply stAlice.
-       
-       unfold T'Alice.
-       unfold wfC.
-       exists(l_send 1
-         [Some (snat, l_recv 2 [Some (snat, l_end)]);
-          Some (snat, l_recv 2 [Some (snat, l_end)])]) .
-       split.
-       pfold.
        constructor.
        constructor.
        right.
        exists snat.
-       exists(l_recv 2 [Some (snat, l_end)]).
-       exists(ltt_recv 2 [Some (snat, ltt_end)]).
-       split. easy. split. easy.
-       left. pfold. 
+       exists(g_send 1 2 [Some (snat, g_send 2 0 [Some (snat, g_end)])]).
+       split. easy.
+       destruct n; constructor.
        constructor.
-       constructor.
-       right.
-       exists snat. exists l_end. exists ltt_end.
-       split. easy. split. easy.
-       left. pfold. constructor.
-       constructor.
-       constructor.
-       right.
+       right. exists snat. 
+       exists(g_send 2 0 [Some (snat, g_end)]).
+       split. easy.
+       destruct n; constructor.
+       constructor. right.
        exists snat.
-       exists(l_recv 2 [Some (snat, l_end)]).
-       exists(ltt_recv 2 [Some (snat, ltt_end)]).
-       split. easy. split. easy.
-       left. pfold. 
+       exists g_end.
+       split. easy. constructor.
        constructor.
        constructor.
-       right.
-       exists snat. exists l_end. exists ltt_end.
-       split. easy. split. easy.
-       left. pfold. constructor.
        constructor.
-       constructor.
-       
-       split.
-       constructor. simpl. easy.
-       constructor.
-       right.
-       exists snat.
-       exists(l_recv 2 [Some (snat, l_end)]).
-       split. easy.
-       constructor. easy. constructor.
-       right. exists snat. exists l_end. split. easy. constructor.
-       constructor.
-       constructor.
-       right. 
-       exists snat.
-       exists(l_recv 2 [Some (snat, l_end)]).
-       split. easy.
-       constructor. easy. constructor.
-       right. exists snat. exists l_end. split. easy. constructor.
-       constructor.
-       constructor.
-       
-       intro n.
-       exists 0.
-       destruct n; constructor.
-       constructor.
-       right. 
-       exists snat.
-       exists(l_recv 2 [Some (snat, l_end)]).
-       split. easy.
-       destruct n; constructor.
-       constructor.
-       right. exists snat. exists l_end. split. easy. constructor.
-       constructor.
-       constructor.
-       right.
-       exists snat.
-       exists(l_recv 2 [Some (snat, l_end)]).
-       split. easy.
-       destruct n; constructor.
-       constructor.
-       right. exists snat. exists l_end. split. easy. constructor.
-       constructor.
-       constructor.
-       
-       intro n.
-       unfold PAlice.
-       exists 0.
-       destruct n; constructor.
-       destruct n; constructor.
-       constructor.
-       right. exists p_inact. split. easy. constructor.
-       constructor.
-         
-       constructor.
-       exists TBob.
-       split.
-       apply GPBob.
-       split.
-       apply TypBob.
-       
-       intro n.
-       exists 0. unfold PBob.
-       destruct n; constructor.
-       constructor.
-       right.
-       exists((p_send 2 0 (e_val (vnat 100)) p_inact) ).
-       split. easy.
-       destruct n; constructor.
-       constructor.
-       constructor.
-       right.
-       exists((p_send 2 0 (e_val (vnat 2)) p_inact) ).
-       split. easy.
-       destruct n; constructor.
-       constructor.
-       constructor.
-       
-       constructor.
-       exists TCarol.
-       split.
-       apply GPCarol.
-       split.
-       apply TypCarol.
-       
-       intro n.
-       unfold PCarol.
-       exists 0.
-       destruct n; constructor.
-       constructor.
-       right.
-       exists((p_send 0 0 (e_succ (e_var 0)) p_inact) ).
-       split. easy.
-       destruct n; constructor.
-       constructor.
-       constructor.
+Qed.
+
+Lemma assoc_gamma : assoc gamma G.
+Proof.
+  red;intros;split;intros Hisparts.
+  {
+    eapply pwf in Hisparts;cbv in Hisparts;
+    destruct Hisparts as [?Hisparts | [?Hisparts | [?Hisparts | ?Hisparts]] ];try easy;subst;
+    evar (T':ltt);unfold gamma; autorewrite with mmaps; exists T';split; unfold T';
+    try solve  [reflexivity];red;intros.
+    exists T'Alice. split. eapply GPAlice. eapply stAlice.
+    exists TBob. split. eapply GPBob. eapply stRefl.
+    exists TCarol. split. eapply GPCarol. eapply stRefl.  
+  }
+  {
+    intros.
+    destruct (Nat.eq_dec p 0);
+    destruct (Nat.eq_dec p 1);
+    destruct (Nat.eq_dec p 2);unfold gamma in *;subst;try easy;autorewrite with mmaps in H;
+    inversion H;subst;try easy;
+    exfalso;eapply Hisparts;red;
+    exists Gtype;split;try solve [eapply gttTC_G];split;try solve [eapply G_allGuarded].
+    constructor. constructor.
+    econstructor 4 with (n:=0);try easy. constructor. 
+  }
+Qed.
+
+Lemma TypM: typ_sess M gamma.
+Proof.
+  constructor.
+  {
+    exists G. split. eapply wfgCG. eapply assoc_gamma. 
+  }
+  {
+    red;intros;
+    destruct (Nat.eq_dec p 0); 
+    destruct (Nat.eq_dec p 1);
+    destruct (Nat.eq_dec p 2);subst;try easy;unfold gamma in H;autorewrite with mmaps in H;
+    inversion H;subst;
+    pfold;constructor;simpl;try easy;constructor;try right;try solve [constructor];
+    evar (s:sort);evar (g:ltt);try right;exists s,g;split;unfold s, g;try solve [reflexivity];
+    left;pfold;constructor;simpl;try easy;constructor;try solve [constructor];right;
+    evar (s':sort);evar (g':ltt);exists s',g';unfold s',g';split;try solve [reflexivity];
+    left;pfold;constructor.
+  }
+  {
+    intros. red in H. destr_hyps.
+    destruct (Nat.eq_dec pt 0);
+    destruct (Nat.eq_dec pt 1);
+    destruct (Nat.eq_dec pt 2);subst;try easy;cbv;simpl;try tauto.
+    unfold gamma in H. autorewrite with mmaps in H. easy. 
+  }
+  {
+    simpl. repeat (constructor;simpl;try solve [lia]). 
+  }
+  {
+    repeat constructor;
+    [exists TAlice|exists TBob|exists TCarol];split;try split;
+    try solve [eapply TypAlice | eapply TypBob | eapply TypCarol];
+    intros;cbv;exists 0.
+    destruct n;subst;try solve [constructor].
+    constructor.
+    destruct n;subst;try solve [constructor]. constructor. constructor. right.
+    exists p_inact. split;try easy. constructor. constructor.
+    destruct n;subst;try solve [constructor]. constructor. constructor.
+    right. exists (p_send 2 0 (e_val (vnat 100)) p_inact). split;try easy. destruct n.
+    constructor. constructor. constructor. constructor. right.
+    exists (p_send 2 0 (e_val (vnat 2)) p_inact).
+    split;try easy. destruct n. constructor. constructor. constructor.
+    constructor. destruct n;constructor. constructor.
+    right. exists (p_send 0 0 (e_succ (e_var 0)) p_inact). split;try easy.
+    destruct n;constructor. constructor. constructor.
+  }
 Qed.
 
 Definition P'Alice := p_recv 2 [Some (p_inact)].
@@ -2140,6 +2151,7 @@ Definition M' := s_par (s_par (s_ind 0 P'Alice) (s_ind 1 P'Bob)) (s_ind 2 PCarol
 
 Lemma redM: betaP M M'.
 Proof. unfold M, M', PAlice, P'Alice, PBob, P'Bob.
+    exists (lcomm 0 1 0).
        specialize(r_struct
        M
        (s_par (s_par (s_ind 1 PBob) (s_ind 0 PAlice)) (s_ind 2 PCarol))
@@ -2166,8 +2178,10 @@ Proof. unfold M, M', PAlice, P'Alice, PBob, P'Bob.
        constructor.
 Qed.
 
-Lemma SRExa: exists G', typ_sess M' G' /\ multiC G G'.
-Proof. apply sub_red with (M := M).
+Lemma SRExa: exists gamma', typ_sess M' gamma' /\ path_props.tctxRtc gamma gamma'.
+Proof.
+  apply sub_red with (M := M).
        apply TypM.
+       Check redM.
        apply redM.
 Qed.
