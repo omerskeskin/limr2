@@ -234,24 +234,6 @@ Definition extends_to_fair M := exists l xs, coseq_head xs = Some (M,l) /\ proc_
 
 Definition fairness_feasible := forall M, typable M -> extends_to_fair M.
 
-
-(*
-Definition trans_with_p_enabled p M := exists q ell M', 
-betaP_lbl M (lcomm p q ell) M' \/ betaP_lbl M (lcomm q p ell) M.
-
-Definition max_part (M:session) := list_max (flattenT M).
-
-Theorem trans_p_lem : forall p M, {trans_with_p_enabled p M} + {~ trans_with_p_enabled p M}.
-Admitted.
-(*
-Theorem trans_p_dec : forall p M, {trans_with_p_enabled p M} + {~ trans_with_p_enabled p M}.
-Admitted.
-*)
-
-
-
-*)
-
 Lemma typ_path_exists: forall M gamma xs l, typ_sess M gamma -> proc_valid_pathC (cocons (M,l) xs) ->
     exists ys,  typ_pathC (cocons (M,l) xs) ys
     /\ local_valid_pathC ys /\ coseq_head ys= Some (gamma,l) .

@@ -39,7 +39,7 @@ Proof.
 
      apply wfltt.wfltt_slist_recv in Hawf2;easy].
 Qed.
-Search sig.
+
 Theorem assoc_implies_safety: forall gamma G, tctx_wf gamma -> wfgC G -> 
 assoc gamma G -> 
     safeC gamma.
@@ -60,5 +60,6 @@ Proof.
         apply assoc_implies_projectable in Hassoc as Hproj;try easy.
     }
      destr_hyps.
-     exists c'. split;try easy. right. eapply CIH with (G:=x);try easy.
+     right.
+     eapply CIH;try exact H1;easy.
 Qed.

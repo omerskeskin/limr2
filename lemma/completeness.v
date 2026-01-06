@@ -402,6 +402,8 @@ Proof.
         all:easy.
     }
     destr_hyps.
+    Check projection_step_label_s.
+    Check typ_after_step_step.
     eapply (projection_step_label_s) with (l:=ell) (LP:=x2) (ST:=(x,x0)) in H as Hpp;try easy.
     destr_hyps.
     eapply typ_after_step_step with (L1:=x2) (L2:=x1) (S:=x) (T:=x0) (S':=x3) (T':=x4);try easy.

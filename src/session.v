@@ -488,7 +488,6 @@ Proof.
   eapply scong_p_unique in H0;try easy. tauto.
 Qed.
 
-Search tauP.
 
 Definition unfoldB_sess_map M M' := forall p x, M.find p M = Some x ->
   exists y, M.find p M' = Some y /\ (clos_refl_trans process tauP) x y.
@@ -613,26 +612,7 @@ Proof.
   split;intros;repeat destruct_forallT; constructor;try tauto.
 Qed.
 
-Variant tauS : relation session :=
-    | tauS_c : forall p P P' M M' Mr, scong M ((p <-- P) |||Mr) -> 
-    scong M' ((p <--P')|||Mr) -> tauP P P' -> tauS M M'.
 
-Definition tauSrtc := clos_refl_trans session tauS.
-
-Lemma unfoldB_s_factors_tauS : forall M M', unfoldB_s M M' ->
-    exists Mt , tauSrtc M Mt /\ scong Mt M'.
-Proof.
-    intros. induction H.
-    {
-           exists ((p <-- Q) ||| M).
-           split. econstructor 1. econstructor 1 with (p:=p) (Mr:=M);try exact H.
-           all: eauto with brocs.
-    }
-    {
-        exists M1.
-        split;try easy. constructor 2.   
-    }
-Qed.
 
 Lemma scong_preserves_part : forall p M M', scong M M' -> (InT p M <-> InT p M').
 Proof.

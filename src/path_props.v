@@ -141,8 +141,7 @@ forall p q s s'  k k', tctxRE (lsend p q (Some s) k) c -> tctxRE (lrecv q p (Som
 
 Inductive safe (R: tctx -> Prop): tctx -> Prop :=
   | safety_red :  forall c, weak_safety c -> (forall p q c' k, 
-    tctxR c (lcomm p q k) c' -> 
-    ((exists c'', M.Equal c' c'' /\ R c''))) 
+    tctxR c (lcomm p q k) c' -> R c') 
     ->  safe R c.
                                (*
 Definition weak_safe_tctx := {c | weak_safety c}.
@@ -160,7 +159,8 @@ Proof.
   induction IN. 
   eapply safety_red with (c:=c) ;try easy.
   intros.
-  eapply H0 in H1. destr_hyps. exists x. split;try easy. eapply LE;easy.
+  eapply H0 in H1. destr_hyps.
+  eapply LE. easy.
 Qed.
 
 Lemma weak_safe_meq_invariant: forall c c', weak_safety c -> M.Equal c c' -> 
@@ -178,8 +178,7 @@ Proof.
 Qed.
 
 Lemma safe_meq_invariant: forall c c', safeC c -> M.Equal c c' -> safeC c'.
-Proof.
-  
+Proof.  
   intros.
   pcofix CIH.
   pfold. constructor.
@@ -192,9 +191,7 @@ Proof.
     pinversion H;try apply safe_monotone;subst. setoid_rewrite <- H0 in H1.
     pose proof H1 as Htx.
     eapply H3 in H1.
-    destr_hyps. exists x.
-    split;try easy.
-    left. eapply paco1_mon_bot with (gf:=safe);pclearbot;try easy.
+    left. eapply paco1_mon_bot with (gf:=safe);try easy.
   }
 Qed.
 
