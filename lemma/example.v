@@ -8,7 +8,7 @@ Import ListNotations.
 Require Import Lia.
 From SST Require Import src.header src.sim src.assoc src.expr src.lcontext src.process src.local src.global src.balanced src.typecheck src.part src.gttreeh src.step src.merge src.projection src.session.  
 From SST Require Import lemma.inversion lemma.inversion_expr lemma.substitution_helper lemma.substitution lemma.decidable_helper lemma.decidable lemma.expr lemma.part lemma.step
-lemma.projection_helper lemma.projection lemma.subj_red_helpers lemma.subj_red_prog_fid.
+lemma.projection_helper lemma.projection lemma.fairness_feasible lemma.subj_red_helpers lemma.subj_red_prog_fid lemma.live_proc.
 
 Definition G := gtt_send 0 1 [
   Some (snat, gtt_send 1 2 [Some(snat, gtt_send 2 0 [Some (snat, gtt_end)])] );
@@ -2184,4 +2184,53 @@ Proof.
        apply TypM.
        Check redM.
        apply redM.
+Qed.
+
+Locate betaRtc.
+Lemma live_exa: exists M'', betaRtc M M'' /\ 
+  exists Mr vl, scong M'' (2 <--p_send 0 0 vl p_inact ||| Mr).
+Proof.
+  assert(Hlive : live_sess M).
+  {
+    eapply typable_sess_live. red. exists gamma. eapply TypM. 
+  }
+  red in Hlive.
+  assert(Hbr: betaRtc M M) by constructor.
+  eapply Hlive in Hbr.
+  destruct Hbr as [Hbr1 Hbr2].
+  Compute M.
+  specialize (Hbr2 2 1  [Some (p_send 0 0 (e_succ (e_var 0)) p_inact)]).
+  specialize (Hbr2 ((0 <-- p_send 1 0 (e_val (vnat 50)) (p_recv 2 [Some p_inact]))
+||| (1 <--
+p_recv 0
+[Some (p_send 2 0 (e_val (vnat 100)) p_inact);
+Some (p_send 2 0 (e_val (vnat 2)) p_inact)]))).
+  clear Hlive Hbr1.
+  assert(H20: 2 <> 1) by lia.
+  assert(Hunf: unfoldP M
+    ((2 <-- p_recv 1 [Some (p_send 0 0 (e_succ (e_var 0)) p_inact)])
+    ||| ((0 <-- p_send 1 0 (e_val (vnat 50)) (p_recv 2
+    [Some p_inact]))
+    ||| (1 <--
+    p_recv 0
+    [Some (p_send 2 0 (e_val (vnat 100)) p_inact);
+    Some (p_send 2 0 (e_val (vnat 2)) p_inact)])))).
+  {
+    cbv.
+    eauto with procs.
+  }
+  specialize (Hbr2 H20 Hunf).
+  destr_hyps.
+  destruct x2.
+  {
+    simpl in H. inversion H;subst. 
+    exists ((2 <-- subst_expr_proc (p_send 0 0 (e_succ (e_var 0)) p_inact) x1 0 0) ||| x).
+    split;try easy.
+    exists x, (e_succ (incr_freeE 0 0 x1)).
+    simpl.
+    constructor. 
+  }
+  {
+    simpl in H. rewrite onth_nil in H. easy. 
+  }
 Qed.
