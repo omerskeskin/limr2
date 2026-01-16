@@ -419,7 +419,6 @@ Proof.
     eapply tctx_comm_invert in Hredinv.
     destr_hyps.
     rename x into s, x0 into s', x1 into xsp, x2 into Tp, x3 into xsq, x4 into Tq.
-    Search gttstepC projectionC ltt_send ltt_recv.
     assert (exists g', gttstepC g g' p q ell).
     {
         eapply local_step_implies_global_step with (g:=g) (gamma:=gamma) (gamma':=gamma');easy.

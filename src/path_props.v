@@ -143,13 +143,7 @@ Inductive safe (R: tctx -> Prop): tctx -> Prop :=
   | safety_red :  forall c, weak_safety c -> (forall p q c' k, 
     tctxR c (lcomm p q k) c' -> R c') 
     ->  safe R c.
-                               (*
-Definition weak_safe_tctx := {c | weak_safety c}.
-Inductive safe (R: weak_safe_tctx -> Prop): weak_safe_tctx -> Prop :=
-  | safety_red :  forall c, (forall p q c' k, 
-    tctxR (proj1_sig c) (lcomm p q k) c' -> (exists P, R (exist weak_safety c' P))) 
-    -> safe R c.
-*)
+
 Definition safeC c := paco1 safe bot1 c.
 
 Lemma safe_monotone : monotone1 safe.

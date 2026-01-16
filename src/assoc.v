@@ -685,8 +685,7 @@ Lemma assoc_simul_inv:
     (
         exists xg, g=gtt_send p q xg /\
         send_cond xp xg p  /\
-        recv_cond
-        xq xg q
+        recv_cond xq xg q
     )
     \/
     (
