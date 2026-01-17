@@ -10,6 +10,8 @@ From SST Require Import src.header src.sim src.assoc src.expr src.lcontext src.p
 From SST Require Import lemma.inversion lemma.inversion_expr lemma.substitution_helper lemma.substitution lemma.decidable_helper lemma.decidable lemma.expr lemma.part lemma.step
 lemma.projection_helper lemma.projection lemma.fairness_feasible lemma.subj_red_helpers lemma.subj_red_prog_fid lemma.live_proc.
 
+
+
 Definition G := gtt_send 0 1 [
   Some (snat, gtt_send 1 2 [Some(snat, gtt_send 2 0 [Some (snat, gtt_end)])] );
   Some (snat, gtt_send 1 2 [Some(snat, gtt_send 2 0 [Some (snat, gtt_end)])] )

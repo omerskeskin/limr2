@@ -386,41 +386,6 @@ Proof.
     destr_hyps. crush.
 Qed.
 
-(*
-Lemma projection_implies_slist_helper : forall xs xs0 r, Forall2
-(fun (u : option (sort * gtt))
-(v : option (sort * ltt)) =>
-u = None /\ v = None \/
-(exists (s : sort) (g : gtt) (t : ltt),
-u = Some (s, g) /\
-v = Some (s, t) /\
-upaco3 projection bot3 g r t)) xs0 xs -> SList xs0 -> SList xs.
-Proof.
-    induction xs.
-    {
-        intros.
-        eapply slist_implies_some in H0;inversion H;crush.
-        destruct x;crush.
-    }
-    {
-        intros.
-        destruct xs0.
-        + inversion H0.
-        + inversion H;subst.
-        destruct o. .
-        {
-            destruct H4;try easy.
-            destruct xs0. inversion H6;subst. crush.
-            assert (SList xs).
-            {
-                eapply IHxs with (r:=r) (xs0:=xs0).
-                simpl in H0.   
-            }   
-        }
-        destruct a;destruct o;crush.   
-    }
-Qed.
-*)
 Lemma projection_wf_helper:forall xs ys r, SList xs -> Forall2
 (fun (u : option (sort * gtt)) (v : option (sort * ltt)) =>
 u = None /\ v = None \/
@@ -962,7 +927,7 @@ u = None \/ (exists k : opt_lbl, onth k gcs1 = u))).
     right; exists (S x0); crush.
 Qed.
 
-
+(*
 Lemma assoc_soundness': forall G G' gamma  p q ell xs, p <> q -> wfgC G -> isgPartsC p G ->
 tctx_wf gamma -> M.find p gamma =Some (ltt_send q xs) ->
 assoc gamma G -> 
@@ -1833,7 +1798,150 @@ Proof.
         destr_hyps. auto.
     }
 Qed. 
+*)
 
+Lemma assoc_soundness': forall G G' gamma  p q ell xs, p <> q -> wfgC G -> isgPartsC p G ->
+tctx_wf gamma -> M.find p gamma =Some (ltt_send q xs) ->
+assoc gamma G -> 
+gttstepC G G' p q ell -> 
+forall ell', onth ell' xs <> None ->
+exists gamma' G'',
+gttstepC G G'' p q ell' /\ assoc gamma' G'' /\ tctxR gamma (lcomm p q ell') gamma'.
+Proof.
+    intros * Hpq Hwf Hispartsp Htwf Hfindp Hassoc Hstep * Honth.
+    assert(Hprojable: projectableA G) by (eapply assoc_implies_projectable in Hassoc;try easy).
+    assert(Hslist: SList xs).
+    {
+        specialize (Htwf p _ Hfindp).
+        pinversion Htwf;try easy.   
+    }
+    assert(exists xsp, projectionC G p (ltt_send q xsp)).
+    {
+        eapply proj_cont_pq_step in Hstep;try easy;destr_hyps.
+        exists x. easy.   
+    }
+    destruct H as [xsp Hprojp].
+    
+    assert(exists xsq, projectionC G q (ltt_recv p xsq)).
+    {
+        eapply proj_cont_pq_step in Hstep;try easy;destr_hyps.
+        exists x0. easy.   
+    }
+    destruct H as [xsq Hprojq].
+    
+    eapply assoc_inv_find in Hassoc as Hinf;try exact Hfindp;try easy.
+    red in Hinf;destr_hyps.
+    eapply proj_inj in H;try exact Hprojp;try easy;subst.
+    eapply subtype_send_inv in H0.
+    eapply opt_lem1 in Honth;destr_hyps.
+    eapply Forall2R_prop in H0;try exact H;destr_hyps.
+    destruct H1;try easy;destr_hyps;subst.
+    inversion H1;subst;clear H1.
+    eapply projection_step_label_s in Hprojq as Honth3;try exact Hprojp;
+    try exact H2;try easy. destr_hyps.
+    eapply typ_after_step_step in Hwf as Hstep2;try exact Hprojp;
+    try exact Hprojq;try exact H2;try exact H0;destr_hyps.
+    clear H1. rename H6 into Hispartsq, x5 into G''.
+    pose proof Hassoc as Hassoc'.
+    specialize (Hassoc q) as [Hsq0 _];specialize (Hsq0 Hispartsq).
+    destruct Hsq0 as [Tq [Hfindq Hsubq]].
+    red in Hsubq;destr_hyps;try easy. eapply proj_inj in H1;try exact Hprojq;subst;try easy.
+    eapply subtype_recv_inv2 in H6 as ?H;destr_hyps;subst.
+    eapply subtype_recv_inv in H6;try easy.
+    eapply Forall2R_prop in H6;try exact H0;try easy.
+    destr_hyps. destruct H6;try easy. destr_hyps. inversion H6;subst. clear H6.
+    assert(Hsubs: subsort x2 x7).
+    {
+        Search subsort onth gtt_send.
+        eapply canon_rep_s in Hwf;try exact Hprojp;try exact Hprojq;try exact H0;try exact H2;
+        destr_hyps.
+        eapply sstrans;try exact H13;easy.
+    }
+    eapply context_red_simple_comm with (p:=p) (q:=q) (gamma' := 
+    M.remove p (M.remove q gamma)
+    ) in H as Hcr;try exact H7;try easy;
+    try solve [autorewrite with mmaps;easy
+        | eapply sstrans; try exact H3; eapply sstrans;try exact Hsubs;try easy
+    ].
+    assert(Hwfg'' : wfgC G'') by (eapply wfgC_after_step;try exact H5;try easy).
+    exists (M.add p x3 (M.add q x10 (M.remove p (M.remove q gamma)))), (G'').
+    split;try easy.
+    split.
+    {
+        red;intros;split;intros Hp0 *.
+        {
+            destruct (Nat.eq_dec p p0);   
+            destruct (Nat.eq_dec q p0);subst;try easy.
+            {
+                autorewrite with mmaps. exists x3;split;try easy.
+                red.
+                eapply projection.typ_after_step_12_helper in H5;try exact Hprojp;try exact Hprojq;try exact H2;try exact H0;
+                try easy. destr_hyps.
+                exists x4.
+                split;try easy.
+            }
+            {   
+                autorewrite with mmaps. exists x10;split;try easy.
+                red.
+                eapply projection.typ_after_step_12_helper in H5;try exact Hprojp;try exact Hprojq;try exact H2;try exact H0;
+                try easy. destr_hyps.
+                exists x9.
+                split;try easy.
+            }
+            {
+                
+                assert (Hisparts2: isgPartsC p0 G).
+                {
+                    destruct (decidable.decidable_isgPartsC G p0);try easy.
+                    eapply not_part_step with (g':=G'') (g:=G) in Hp0;try exact H5;try easy.
+                }
+                
+
+                specialize (Hassoc' p0) as [Hsc _].
+                specialize (Hsc Hisparts2);destr_hyps.
+                red in H6;destr_hyps.
+                eapply typ_after_step_3_helper with (G':=G'') (s:=p0) in Hwf as Hr;try 
+                exact Hprojp;try exact Hprojq; try exact H0;try exact H2;
+                try exact H1;try exact H6;try easy.
+                destr_hyps;subst. 
+                autorewrite with mmaps.
+                exists x. split;try easy.
+                
+                red;intros. exists x6. split;easy.   
+            }
+        }
+        {
+            destruct (Nat.eq_dec p p0);   
+            destruct (Nat.eq_dec q p0);subst;try easy;autorewrite with mmaps;intros;
+            inversion H1;subst;clear H1.
+            {
+                eapply projection.typ_after_step_12_helper in H5;try exact Hprojp;try exact Hprojq;try exact H2;try exact H0;
+                try easy. destr_hyps.
+                pinversion H1;try apply proj_mon;subst;try easy.
+                eapply subtype_end_inv in H4. easy. 
+            }
+            {
+                eapply projection.typ_after_step_12_helper in H5;try exact Hprojp;try exact Hprojq;try exact H2;try exact H0;
+                try easy. destr_hyps.
+                pinversion H5;try apply proj_mon;subst;try easy.
+                eapply subtype_end_inv in H9. easy. 
+            }
+            {
+                destruct (decidable.decidable_isgPartsC G p0);try easy.
+                specialize (Hprojable p0) as Hprojp0;destr_hyps.
+                eapply part_after_step_r with (r:=p0) in H5 as Hisp2;try exact H6;
+                try easy.
+                specialize (Hassoc' p0).
+                destr_hyps. specialize (H11 H1). eapply H11;easy.
+            }
+        }
+    }
+    {
+        eapply Rstruct;try exact Hcr;try easy.
+        red;intros;destruct (Nat.eq_dec y p);destruct (Nat.eq_dec y q);subst;
+        autorewrite with mmaps;try easy.
+    }
+Qed.
 
 
 Lemma assoc_soundness : forall G G' gamma  p q ell, p <> q -> wfgC G -> 
