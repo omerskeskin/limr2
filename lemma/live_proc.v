@@ -7,7 +7,7 @@ From SST Require Import src.header src.sim src.expr src.process src.local
 src.global src.balanced src.typecheck src.part src.gttreeh src.path_props src.step src.merge src.projection src.session src.lcontext.  
 From SST Require Import lemma.inversion lemma.path_assoc lemma.inversion_expr lemma.completeness lemma.substitution_helper lemma.substitution lemma.decidable_helper lemma.decidable lemma.expr lemma.part lemma.step 
 lemma.projection_helper lemma.subj_red_prog_fid lemma.projection lemma.subj_red_helpers lemma.soundness 
-lemma.liveness_helpers lemma.liveness.
+lemma.liveness_helpers lemma.liveness lemma.safety.
 
 Search gttstepH.
 Locate graft_height_after_step.
@@ -26,7 +26,18 @@ Definition proc_valid_pathC := valid_path_GC proc_path_valid_criteria.
 
 Definition betaRtc := clos_refl_trans session betaP.
 
-Print path_assoc.
+Check p_send.
+
+
+Lemma sub_red_Rtc : forall M M' gamma, typ_sess M gamma -> betaRtc M M' -> exists gamma', typ_sess M' gamma'.
+Proof.
+	intros. generalize dependent gamma. induction H0.
+	intros. eapply sub_red in H0;try exact H. destr_hyps. exists x0;easy.
+	intros. exists gamma. easy.
+	intros. specialize (IHclos_refl_trans1 _ H). destr_hyps. 
+	eapply IHclos_refl_trans2;try exact H0.
+Qed.
+
 
 
 Variant typ_path  (R: coseq (session * option label) -> coseq (tctx * option label) -> Prop) :  coseq (session * option label) -> coseq (tctx * option label) -> Prop :=
@@ -279,14 +290,6 @@ Qed.
 
 
 
-Lemma sub_red_Rtc : forall M M' gamma, typ_sess M gamma -> betaRtc M M' -> exists gamma', typ_sess M' gamma'.
-Proof.
-	intros. generalize dependent gamma. induction H0.
-	intros. eapply sub_red in H0;try exact H. destr_hyps. exists x0;easy.
-	intros. exists gamma. easy.
-	intros. specialize (IHclos_refl_trans1 _ H). destr_hyps. 
-	eapply IHclos_refl_trans2;try exact H0.
-Qed.
 
 Ltac destruct_forallT := match goal with 
                  | [ H: ForallT _ (?p <-- ?P)|- _] => inversion_clear H
@@ -329,6 +332,32 @@ Proof.
         destr_hyps.
         exists x, x0, x1, x2.
         eauto with procs.
+    }
+Qed.
+
+Lemma betaP_lbl_invert_onth : forall M M' p q ell gamma,
+typ_sess M gamma -> betaP_lbl M (lcomm p q ell) M' ->
+exists M'' P' llp e, unfoldP M ((p <-- p_send q ell e P' )|||(q <-- p_recv p llp) |||M'') 
+/\ onth ell llp <> None.
+Proof.
+    intros * Hsess Hbeta.
+    generalize dependent gamma.
+    dependent induction Hbeta.
+    {
+        exists M, Q, xs, e. split. eauto with procs.
+        red;intros;congruence.
+    }
+    {
+        intros.
+        assert(Hsess2 : typ_sess M1' gamma).
+        {
+            eapply typ_after_unfold in Hsess;try exact H;easy.
+        }
+        eapply IHHbeta in Hsess2 as IH_use;try reflexivity.
+        destr_hyps.
+        exists x, x0, x1, x2.
+        split.
+        eauto with procs. easy.
     }
 Qed.
 
@@ -694,6 +723,7 @@ Proof.
         eapply unfoldB_preserves_noDup in Hunf1. tauto.
     }
 Qed.
+
 
 Lemma scong_unfold_recv_still_same : forall M p M' q llp M'', 
 noDupSess M ->
@@ -1221,6 +1251,95 @@ Proof.
     eauto with procs.
 Qed.
 
+(*
+Lemma sess_type_safety_helper: forall M p q ell e P xs Mr
+ell' e' P' xs' Mr' (Hnodup : noDupSess M),
+p <> q ->
+unfoldP M (((p <-- p_send q ell' e' P') ||| (q <-- p_recv p xs'))
+||| Mr') ->
+scong M (((p <-- p_send q ell e P) ||| (q <-- p_recv p xs))
+||| Mr) -> onth ell xs <> None -> onth ell' xs' <> None.
+Proof.
+    intros * Hpq Hnd Hunf.
+    dependent induction Hunf;intros;try easy.
+    {
+        eapply scong_to_map in H.
+        simpl in H.
+        specialize (H q) as Hq.
+        specialize (H p) as Hp. autorewrite with mmaps_more in Hq, Hp.
+        
+        simpl in *.
+        assert(M.find p (sess_to_map Mr)=None) by admit.
+        assert(M.find q (sess_to_map Mr)=None) by admit.
+        assert(M.find q (sess_to_map Mr')=None) by admit.
+        assert(M.find p (sess_to_map Mr')=None) by admit.
+        rewrite H3 in Hq. rewrite H2 in Hq.
+        rewrite H1 in Hp. rewrite H4 in Hp.
+        inversion Hq;inversion Hp;subst;try easy.
+        admit.
+
+    }
+    dependent induction Hunf;intros;try easy.
+    {
+        eapply IHHunf2;try reflexivity.
+*)
+
+Theorem sess_type_safety : forall M M' Mr P e xs gamma p q ell,
+  typ_sess M gamma -> betaRtc M M' -> 
+  unfoldP M' ((p <-- p_send q ell e P)|||(q <-- p_recv p xs) ||| Mr) ->
+  onth ell xs <> None.
+Proof.
+    intros * Htyp Hbeta Hunf.
+    
+    eapply sub_red_Rtc in Hbeta as Htyp2;try exact Htyp.
+    destruct Htyp2 as [gamma' Htyp2].
+    eapply typ_after_unfold in Hunf;try exact Htyp2.
+    inversion Hunf;destr_hyps.
+    assert(Hpq: p <> q).
+    {
+        simpl in H1.
+        destruct (Nat.eq_dec p q);
+        inversion H1;subst;try easy.
+        simpl in H9. tauto.   
+    }
+    repeat destruct_forallT;destr_hyps;subst.
+    eapply inv_proc_send in H9;eapply inv_proc_recv in H11;try reflexivity;destr_hyps.
+    eapply assoc.subtype_send_inv1 in H11 as ?H;
+    eapply assoc.subtype_recv_inv1 in H13 as ?H;destr_hyps;subst.
+    Search "simul".
+    eapply assoc.simul_subproj with (p:=p) (q:=q) (xq:=x5) (xp:=x6) in H5 as Hass.
+    {
+        eapply subtype_send_inv in H11.
+        eapply Forall2R_prop with (l:=ell) in H11;try (rewrite extendExtract;reflexivity);tac_sanitize.
+        eapply Forall2R_prop in Hass;try exact H17;tac_sanitize.
+        eapply subtype_recv_inv in H13.
+        eapply Forall2R_prop in H13;try exact H20;tac_sanitize.
+        eapply Forall2_prop_l in H14;try exact H16;tac_sanitize.
+        red;intros;congruence.
+    }
+    {
+        destruct (decidable_isgPartsC x p);try easy.
+        Search isgPartsC projectionC ltt_end.
+        eapply not_part_proj in H16.
+        eapply assoc_inv_find in H2;try exact H6;try easy.
+        red in H2;destr_hyps.
+        eapply assoc.subtype_send_inv1 in H17;destr_hyps;subst.
+        eapply proj_inj in H2;try exact H16;easy.
+    }
+    {
+        eapply assoc_inv_find in H2;try exact H6;try easy.    
+    }
+    {
+        eapply assoc_inv_find in H7;try exact H6;try easy.    
+    }
+    {
+        specialize (H _ _ H2); pinversion H;try apply wfltt.wfltt_mon;subst;try easy.   
+    }
+    {
+        specialize (H _ _ H7); pinversion H;try apply wfltt.wfltt_mon;subst;try easy.      
+    }
+Qed.
+
 Lemma live_proc_helper_send : forall p q ell e P xs ys, 
 proc_path_head_scong_send p q ell e P ys->
 proc_valid_pathC ys ->
@@ -1446,6 +1565,7 @@ Proof.
     }
 Qed.
 
+Search betaP_lbl onth.
 
 Lemma live_proc_helper_recv2 : forall p q llp xs,
         p <> q ->

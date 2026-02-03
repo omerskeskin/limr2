@@ -8,8 +8,6 @@ From SST Require Import src.header src.sim src.expr src.process src.local
 src.global src.balanced src.typecheck src.part src.gttreeh src.path_props src.step src.merge src.projection src.session src.lcontext.  
 From SST Require Import lemma.inversion lemma.inversion_expr lemma.completeness lemma.substitution_helper lemma.substitution lemma.decidable_helper lemma.decidable lemma.expr lemma.part lemma.step 
 lemma.projection_helper lemma.projection lemma.multigrafting lemma.subj_red_helpers lemma.soundness lemma.liveness_helpers. 
-
-
 Search substitutionP guardP.
 
 Lemma active_parts_subset: forall gamma pt p q ell gamma', 
@@ -28,46 +26,6 @@ Lemma active_parts_subset: forall gamma pt p q ell gamma',
       simpl. red;intros. destruct H1;subst;tauto.
     Qed.
 
-(*
-
-
-Fixpoint get_proc (p:part) (M:session) : option process :=
-  match M with 
-  | s_ind q T => if Nat.eqb p q then Some T else None 
-  | s_par M1 M2 => match get_proc p M1 with Some x => Some x |
-      None => get_proc p M2 end
-  end. 
-
-Lemma get_proc_par1 : forall p M1 M2 x, get_proc p M1 = Some x ->
-get_proc p (M1 ||| M2) = Some x.
-Proof.
-  induction M1.
-  intros. simpl in H. destruct (Nat.eqb p n) eqn:Hpn. rewrite Nat.eqb_eq in Hpn. 
-  subst.
-  inversion H;subst. simpl. rewrite Nat.eqb_refl. easy. easy. 
-
-  intros.
-
-Lemma get_proc_in : forall p M, get_proc p M <> None <-> InT p M.
-Proof.
-    induction M;
-    intros. 
-    {
-      split;intros.
-      eapply opt_lem1 in H;destr_hyps; 
-      destruct(Nat.eqb p n) eqn:Hpn;subst;simpl in H; 
-      rewrite -> Hpn in H;inversion H;subst. 
-      rewrite Nat.eqb_eq in Hpn;subst;constructor;easy.
-
-      red in H. simpl in H. destruct H;subst;try easy. simpl. rewrite Nat.eqb_refl. easy.
-  }
-  {
-    split;intros.
-    {
-      red;simpl. eapply in_or_app.
-    } 
-  }
-*)
   
 
 Theorem sub_red : forall M M' gamma, typ_sess M gamma -> betaP M M' -> exists gamma', typ_sess M' gamma' /\ tctxRtc gamma gamma'.
