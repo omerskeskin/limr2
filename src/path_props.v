@@ -45,7 +45,6 @@ coseq (A * option label) -> Prop :=
   R (cocons (x,l') xs) ->
     V y l x -> 
     valid_pathGI V R (cocons (y,Some l) (cocons (x,l') xs)).
-  
 
 Definition valid_path_GC {A:Type} (V: A-> label -> A-> Prop) := paco1 (valid_pathGI V) bot1.
 
@@ -141,7 +140,7 @@ forall p q s s'  k k', tctxRE (lsend p q (Some s) k) c -> tctxRE (lrecv q p (Som
 
 Inductive safe (R: tctx -> Prop): tctx -> Prop :=
   | safety_red :  forall c, weak_safety c -> (forall p q c' k, 
-    tctxR c (lcomm p q k) c' -> R c') 
+    tctxR c (lcomm p q k) c' -> exists c'', M.Equal c' c'' /\ R c'') 
     ->  safe R c.
 
 Definition safeC c := paco1 safe bot1 c.
@@ -153,7 +152,8 @@ Proof.
   induction IN. 
   eapply safety_red with (c:=c) ;try easy.
   intros.
-  eapply H0 in H1. destr_hyps.
+  eapply H0 in H1.  destr_hyps. exists x.
+  split;try easy.
   eapply LE. easy.
 Qed.
 
@@ -185,6 +185,9 @@ Proof.
     pinversion H;try apply safe_monotone;subst. setoid_rewrite <- H0 in H1.
     pose proof H1 as Htx.
     eapply H3 in H1.
+    destr_hyps.
+    exists x;split;try easy.
+    destruct H4;try easy.
     left. eapply paco1_mon_bot with (gf:=safe);try easy.
   }
 Qed.

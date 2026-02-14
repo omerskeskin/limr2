@@ -128,46 +128,6 @@ Ltac Mfind_normalise H0 := repeat (try rewrite M.add_spec1 in H0;
 try rewrite M.add_spec2 in H0; try rewrite M.remove_spec1 in H0;
 try rewrite M.remove_spec2 in H0; try rewrite M.empty_spec in H0; try easy).
 
-Theorem inf_pq_path_fair : fair_path inf_pq_path.
-Proof.
-    red.
-    pcofix CIH.
-    rewrite (coseq_eq inf_pq_path). simpl.
-    pfold.
-    constructor.
-    unfold fair_path_local.
-    intros.
-    assert(H_p:p=prt_p).
-    {   
-        destruct (Nat.eq_dec p prt_p). assumption.
-        simpl in H.
-        inversion H. subst. 
-        apply tctx_comm_invert in H0.
-        destr_hyps.
-        destruct (Nat.eq_dec p prt_q);
-        destruct (Nat.eq_dec p prt_r); crush; 
-        unfold prt_r,prt_p,prt_q in *;crush;intros;Mfind_normalise H0;
-
-        rewrite (ltt_eq T_q) in H0;crush.
-    }
-    assert(H_q:q=prt_q).
-    {
-        destruct (Nat.eq_dec q prt_q). assumption.
-        simpl in H.
-        inversion H. subst. 
-        apply tctx_comm_invert in H0.
-        destr_hyps.
-        destruct (Nat.eq_dec q prt_p);
-        destruct (Nat.eq_dec q prt_r); crush;
-        unfold prt_r,prt_p,prt_q in *;crush;intros;Mfind_normalise H0.
-         rewrite (ltt_eq T_p) in H0;crush.
-    }
-    apply evh. subst. simpl. easy.
-    right. assumption.
-Qed.
-
-
-
 Lemma red_5: tctxR gamma (lsend prt_p prt_q (Some sint) 1) (M.add prt_p ltt_end (M.add prt_q T_q (M.add prt_r T_r M.empty))).
 Proof.
     set (gmp:=(M.add prt_q T_q (M.add prt_r T_r (M.add prt_p T_p M.empty)))).
@@ -241,52 +201,45 @@ Proof.
     setoid_rewrite <- H.
     unfold prt_q, prt_r; eapply simple_red_comm;crush;apply srefl.
 Qed.
-Print coseq.
-Definition label_dc := (lcomm 0 0 0).
-
 Lemma gamma_possible_comm: forall p q k gamma2, tctxR gamma (lcomm p q k) gamma2 ->
     (p=prt_p /\ q=prt_q /\ k =0) \/ (p=prt_p /\ q=prt_q /\ k = 1).
 Proof.
     intros.
     eapply tctx_comm_invert in H. destr_hyps.
     rename x into s1, x0 into s2, x1 into xp, x3 into xq,x4 into Tq, x2 into Tp.
-    destruct (Nat.eq_dec prt_p p);destruct (Nat.eq_dec prt_q q);crush.
+    destruct (Nat.eq_dec prt_p p);destruct (Nat.eq_dec prt_q q);subst;try easy.
     {
-        unfold gamma in H. Mfind_normalise H. rewrite (ltt_eq T_p) in H. simpl in H.
-        inversion H;subst.
-        destruct (Nat.eq_dec k 0);   
-        destruct (Nat.eq_dec k 1);crush.
-        assert  (exists n, k=S (S n)).
-        {
-            destruct k;crush. destruct k;crush. exists k. easy.
-        }
-        destruct H6 as [k' Hk'].
-        rewrite Hk' in H4. simpl in H4.
-        destruct k';crush.
-        rewrite onth_nil in H4;easy.
+        unfold gamma in H; autorewrite with mmaps in H;inversion H;subst.
+        destruct (Nat.eq_dec k 0);
+        destruct (Nat.eq_dec k 1);subst;try easy;try tauto.
+        rewrite (ltt_eq T_p) in H7 . simpl in H7.
+        inversion H7;subst.
+        destruct k;try easy;destruct k;try easy;destruct k; try easy;simpl in H4.
+        rewrite onth_nil in H4. easy.    
     }
     {
         destruct (Nat.eq_dec q prt_p);
         destruct (Nat.eq_dec q prt_r);
-        unfold gamma in H0;Mfind_normalise H0;unfold prt_p, prt_r in *;crush;
-        unfold gamma in H; Mfind_normalise H; inversion H;
+        unfold gamma in H0;autorewrite with mmaps in H0;unfold prt_p, prt_r in *;subst;try easy;
+        unfold gamma in H; autorewrite with mmaps in H; inversion H;
         rewrite (ltt_eq T_p) in H7; simpl in H7; inversion H7.
     }
     {
          destruct (Nat.eq_dec p prt_q);
         destruct (Nat.eq_dec p prt_r);
-        unfold prt_p, prt_r in *;crush;
-        unfold gamma in H; Mfind_normalise H; inversion H;
-        rewrite (ltt_eq T_p) in H7; simpl in H7; inversion H7. 
+        unfold prt_p, prt_r in *;subst;try easy;
+        unfold gamma in H; autorewrite with mmaps in H; inversion H;
+        rewrite (ltt_eq T_q) in H7; simpl in H7; inversion H7. 
     }
     {
            destruct (Nat.eq_dec p prt_q);
         destruct (Nat.eq_dec p prt_r);
-        unfold prt_p, prt_q, prt_r in *;crush;
+        unfold prt_p, prt_q, prt_r in *;subst;try easy;
         unfold gamma in H; Mfind_normalise H; inversion H;
         rewrite (ltt_eq T_q) in H7; simpl in H7; inversion H7. 
     }
 Qed.
+
 Lemma gamma'_possible_comm : forall q r k gamma2, tctxR gamma' (lcomm q r k) gamma2 ->
     (q=prt_q /\ r =prt_r /\ k = 2 ).
 Proof.
@@ -296,33 +249,31 @@ Proof.
     
     destruct (Nat.eq_dec q prt_q);destruct (Nat.eq_dec r prt_r);subst.
     {
-        unfold gamma' in H. Mfind_normalise H.
-        rewrite (ltt_eq T_q1) in H. simpl in H. inversion H;subst.
-        destruct k. 
-        simpl in H4;crush.
-        destruct k. 
-        simpl in H4;crush.
-        destruct k;try easy.
-        simpl in H4;rewrite onth_nil in H4; crush.
+        unfold gamma' in H;autorewrite with mmaps in H.
+        rewrite (ltt_eq T_q1) in H; simpl in H; inversion H;subst.
+        destruct k;simpl in H4;try easy.
+        destruct k; 
+        simpl in H4;try easy.
+        destruct k;simpl in H4;try easy.
+        rewrite onth_nil in H4;try easy.
     }
     {
         destruct (Nat.eq_dec r prt_p);
         destruct (Nat.eq_dec r prt_q);
-        unfold gamma in H0;Mfind_normalise H0;unfold prt_p, prt_r in *;crush;
-        unfold gamma in H; Mfind_normalise H; inversion H;
-        rewrite (ltt_eq T_p) in H7; simpl in H7; inversion H7.
+        unfold gamma in H0;autorewrite with mmaps in H0;unfold prt_p, prt_r in *;subst;try easy;
+        unfold gamma in H; autorewrite with mmaps in H; inversion H;try easy;unfold prt_r in *;subst;try easy.
     }
     {
          destruct (Nat.eq_dec q prt_p);
         destruct (Nat.eq_dec q prt_r);
-        unfold prt_p, prt_r in *;crush;
-        unfold gamma in H; Mfind_normalise H;crush. 
+        unfold prt_p, prt_r in *;subst;try easy;
+        unfold gamma' in H; autorewrite with mmaps in H;try easy. 
     }
     {
         destruct (Nat.eq_dec q prt_p);
         destruct (Nat.eq_dec q prt_r);
-        unfold prt_p, prt_r in *;crush;
-        unfold gamma in H; Mfind_normalise H;crush.
+        unfold prt_p, prt_r in *;subst;try easy;
+        unfold gamma' in H; autorewrite with mmaps in  H;easy.
     }
 Qed.
 
@@ -336,16 +287,81 @@ Proof.
     destruct (Nat.eq_dec p prt_p);
     destruct (Nat.eq_dec p prt_q);
     destruct (Nat.eq_dec p prt_r);
-    unfold prt_p, prt_q, prt_r;crush;Mfind_normalise H;crush.
+    unfold prt_p, prt_q, prt_r;subst;try easy;Mfind_normalise H;subst;try easy.
 Qed.
+
 Lemma gamma_weak_safe: weak_safety gamma.
 Proof.
-Admitted.
+    red;intros;unfold tctxRE in *;destr_hyps;
+    eapply tctx_send_invert in H;
+    eapply tctx_recv_invert in H0;destr_hyps.
+    destruct (Nat.eq_dec p prt_p);
+    destruct (Nat.eq_dec p prt_q);
+    destruct (Nat.eq_dec p prt_r);
+    destruct (Nat.eq_dec q prt_p);
+    destruct (Nat.eq_dec q prt_q);
+    destruct (Nat.eq_dec q prt_r);
+    subst;try easy;
+    unfold prt_p,gamma in *;autorewrite with mmaps in *;
+    try solve [congruence].
+    {
+        rewrite (ltt_eq T_p) in H;simpl in H;inversion H;subst.
+        destruct k;try destruct k;try destruct k;simpl in H3;try easy;
+        try solve[rewrite onth_nil in H3;try easy];inversion H3;subst;clear H3 H;
+        try easy;evar (cc:tctx);
+        exists cc; 
+        eapply simple_red_comm ;try autorewrite with mmaps;
+        try rewrite (ltt_eq T_p);
+        try rewrite  (ltt_eq T_q);simpl;f_equal;try easy;eapply srefl.
+    }
+    {
+        rewrite (ltt_eq T_p) in H0;simpl in H0;inversion H0.   
+    }
+    {           
+        rewrite (ltt_eq T_q) in H;simpl in H;inversion H.
+    }
+Qed.
+
 Lemma gamma'_weak_safe: weak_safety gamma'.
 Proof.
-Admitted.
+    red;intros;unfold tctxRE in *;destr_hyps;
+    eapply tctx_send_invert in H;
+    eapply tctx_recv_invert in H0;destr_hyps.
+    destruct (Nat.eq_dec p prt_p);
+    destruct (Nat.eq_dec p prt_q);
+    destruct (Nat.eq_dec p prt_r);
+    destruct (Nat.eq_dec q prt_p);
+    destruct (Nat.eq_dec q prt_q);
+    destruct (Nat.eq_dec q prt_r);
+    subst;try easy;
+    unfold prt_p,gamma' in *;autorewrite with mmaps in *;
+    try solve [congruence].
+    rewrite (ltt_eq T_q1) in H;simpl in H;inversion H;subst.
+    do 4 (try destruct k);simpl in H3;try easy.
+    inversion H3;subst.
+    evar (cc:tctx);
+    exists cc; 
+        eapply simple_red_comm ;try autorewrite with mmaps;
+        try rewrite (ltt_eq T_q);
+        try rewrite  (ltt_eq T_r);simpl;f_equal;try easy;eapply srefl.
+Qed.
 Lemma gamma_end_weak_safe: weak_safety gamma_end.
-Proof. Admitted.
+Proof. 
+    red;intros;unfold tctxRE in *;destr_hyps;
+    eapply tctx_send_invert in H;
+    eapply tctx_recv_invert in H0;destr_hyps.
+    destruct (Nat.eq_dec p prt_p);
+    destruct (Nat.eq_dec p prt_q);
+    destruct (Nat.eq_dec p prt_r);
+    destruct (Nat.eq_dec q prt_p);
+    destruct (Nat.eq_dec q prt_q);
+    destruct (Nat.eq_dec q prt_r);
+    subst;try easy;
+    unfold prt_p,gamma' in *;autorewrite with mmaps in *;
+    try solve [congruence].
+    unfold gamma_end in *. autorewrite with mmaps in *. easy.
+Qed.
+
 Lemma gamma_safe: safeC gamma.
 Proof.
     Ltac safe_helper ext_red Hred gm gmweak:= let Hrk := fresh "Hrk" in pose proof ext_red as Hrk;
@@ -354,10 +370,8 @@ Proof.
         split;
         [ eapply weak_safe_meq_invariant with (c:=gm);try easy; try apply gmweak
         |exists gm;crush].
-    Check safety_red.
     pcofix CIH.
     pfold.
-    Check safety_red.
     econstructor; try apply gamma_weak_safe;try apply MF.Equal_equiv.
     intros.
     pose proof H as Hred.
@@ -365,29 +379,68 @@ Proof.
     destruct H;
         destr_hyps;subst.
     {
-        safe_helper red_3 Hred gamma gamma_weak_safe.
+        exists gamma.
+        eapply lem_6_12_reduction_determinism with (g':= gamma) in Hred;try easy;
+        try solve [eapply red_3];split;try easy. right. easy.
     }
     {
-        safe_helper red_7 Hred gamma' gamma'_weak_safe.
-        
-        left.
-        pcofix CIH2.
-        pfold.
-        econstructor;try apply gamma'_weak_safe.
+        exists gamma'.
+        eapply lem_6_12_reduction_determinism with (g':= gamma') in Hred;try easy;
+        try solve [eapply red_7];split;try easy. 
+        left. pfold. constructor. eapply gamma'_weak_safe.
         intros.
-        pose proof H as Hred3.
-        eapply gamma'_possible_comm in H;destr_hyps;subst.
-        safe_helper red_10 Hred3 gamma_end gamma_end_weak_safe.
-        
-        left.
-        pcofix CIH3.
-        pfold.
-        econstructor; try apply gamma_end_weak_safe.
+        eapply gamma'_possible_comm in H as Hrd;destr_hyps;subst.
+        exists gamma_end. split.
+        eapply lem_6_12_reduction_determinism;try exact H;
+        eapply red_10.
+        left. pfold. constructor. eapply gamma_end_weak_safe.
         intros.
-        pose proof H as Hred5.
-        eapply gamma_end_possible_comm in H. easy.
+        eapply gamma_end_possible_comm in H0. easy.
     }
 Qed.
+
+CoFixpoint non_live_path := cocons (gamma, Some (lcomm prt_p prt_q 0)) non_live_path.
+
+Lemma non_live_but_fair : fair_path non_live_path.
+Proof.
+    red;intros. pcofix CIH.
+    pfold. rewrite (coseq_eq non_live_path);simpl. constructor.
+    {
+        constructor. simpl. simpl in H.
+        red in H;destr_hyps.
+        eapply gamma_possible_comm in H;tauto.   
+    }
+    {
+        right. easy.   
+    }
+Qed.
+
+Lemma never_implies_not_eventually {A:Type}: forall P (xs : coseq A),
+    alwaysCG (fun x => P x -> False) xs -> (eventually P xs -> False).
+Proof.
+    intros * Hnav Hev.
+    induction Hev;pinversion Hnav;subst;try easy.
+Qed.
+
+Lemma non_live_not_live : live_path non_live_path -> False.
+Proof.
+    intros. rewrite (coseq_eq non_live_path) in H. simpl in H.
+    red in H. pinversion H;subst.
+    red in H2.
+    specialize (H2 prt_r prt_q sint 2);destruct H2 as [_ Hrec].
+    simpl in Hrec.
+    assert(tctxRE (lrecv prt_r prt_q (Some sint) 2) gamma).
+    {
+        red. evar (cc:tctx). exists cc. unfold cc. exact red_4.   
+    }
+    specialize (Hrec H0).
+    eapply never_implies_not_eventually;try exact Hrec.
+    pcofix CIH. pfold. constructor. simpl;intros;try easy. 
+    right.
+    rewrite (coseq_eq non_live_path);simpl. easy.
+Qed.
+
+
 Definition path_0 := cocons (gamma, (lcomm prt_p prt_q 0)) 
     (cocons (gamma, (lcomm prt_p prt_q 1)) 
         (cocons (gamma', (lcomm prt_q prt_r 2)) 

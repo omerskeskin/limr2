@@ -60,6 +60,7 @@ Proof.
         apply assoc_implies_projectable in Hassoc as Hproj;try easy.
     }
      destr_hyps.
-     right.
-     eapply CIH;try exact H1;easy.
+     exists c'. 
+     split;try easy.
+     right. eapply CIH;try easy. easy.
 Qed.
