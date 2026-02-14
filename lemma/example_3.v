@@ -2,6 +2,7 @@ From mathcomp Require Import ssreflect.seq all_ssreflect.
 From Paco Require Import paco pacotac.
 From SST Require Import src.expr src.header src.local src.lcontext src.path_props CpdtTactics.
 Require Import List String Coq.Arith.PeanoNat Setoid Morphisms Relations.
+Require Import Coq.Program.Equality.
 Import ListNotations. 
 
 Open Scope string_scope.
@@ -399,12 +400,12 @@ Proof.
     }
 Qed.
 
-CoFixpoint non_live_path := cocons (gamma, Some (lcomm prt_p prt_q 0)) non_live_path.
+CoFixpoint path_0 := cocons (gamma, Some (lcomm prt_p prt_q 0)) path_0.
 
-Lemma non_live_but_fair : fair_path non_live_path.
+Lemma non_live_but_fair : fair_path path_0.
 Proof.
     red;intros. pcofix CIH.
-    pfold. rewrite (coseq_eq non_live_path);simpl. constructor.
+    pfold. rewrite (coseq_eq path_0);simpl. constructor.
     {
         constructor. simpl. simpl in H.
         red in H;destr_hyps.
@@ -422,9 +423,9 @@ Proof.
     induction Hev;pinversion Hnav;subst;try easy.
 Qed.
 
-Lemma non_live_not_live : live_path non_live_path -> False.
+Lemma path_0_not_live : live_path path_0 -> False.
 Proof.
-    intros. rewrite (coseq_eq non_live_path) in H. simpl in H.
+    intros. rewrite (coseq_eq path_0) in H. simpl in H.
     red in H. pinversion H;subst.
     red in H2.
     specialize (H2 prt_r prt_q sint 2);destruct H2 as [_ Hrec].
@@ -437,12 +438,87 @@ Proof.
     eapply never_implies_not_eventually;try exact Hrec.
     pcofix CIH. pfold. constructor. simpl;intros;try easy. 
     right.
-    rewrite (coseq_eq non_live_path);simpl. easy.
+    rewrite (coseq_eq path_0);simpl. easy.
+Qed.
+
+Lemma path_0_fair : fair_path path_0.
+Proof.
+    red;intros;pcofix CIH;pfold;rewrite (coseq_eq path_0);simpl;constructor.
+    red;intros. simpl in H. red in H;destr_hyps.
+    eapply gamma_possible_comm in H as Hr;try easy.
+    destruct Hr as [?Hr | ?Hr];destr_hyps;subst;
+        constructor; simpl; tauto.
+    right. easy.
 Qed.
 
 
-Definition path_0 := cocons (gamma, (lcomm prt_p prt_q 0)) 
-    (cocons (gamma, (lcomm prt_p prt_q 1)) 
-        (cocons (gamma', (lcomm prt_q prt_r 2)) 
-            (cocons (gamma_end, label_dc) conil))
+Definition path_1 := cocons (gamma, Some (lcomm prt_p prt_q 0)) 
+    (cocons (gamma, Some (lcomm prt_p prt_q 1)) 
+        (cocons (gamma', Some (lcomm prt_q prt_r 2)) 
+            (cocons (gamma_end, None) conil))
     ).
+Lemma path_1_fair: fair_path path_1.
+Proof.
+    intros.
+    red;intros;pcofix CIH;pfold;unfold path_1;constructor. constructor.
+    + simpl. simpl in H. red in H;destr_hyps. eapply gamma_possible_comm in H as Hred;
+    destruct Hred;destr_hyps;subst;easy.
+    + left. pfold. constructor. constructor. simpl;simpl in H;red in H;destr_hyps;
+    eapply gamma_possible_comm in H;destruct H;destr_hyps;subst;easy.
+    + left.  pfold. constructor. constructor. simpl;simpl in H;red in H;destr_hyps;
+    eapply gamma'_possible_comm in H;destruct H;destr_hyps;subst;easy.
+    + left. pfold. constructor. constructor. simpl in H;red in H;destr_hyps;
+    eapply gamma_end_possible_comm in H;easy.
+    + left. pfold;constructor. constructor. simpl in H. easy.
+Qed.
+
+Lemma tctxR_distinct_label_send : forall g p q s ell g',
+    tctxR g (lsend p q (Some s) ell) g' -> p <> q.
+Proof.
+    intros. dependent induction H;try easy;
+    eapply IHtctxR;try reflexivity.
+Qed.
+
+Lemma tctxR_distinct_label_recv : forall g p q s ell g',
+    tctxR g (lrecv p q (Some s) ell) g' -> p <> q.
+Proof.
+    intros. dependent induction H;try easy;
+    eapply IHtctxR;try reflexivity.
+Qed.
+
+Lemma tctxR_distinct_label_comm : forall g p q ell g',
+    tctxR g (lcomm p q ell ) g' -> p <> q.
+Proof.
+    intros. dependent induction H;try easy;
+    eapply IHtctxR;try reflexivity.
+Qed.
+
+Lemma path_1_live: live_path path_1.
+Proof.
+    intros.
+    red;intros;pfold;unfold path_1;constructor;
+    repeat (try (match goal with [ |- upaco1 _ _ _]=> left;pfold;constructor end));
+        constructor;simpl;intros;try easy; red in H;destr_hyps;
+        try eapply tctxR_distinct_label_send in H as Hpq;
+        try eapply tctxR_distinct_label_recv in H as Hpq;
+        try eapply tctx_send_invert in H as Hts;
+        try eapply tctx_recv_invert in H as Hrc;
+        destr_hyps;
+        destruct (Nat.eq_dec p prt_p);
+        destruct (Nat.eq_dec p prt_q);
+        destruct (Nat.eq_dec p prt_r);
+        destruct (Nat.eq_dec q prt_p);
+        destruct (Nat.eq_dec q prt_q);
+        destruct (Nat.eq_dec q prt_r);
+        subst;try easy;
+        unfold prt_p,prt_q,prt_r,gamma,gamma',gamma_end in *;autorewrite with mmaps in *;
+        try solve [congruence
+            | constructor;simpl;easy
+            | rewrite (ltt_eq T_r) in H0;simpl in H0;inversion H0;subst;try easy
+            | rewrite (ltt_eq T_p) in H0;simpl in H0;inversion H0;subst;try easy
+            | rewrite (ltt_eq T_q1) in H0;simpl in H0;inversion H0;subst;try easy
+            |rewrite (ltt_eq T_q) in H0;simpl in H0;inversion H0;subst;try easy].
+        constructor 2;constructor 2;constructor;simpl;easy.
+     
+        constructor 2;constructor;simpl;easy.
+Qed.
