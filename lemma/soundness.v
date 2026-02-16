@@ -323,7 +323,6 @@ Proof.
 Qed.
 
 (*Search SList.*)
-Locate wfgC_triv.
 Lemma wfg_implies_slis: forall p q gcs, wfgC (gtt_send p q gcs) -> SList gcs.
 Proof.
     intros.

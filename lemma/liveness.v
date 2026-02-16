@@ -503,7 +503,6 @@ Fixpoint gttstepH_ind_ref p q ell G G' (Hstep : gttstepH  G p q ell G') {struct 
     {
         eapply P_eq;try exact Heq1;try exact Heq2. eapply gttstepH_ind_ref;try exact g.
     }
-    Guarded.
   Qed.
 
 End gttstepH_ind_ref.

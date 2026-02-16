@@ -372,7 +372,7 @@ Proof.
         }    
     }
 Qed.
-Locate gttstepRtc.
+
 Definition path_starts_with (gamma:tctx) (pt:local_path):=
   match pt with 
   | cocons (a,b) _ => a=gamma

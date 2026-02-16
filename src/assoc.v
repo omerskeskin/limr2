@@ -492,7 +492,7 @@ Forall2 P xs ys.
 Proof.
     induction xs.
     {
-        intros. Search Datatypes.length 0.
+        intros.
         simpl in H.
         apply eq_sym in H.
         rewrite length_zero_iff_nil in H. subst. easy.       
