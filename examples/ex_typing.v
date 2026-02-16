@@ -31,7 +31,7 @@ Definition TBob := ltt_recv 0 [
   Some(snat, ltt_send 2 [Some(snat, ltt_end)])
   ].
 
-Search isgPartsC gtt_end.
+(*Search isgPartsC gtt_end.*)
 
 Lemma no_part_end: forall p,
   isgPartsC p (gtt_end) -> False.
@@ -2184,11 +2184,10 @@ Lemma SRExa: exists gamma', typ_sess M' gamma' /\ path_props.tctxRtc gamma gamma
 Proof.
   apply sub_red with (M := M).
        apply TypM.
-       Check redM.
+       (*Check redM.*)
        apply redM.
 Qed.
 
-Locate betaRtc.
 Lemma live_exa: exists M'', betaRtc M M'' /\ 
   exists Mr vl, scong M'' (2 <--p_send 0 0 vl p_inact ||| Mr).
 Proof.
@@ -2200,7 +2199,6 @@ Proof.
   assert(Hbr: betaRtc M M) by constructor.
   eapply Hlive in Hbr.
   destruct Hbr as [Hbr1 Hbr2].
-  Compute M.
   specialize (Hbr2 2 1  [Some (p_send 0 0 (e_succ (e_var 0)) p_inact)]).
   specialize (Hbr2 ((0 <-- p_send 1 0 (e_val (vnat 50)) (p_recv 2 [Some p_inact]))
 ||| (1 <--

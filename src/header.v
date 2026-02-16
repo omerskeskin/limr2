@@ -5,6 +5,8 @@ Open Scope list_scope.
 From Paco Require Import paco.
 Import ListNotations. 
 
+Set Warnings "-parsing".
+
 Notation fin := nat.
 Notation part := nat (only parsing).
 Notation label := nat (only parsing).
@@ -210,7 +212,7 @@ Proof.
   revert z.
   induction H; intros. easy.
   specialize(IHmulti z0 H1).
-  specialize(@multi_step X R); intros.
+  specialize( @ multi_step X R); intros.
   apply H2 with (y := y). easy. easy.
 Qed.
 

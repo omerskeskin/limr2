@@ -86,7 +86,7 @@ Fixpoint sess_to_map (M:session):  sess_map :=
 
 Create HintDb nodup.
 
-Search NoDup app.
+(*Search NoDup app.*)
 
 Hint Resolve nodup_swap NoDup_app_remove_r NoDup_app_remove_l nodup_swap2 :nodup.
 Hint Rewrite app_nil_r app_assoc :nodup.
@@ -101,7 +101,7 @@ Proof.
   simpl. econstructor.
   {
     simpl in H. simpl in H1.
-    Search In "++".
+    (*Search In "++".*)
     rewrite in_app_iff.
     rewrite in_app_iff.
     red;intros.
@@ -166,7 +166,7 @@ Qed.
 
 Lemma NoDup_2in_false : forall (p:nat) M1 M2, In p M1 -> In p M2 -> NoDup (M1 ++ M2) -> False.
 Proof.
-  intros *. revert p M2. Search app In.
+  intros *. revert p M2.
   intros. eapply in_split in H. eapply in_split in H0.
   destr_hyps;subst.
   rewrite <- app_assoc in H1.
@@ -291,7 +291,7 @@ Proof.
   eapply MF.Equal_equiv.
   {
     eapply sess_to_map_noDup_to_disj in Hnd as Hdisj. rewrite sess_to_map_disj_merge;try easy.
-    Search MF.Disjoint "sym".
+    (*Search MF.Disjoint "sym".*)
     set (Hdisj' := MF.Disjoint_sym (m1:=sess_to_map M1) (m2:=sess_to_map M1') Hdisj).
 
     rewrite sess_to_map_disj_merge;try easy.

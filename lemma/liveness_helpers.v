@@ -26,7 +26,7 @@ Proof.
     intros.
     pattern gamma'. 
     eapply tctxR_invariance with (gamma:=gamma);try easy.
-    intros. red in H2;destr_hyps;subst. Search tctx_wf tctxR.
+    intros. red in H2;destr_hyps;subst. 
     eapply tctx_wf_after_red_comm;[| exact H2];easy.
 Qed.
 
@@ -61,8 +61,8 @@ Proof.
     eapply assoc_implies_projectable;easy.
 Qed.
 
-Check typ_p_gtth.
-Check ishParts.
+(*Check typ_p_gtth.*)
+(*Check ishParts.*)
 
 Inductive is_tree_prefix : gtth -> gtth -> Prop :=
     | tree_prefix_hole : forall n g, is_tree_prefix (gtth_hol n) g
@@ -150,7 +150,7 @@ Proof.
         apply gtth_height_ge_0;easy.      
     }
     {
-        Search Forall2.
+        (*Search Forall2.*)
         eapply prefix_height_helper.
         eapply Forall2_forall.
         eapply Forall2_length. exact H.
@@ -213,7 +213,7 @@ Section tree_proper_prefix_ind_ref.
   Qed.
 End tree_proper_prefix_ind_ref.
 
-Print projection.
+(*Print projection.*)
 
 
 
@@ -389,10 +389,10 @@ Proof.
     specialize (Hassoc_u _ H2). easy. 
 Qed.
 
-Check balanced_to_tree.
-Print typ_p_gtth.
+(*Check balanced_to_tree.*)
+(*Print typ_p_gtth.*)
 
-Print projection.
+(*Print projection.*)
 (*
 
 Inductive used_in_gtth : nat -> gtth -> Prop := 
@@ -450,8 +450,8 @@ Proof.
         }   
     }
 *)
-Search isMergeCtx Forall.
-Print isMergeCtx.
+(*Search isMergeCtx Forall.*)
+(*Print isMergeCtx.*)
 
 Definition triple_opt_sum:= (fun u v w : option gtt =>
 u = None /\ v = None /\ w = None \/
@@ -484,8 +484,6 @@ Proof.
         simpl in H0. crush.   
     }
 Qed.
-Search Forall2R Datatypes.length.
-Search Forall3S.
 
 Lemma triple_sum_trilemma: forall xs ys zs x n, Forall3S triple_opt_sum xs ys zs ->
 onth n zs = Some x -> onth n xs = Some x \/ onth n ys= Some x.
@@ -539,8 +537,6 @@ Proof.
         intros.
         destruct x;try easy.
         {
-            Search Forall3S.
-            Search isMergeCtx Forall.
             eapply in_some_implies_onth in H2 as Hsome. destr_hyps. rename x into n.
             eapply triple_sum_trilemma in H;[|exact H3].
             inversion H0;subst.
@@ -563,7 +559,7 @@ onth n xs = Some x -> onth n zs = Some x.
 Proof.
     intros * Hsum Honth.
     unfold triple_opt_sum in Hsum.
-    Print Forall3S.
+    (*Print Forall3S.*)
     generalize dependent xs.
     generalize dependent ys.
     revert n.
@@ -595,7 +591,7 @@ onth n ys = Some x -> onth n zs = Some x.
 Proof.
     intros * Hsum Honth.
     unfold triple_opt_sum in Hsum.
-    Print Forall3S.
+    (*Print Forall3S.*)
     generalize dependent xs.
     generalize dependent ys.
     revert n.
@@ -661,7 +657,6 @@ Proof.
     {
         intros.
         destruct n. simpl in Honth. inversion Honth;subst.
-        Search Forall2R.
         eapply Forall2R_Forall;crush.
         
         simpl in Honth. rewrite onth_nil in Honth;easy.
@@ -676,7 +671,6 @@ Proof.
         destruct n.
         {
             simpl in Honth;inversion Honth;subst.
-            Search Forall3S.
             eapply Forall3S_to_Forall2_r;exact H.   
         }
         {
@@ -796,16 +790,14 @@ Proof.
             eapply continuation_wfgC;[exact Hwfg|exact H11].   
         }
         {
-            Search projectableA gttstepC.
             eapply projectable_after_step with (g:=(gtt_send s t gcs));try easy.
             pfold.
             econstructor.
             2:symmetry in H11;exact H11.
-            Search wfgC (_ <> _).
             eapply wfgC_triv in Hwfg as Hw. easy.
         }
         {
-            Search typ_gtth usedCtx.
+            (*Search typ_gtth usedCtx.*)
             eapply decidable_helper.typh_with_less;try exact Hsubs;easy.   
         }
         {
@@ -815,7 +807,7 @@ Proof.
             destruct H14;try easy. destr_hyps;subst.
             inversion H14;subst.
             destruct H20;try easy.
-            Search isMerge onth.
+            (*Search isMerge onth.*)
             eapply merge_inv_ss in H23;[|exact H15];subst.
             easy.  
         }  
@@ -913,16 +905,16 @@ Proof.
             eapply continuation_wfgC;[exact Hwfg|exact H11].   
         }
         {
-            Search projectableA gttstepC.
+            (*Search projectableA gttstepC.*)
             eapply projectable_after_step with (g:=(gtt_send s t gcs));try easy.
             pfold.
             econstructor.
             2:symmetry in H11;exact H11.
-            Search wfgC (_ <> _).
+            (*Search wfgC (_ <> _).*)
             eapply wfgC_triv in Hwfg as Hw. easy.
         }
         {
-            Search typ_gtth usedCtx.
+            (*Search typ_gtth usedCtx.*)
             eapply decidable_helper.typh_with_less;try exact Hsubs;easy.   
         }
         {
@@ -932,7 +924,7 @@ Proof.
             destruct H14;try easy. destr_hyps;subst.
             inversion H14;subst.
             destruct H20;try easy.
-            Search isMerge onth.
+            (*Search isMerge onth.*)
             eapply merge_inv_ss in H23;[|exact H15];subst.
             easy.  
         }  
@@ -940,7 +932,7 @@ Proof.
 Qed. 
 
 
-Print projection.
+(*Print projection.*)
 
 Lemma inequality_by_not_ishparts: forall p0 p q xs, (ishParts p0 (gtth_send p q xs) -> False) ->
                             p0 <> p /\ p0 <> q.
@@ -1174,7 +1166,8 @@ Proof.
                 pfold. 
 
                 constructor. intros;apply H2.
-                Search isgPartsC onth. eapply part_parent;try exact H11;try easy.
+                (*Search isgPartsC onth. *)
+                eapply part_parent;try exact H11;try easy.
                 red. (repeat split);try easy.
                 intros.
                 eapply H0. 
@@ -1213,7 +1206,7 @@ Proof.
     }
 Qed.
 
-Print typ_p_recv_ltth.
+(*Print typ_p_recv_ltth.*)
 
 Lemma extendLis_length {A:Type}: forall (a b: option A) n, Datatypes.length (extendLis n a)=
 Datatypes.length (extendLis n b).
@@ -1758,7 +1751,7 @@ ls)) xs1 lxs /\
                     eapply Forall2_prop_l in H14;try exact Honthkxs;tac_sanitize.
                     rename x2 into gh', x0 into gs',x1 into s.
                     eapply mergeCtx_onth_subset in H1;try exact H12;try easy.
-                    Check mergeCtx_onth_subset.
+                    (*Check mergeCtx_onth_subset.*)
                     assert(Hwfg2: wfgC g') by subtac_wfg_by_onth.
                     eapply H0 with (gs:=gs') (q:=q0) (ls:=ls) (p:=p0) in Hwfg2;try easy;
                     try solve [subtac_ishparts_by_onth | subtac_projable_by_onth | subtac_wfgth_by_onth 

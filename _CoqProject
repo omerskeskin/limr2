@@ -1,5 +1,6 @@
 
 -R . SST
+-arg "-w -parsing"
 src/sim.v
 src/header.v
 src/expr.v

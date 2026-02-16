@@ -347,7 +347,7 @@ Proof.
   unfold subtypeC. easy.
   apply subtype_monotone.
 Qed.
-Print wfsend.
+(*Print wfsend.*)
 Lemma subtype_send_inv : forall pt xs ys, subtypeC (ltt_send pt xs) (ltt_send pt ys) -> Forall2R (fun u v => (u = None) \/ (exists s s' t t', u = Some(s,t) /\ v = Some (s',t') /\ subsort s s' /\ subtypeC t t')) xs ys.
 Proof.
   induction xs; intros.

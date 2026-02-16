@@ -16,9 +16,10 @@ CoFixpoint T_q := ltt_recv prt_p [Some (sint,T_q); Some (sint, T_q1); None].
 Definition T_r := ltt_recv prt_q [None;None; Some (sint,ltt_end)].
 
 Definition gamma := M.add prt_p T_p (M.add prt_q T_q (M.add prt_r T_r M.empty)).
-Print Instances Proper.
+(*Print Instances Proper.*)
 
-#[global] Instance RWMTCTXR: Proper ((@M.Equal ltt) ==> (eq) ==> (@M.Equal ltt) ==> (iff)) tctxR.
+#[global] Instance RWMTCTXR: Proper (( @ M.Equal ltt) ==> (eq) ==> ( @ M.Equal ltt) ==> (iff)) tctxR.
+
 Proof. unfold "==>". constructor; intros; subst. 
 apply Rstruct with (g1:=y) (g2:=y1) (g1':=x) (g2':=x1);crush. 
 apply Rstruct with (g1:=x) (g2:=x1) (g1':=y) (g2':=y1);crush.
@@ -26,7 +27,7 @@ Qed.
 
 Lemma red_1 : tctxR gamma (lsend prt_p prt_q (Some sint) 0) gamma.
 Proof.
-    Search m_update.
+    (*Search m_update.*)
     assert(M.Equal (m_update prt_p T_p gamma) gamma).
     {
         apply map_perm_invariance;crush.
@@ -101,13 +102,13 @@ Proof.
         rewrite MF.merge_spec1mn; try easy.
         unfold p_only. unfold q_only.
         do 4 rewrite MF.add_o.
-        Search M.find M.empty.
+        (*Search M.find M.empty.*)
         rewrite M.empty_spec.
         destruct (Nat.eq_dec prt_p y); destruct (Nat.eq_dec prt_q y); try (simpl; easy).
         subst. discriminate.
     }
     apply RvarI; try (unfold M.mem; reflexivity).
-    Search MF.Disjoint.
+    (*Search MF.Disjoint.*)
     apply Rstruct with (g1':=disj_merge p_only q_only H_disj) (g2':=disj_merge p_only q_only H_disj).
     apply Rcomm with (g1:=p_only) (g1':=p_only) (g2:=q_only) (g2':=q_only) (H1:= H_disj) (H2:=H_disj) (s:=sint) (s':=sint); try easy.
     apply srefl.
@@ -159,7 +160,7 @@ Definition m_update2 p q Tp Tq (gamma:tctx) :=
 
 Lemma red_7 : tctxR gamma (lcomm prt_p prt_q 1) gamma'.
 Proof.
-    Search "simple" "red".
+    (*Search "simple" "red".*)
     assert ( M.Equal (M.add prt_p ltt_end (M.add prt_q T_q1 (M.remove prt_p (M.remove prt_q gamma)))) gamma').
     {
         unfold M.Equal;intros.

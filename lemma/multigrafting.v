@@ -69,7 +69,7 @@ Proof.
     eapply balanced_to_tree in Hispartsp as Hss;try exact Hwfg;destr_hyps.
     eapply restricted_grafting_send in H1;try exact H;try exact Hproj;try easy.
     split. eapply projection_implies_part_send;try exact Hproj.
-    Search isgPartsC gttstepRtc.
+    (*Search isgPartsC gttstepRtc.*)
     eapply   typ_gtth_means_slist_gs in H as ?Ht;try easy; try eapply typ_gtth_means_wfgtth;try exact H.
     destr_hyps.
     eapply gttstep_reflects_part with (g':=x2);try easy.
@@ -93,7 +93,7 @@ Proof.
     eapply balanced_to_tree in Hispartsp as Hss;try exact Hwfg;destr_hyps.
     eapply restricted_grafting_recv in H1;try exact H;try exact Hproj;try easy.
     split;try easy.
-    Search isgPartsC gttstepRtc.
+    (*Search isgPartsC gttstepRtc.*)
     eapply   typ_gtth_means_slist_gs in H as ?Ht;try easy; try eapply typ_gtth_means_wfgtth;try exact H.
     destr_hyps.
     eapply gttstep_reflects_part with (g':=x2);try easy.
@@ -130,7 +130,7 @@ Proof.
     {
         
         intros * Hwfg Hprojable Hprojp Hprojq Htypp Husedp Htypq Husedq Hgttheq.
-        Search projectionC isgPartsC ltt_send.
+        (*Search projectionC isgPartsC ltt_send.*)
         assert (Hispartsp : isgPartsC p0 g) by (eapply proj_contains_q_implies_part_send in Hprojp;try easy).
         assert (Hispartsq : isgPartsC q0 g) by (eapply proj_contains_q_implies_part_send in Hprojp;try easy).
         
@@ -226,7 +226,7 @@ Proof.
     {
         
         intros * Hwfg Hprojable Hprojp Hprojq Htypp Husedp Htypq Husedq Hgttheq.
-        Search projectionC isgPartsC ltt_send.
+        (*Search projectionC isgPartsC ltt_send.*)
         assert (Hispartsp : isgPartsC p0 g) by (eapply proj_contains_q_implies_part_recv in Hprojp;try easy).
         assert (Hispartsq : isgPartsC q0 g) by (eapply proj_contains_q_implies_part_recv in Hprojp;try easy).
         
@@ -704,7 +704,7 @@ usedCtx gs_q ctx_q ->
 Proof.
     intros. destruct Tq.
     {
-        Search projectionC ltt_end isgPartsC. 
+        (*Search projectionC ltt_end isgPartsC. *)
         eapply proj_contains_q_implies_part_send in H1;try easy;eapply pmergeCR in H2;
         try easy.
     }

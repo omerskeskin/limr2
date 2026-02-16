@@ -142,7 +142,7 @@ Lemma isgParts_x : forall [s s' x s0 g p],
     isgParts p (g_send s s' (Some (s0, g) :: x)).
 Proof.
     intros.
-    Check Nat.eqb.
+    (*Check Nat.eqb.*)
     - case_eq (Nat.eqb p s); intros.
       assert (p = s). apply Nat.eqb_eq; try easy. subst. apply pa_sendp.
     - case_eq (Nat.eqb p s'); intros.

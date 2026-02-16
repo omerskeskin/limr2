@@ -127,7 +127,7 @@ Proof.
   {
     specialize (M.merge_spec1 both (@or_intror (M.In x g) (M.In x g') H)) as H_spc.
     destruct H_spc. destruct H0. subst.
-    Check MF.in_find.
+    (*Check MF.in_find.*)
     apply MF.in_find.
     unfold disj_merge.
     (*prove: both x (M.find x g) (M.find x g') <>=None*)
@@ -159,7 +159,7 @@ Lemma spc_merge_find1 {A:Type}: forall (g1 g2:M.t A) p H_disj x, M.find p g1 = S
   M.find p (disj_merge g1 g2 H_disj)=Some x.
 Proof.
   intros.
-  Search M.merge M.find.
+  (*Search M.merge M.find.*)
   unfold disj_merge.
   rewrite MF.merge_spec1mn; try easy.
   unfold MF.Disjoint in H_disj.
@@ -175,7 +175,7 @@ Lemma spc_merge_find2 {A:Type}: forall (g1 g2:M.t A) p H_disj x, M.find p g2 = S
   M.find p (disj_merge g1 g2 H_disj)=Some x.
 Proof.
   intros.
-  Search M.merge M.find.
+  (*Search M.merge M.find.*)
   unfold disj_merge.
   rewrite MF.merge_spec1mn; try easy.
   unfold MF.Disjoint in H_disj.
@@ -193,7 +193,7 @@ Lemma spc_merge_find3 {A:Type}: forall (g1 g2:M.t A) p H_disj x,
   (M.find p g2=Some x /\ M.find p g1=None).
 Proof.
   intros.
-  Search M.merge M.find.
+  (*Search M.merge M.find.*)
   unfold disj_merge in H.
   rewrite  MF.merge_spec1mn in H; destruct (M.find p g1);
   destruct (M.find p g2); crush.
@@ -214,7 +214,7 @@ Proof.
   intros.
   unfold MF.Disjoint. unfold not. intros.
   destruct H. 
-  Search M.In M.empty.
+  (*Search M.In M.empty.*)
   apply MF.empty_in_iff in H0. assumption.
 Qed.
 
@@ -261,12 +261,12 @@ Qed.
 Lemma disj_merge_unitr: forall (g:tctx), M.Equal g (disj_merge g M.empty (empty_disjoint g)).
 Proof.
   intros. unfold M.Equal. intros. unfold disj_merge.
-  Check MF.merge_spec1mn.
+  (*Check MF.merge_spec1mn.*)
   rewrite MF.merge_spec1mn.
   unfold M.find at 3.
   simpl. unfold both. 
   destruct (M.find y g);reflexivity.
-  Check Proper.
+  (*Check Proper.*)
   unfold Proper.
   unfold "==>".
   intros. subst. reflexivity. intros. unfold both. simpl. reflexivity. 
@@ -470,7 +470,7 @@ Lemma disj_weakening : forall (g1 g2:tctx) x e, MF.Disjoint g1 (M.add x e g2) ->
 Proof.
   intros.
   unfold MF.Disjoint in *. intros. specialize (H k).
-  Search M.In M.add.
+  (*Search M.In M.add.*)
   rewrite MF.add_in_iff in H. crush.
 Qed.
 
@@ -559,7 +559,7 @@ Proof.
       (disj_merge g1 (M.add x e g2_1) Hd'').
       apply singleton_merge; try rewrite MF.not_in_find in H0; crush.
       destruct (M.find x g1) eqn:H_yg1; try easy.
-      Search M.Equal M.find.
+      (*Search M.Equal M.find.*)
       setoid_rewrite H1 in Hdisj_1.
       unfold MF.Disjoint in Hd''. specialize (Hd'' x).
       rewrite MF.add_in_iff in Hd''.
@@ -576,7 +576,7 @@ Proof.
      change (M.merge both g1' g2_1) with (disj_merge g1' g2_1 Hd').
      change (M.merge both g1' (M.add x e g2_1)) 
      with (disj_merge g1' (M.add x e g2_1) Hd''' ).
-     Check singleton_merge.
+     (*Check singleton_merge.*)
      apply singleton_merge; crush.
      rewrite H1 in Hdisj_2.
      destruct (M.find x g1') eqn:Hxg1; crush.
@@ -645,12 +645,12 @@ Proof.
   {
    unfold MF.Disjoint.
    intros.
-   Search M.remove M.In.
+   (*Search M.remove M.In.*)
    destruct (Nat.eq_dec p k); crush. apply not_in_remove in H3; easy.
    destruct (M.find k (M.add p ct M.empty)) eqn:Hy1.
-   Search M.add M.find.
+   (*Search M.add M.find.*)
    apply MF.add_neq_o with (m:=M.empty) (e:=ct) in n0.
-   Search M.find M.empty.
+   (*Search M.find M.empty.*)
    rewrite M.empty_spec in n0. crush.
    rewrite MF.in_find in H4. crush.
   }
@@ -685,9 +685,9 @@ Proof.
    intros.
    destruct (Nat.eq_dec p k); crush. apply not_in_remove in H3; easy.
    destruct (M.find k (M.add p (ltt_send q xs) M.empty)) eqn:Hy1.
-   Search M.add M.find.
+   (*Search M.add M.find.*)
    apply MF.add_neq_o with (m:=M.empty) (e:=(ltt_send q xs)) in n0.
-   Search M.find M.empty.
+   (*Search M.find M.empty.*)
    rewrite M.empty_spec in n0. crush.
    rewrite MF.in_find in H4. crush.
   }
@@ -695,7 +695,7 @@ Proof.
   assert(He2: M.Equal g 
   (disj_merge (M.remove p g) (M.add p (ltt_send q xs) M.empty) Hd2)).
   {
-    Check singleton_merge.
+    (*Check singleton_merge.*)
     unfold M.Equal.
     intros.
     unfold disj_merge.
@@ -771,7 +771,7 @@ Proof.
   assert(He2: M.Equal g 
   (disj_merge (M.remove p g) (M.add p (ltt_recv q xs) M.empty) Hd2)).
   {
-    Check singleton_merge.
+    (*Check singleton_merge.*)
     unfold M.Equal.
     intros.
     unfold disj_merge.
@@ -810,7 +810,7 @@ Proof.
      rewrite  <- MF.not_in_find in H2; try easy.
      rewrite  <- MF.not_in_find in H3; try easy.
      rewrite MF.in_find in H6. apply opt_lem1 in H6. destr_hyps.
-     Check M.add_spec2.
+     (*Check M.add_spec2.*)
      rewrite M.add_spec2 in H5;try easy.
      rewrite M.add_spec2 in H5;try easy.
     }

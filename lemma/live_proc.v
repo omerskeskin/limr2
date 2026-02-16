@@ -9,8 +9,7 @@ From SST Require Import lemma.inversion lemma.path_assoc lemma.inversion_expr le
 lemma.projection_helper lemma.subj_red_prog_fid lemma.projection lemma.subj_red_helpers lemma.soundness 
 lemma.liveness_helpers lemma.liveness lemma.safety.
 
-Search gttstepH.
-Locate graft_height_after_step.
+(*Search gttstepH.*)
 Definition typable M := exists gamma, typ_sess M gamma. 
 
 Definition proc_path_valid_criteria := (fun x1 (l:label)  x2  =>
@@ -20,13 +19,11 @@ Definition proc_path_valid_criteria := (fun x1 (l:label)  x2  =>
   end).
 From Coq Require Import IndefiniteDescription.
 
-Locate constructive_indefinite_description.
-
 Definition proc_valid_pathC := valid_path_GC proc_path_valid_criteria.
 
 Definition betaRtc := clos_refl_trans session betaP.
 
-Check p_send.
+(*Check p_send.*)
 
 
 Lemma sub_red_Rtc : forall M M' gamma, typ_sess M gamma -> betaRtc M M' -> exists gamma', typ_sess M' gamma'.
@@ -53,7 +50,7 @@ Proof.
     {
       pinversion Hvalid;try apply valid_path_mon;subst;red in H5;easy. 
     }
-	Search betaP_lbl.
+	(*Search betaP_lbl.*)
 	eapply sub_red_strong_labelled in Hbeta as Hsub;try exact Htyp.
 	destruct (constructive_indefinite_description _ Hsub) as [gamma' Hg'].
     destruct Hg' as [Hassoc' Hstep].
@@ -84,7 +81,7 @@ Proof.
 Defined.
 
 
-Search path_assocC.
+(*Search path_assocC.*)
 
 Definition typ_pathC := paco2 typ_path bot2.
 
@@ -96,7 +93,7 @@ Definition head_trans_proc p q ell (xs:coseq (session * option label)) := match 
   | cocons (_, Some (lcomm p' q' ell')) _ => p=p' /\ q=q' /\ ell =ell'
   | _ => False end.
 
-Print live_path_inner.
+(*Print live_path_inner.*)
 
 Definition fairness_proc_inner xs := forall p q ell, head_comm_enabled_proc p q ell xs ->
 exists ell',eventually (head_trans_proc p q ell') xs.
@@ -122,7 +119,7 @@ Proof.
         pfold.
         constructor;try easy.
         unfold eq_rect_r. simpl.
-		Check gamma_by_betaP.
+		(*Check gamma_by_betaP.*)
         set (gnext:= gamma_by_betaP M gamma n n0 n1 x l' xs0 Htyp  Hvalid).
         destruct gnext.
         destruct a. destr_hyps.
@@ -229,7 +226,7 @@ Proof.
 	eapply sess_fidelity in H1 as Hfid;try exact H;try easy;destr_hyps.
 	red in Hfair.
 	pinversion Hfair;subst. red in H7. specialize (H7 p q x2).
-    Print fair_path_local_inner.
+    (*Print fair_path_local_inner.*)
     assert(Hra : head_comm_enabled_proc p q x2 (cocons (M, l) ms)) by 
     (red;simpl;exists x1;easy).
     specialize (H7 Hra). destr_hyps. 
@@ -442,7 +439,7 @@ Proof.
     induction M.
     red in H;simpl in H;specialize (H n). autorewrite with mmaps in H;easy.
     assert(scong (s_zero|||s_zero) s_zero). eauto with brocs.
-    Search noDupSess MF.Disjoint.
+    (*Search noDupSess MF.Disjoint.*)
     eapply sess_to_map_noDup_to_disj in Hnd as Hdisj.
     rewrite sess_to_map_disj_merge with (Hdisj:=Hdisj) in H;try easy.
     unfold disj_merge in H. 
@@ -1197,7 +1194,7 @@ Proof.
 	{
 		red in H6. specialize (H6 _ _ H0). pinversion H6;try apply wfltt.wfltt_mon;try easy.
 	}
-    Check assoc.simul_subproj.
+    (*Check assoc.simul_subproj.*)
 	eapply assoc.simul_subproj in Hsub1 as Hsim;try exact Hsub2;try easy.
 	
     eapply unfold_ooo_lemma in Hinq as Hinq';try exact Hunf.
@@ -1306,7 +1303,7 @@ Proof.
     eapply inv_proc_send in H9;eapply inv_proc_recv in H11;try reflexivity;destr_hyps.
     eapply assoc.subtype_send_inv1 in H11 as ?H;
     eapply assoc.subtype_recv_inv1 in H13 as ?H;destr_hyps;subst.
-    Search "simul".
+    (*Search "simul".*)
     eapply assoc.simul_subproj with (p:=p) (q:=q) (xq:=x5) (xp:=x6) in H5 as Hass.
     {
         eapply subtype_send_inv in H11.
@@ -1319,7 +1316,7 @@ Proof.
     }
     {
         destruct (decidable_isgPartsC x p);try easy.
-        Search isgPartsC projectionC ltt_end.
+        (*Search isgPartsC projectionC ltt_end.*)
         eapply not_part_proj in H16.
         eapply assoc_inv_find in H2;try exact H6;try easy.
         red in H2;destr_hyps.
@@ -1370,7 +1367,7 @@ Proof.
                 simpl in Head.
                 red in H0;destr_hyps.
                 destruct H2 as [gamma Htyp2].
-                Check unfold_beta_unique_send.
+                (*Check unfold_beta_unique_send.*)
                 eapply scong_to_unfoldP in H1 as Hunf.
                 destr_hyps.
                 eapply unfold_beta_unique_send in H2;try exact H0;try exact Htyp2.
@@ -1565,7 +1562,7 @@ Proof.
     }
 Qed.
 
-Search betaP_lbl onth.
+(*Search betaP_lbl onth.*)
 
 Lemma live_proc_helper_recv2 : forall p q llp xs,
         p <> q ->

@@ -17,10 +17,10 @@ Definition msg_auth:=1.
 Definition msg_cancel:=2.
 Definition msg_pwd:=3.
 Definition msg_quit:=4.
-Print process.
+(*Print process.*)
 Notation " # e #":= (e_val (vnat e)) (at level 85).
 Definition val_from_nm x:= (e_val (vnat x)).
-Print Grammar.
+(*Print Grammar.*)
 
 
 Module ParScong.
@@ -32,7 +32,7 @@ Module ParScong.
   Qed. 
   #[export] Instance aac_scong_equi : Equivalence scong.
   Proof. constructor;red;intros;eauto with brocs. Qed.
-  Check Proper.
+  (*Check Proper.*)
   #[export] Instance aac_scong_proper1 : forall x, Proper (scong ==> scong) (fun v=> s_par v x).
   Proof. constructor. eauto with brocs. Qed.
   
@@ -122,7 +122,7 @@ Proof.
         (((pt_s <-- P_s) ||| (pt_c <-- P_c 30))
         ||| (pt_a <-- P_a 40))) by 
           eapply pc_par1m.
-          Print P_s.
+          (*Print P_s.*)
         eapply pc_trans with (M':=(((pt_s <-- P_s) ||| (pt_c <-- P_c 30))
         ||| (pt_a <-- P_a 40)));try easy.
         assert(unfoldP
@@ -170,7 +170,7 @@ Proof.
                 repeat split;try easy. constructor. constructor.
               }
               {
-                Search "<=?".
+                (*Search "<=?".*)
                 rewrite leb_iff_conv in Hnk. lia.
               }
             }  
@@ -220,7 +220,7 @@ Proof.
           assert(Hz3: unfoldP ((pt_s <-- P_s_unf) ||| s_zero) ((pt_s <-- P_s_ifb) ||| s_zero)).
           {
             constructor. econstructor 2. constructor.
-            Print stepE.
+            (*Print stepE.*)
             eapply ec_detr. constructor.
           }
           eauto with procs.

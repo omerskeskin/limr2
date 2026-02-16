@@ -6,7 +6,7 @@ From Paco Require Import paco.
 Import ListNotations. 
 From SST Require Import src.header src.sim src.expr src.process src.local src.global src.balanced src.typecheck src.part src.gttreeh.
 From SST Require Import lemma.inversion lemma.inversion_expr lemma.substitution_helper lemma.substitution lemma.decidable_helper.
-Check List.Forall2.
+(*Check List.Forall2.*)
 Locate proj_inj.
 Lemma parts_to_word : forall p G, isgPartsC p G -> exists w r, (gttmap G w None (gnode_pq r p) \/ gttmap G w None (gnode_pq p r)).
 Proof.

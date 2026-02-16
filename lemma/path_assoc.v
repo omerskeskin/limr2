@@ -78,7 +78,7 @@ Definition tctxREN_send p q g := exists n s, (tctxRE (lsend p q s n) g).
 
 Definition tctxREN_recv p q g := exists n s, (tctxRE (lrecv p q s n) g).
 
-Print alwaysG.
+(*Print alwaysG.*)
 
 Definition wfg_global_path := alwaysCG (to_path_prop (fun a=> wfgC a /\ projectableA a) True).
 Definition wf_local_path := alwaysCG (to_path_prop tctx_wf True).
@@ -357,7 +357,7 @@ Proof.
     tauto.
 Qed.
 
-Check eq_refl.
+(*Check eq_refl.*)
 
 CoFixpoint conj_path : forall t g l  xs, wfgC g -> tctx_wf t -> assoc t g ->
     local_valid_pathC (cocons (t, l) xs) ->

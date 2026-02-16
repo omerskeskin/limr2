@@ -92,7 +92,7 @@ Proof.
         eapply H3 with (g:=x5); try easy.
     }
 Qed.
-Check typ_p_gtth.
+(*Check typ_p_gtth.*)
 
 Lemma strong_grafting_1: forall G G' p q ell gs ctx,
 gttstepC G G' p q ell -> typ_p_gtth gs ctx p G->
@@ -219,7 +219,7 @@ Ltac tac_isParts := match goal with
         exfalso;apply H;apply decidable_helper.triv_pt_q
 end.
 
-Check Forall2_prop_r.
+(*Check Forall2_prop_r.*)
 
 Lemma Forall2R_prop {A:Type} {B:Type}: forall l (xs :list (option A)) (ys :list (option B)) P p, Forall2R P xs ys -> onth l xs= Some p ->  
     exists p', onth l ys= p' /\ P (Some p) p'.
@@ -322,7 +322,7 @@ Proof.
     }
 Qed.
 
-Search SList.
+(*Search SList.*)
 Locate wfgC_triv.
 Lemma wfg_implies_slis: forall p q gcs, wfgC (gtt_send p q gcs) -> SList gcs.
 Proof.
@@ -424,7 +424,7 @@ Lemma projection_implies_wf :
     forall g r t,    wfgC g -> projectionC g r t ->
     wflttC t.
 Proof.
-    Search projectionC SList.
+    (*Search projectionC SList.*)
     pcofix CIH.
     intros g pt t Hwfg Hproj.
     destruct (decidable_isgPartsC g pt);try easy.
@@ -503,7 +503,7 @@ Proof.
         }
         {
             intros.
-            Search typ_gtth "inv".
+            (*Search typ_gtth "inv".*)
             pose proof Hgraft1 as Htyp.
             eapply typ_gtth_inv in Hgraft1. destr_hyps.
             apply eq_sym in H1;inversion H1;subst;clear H1.
@@ -521,7 +521,7 @@ Proof.
             eapply typ_gtth_cont1 with (p:=p0) (q:=q0) (gs:=gs) (gcs:=xs) in H1;try easy.
             eapply Forall2_prop_r with (l:=n) (p:=(s1,g1)) in H10;try easy.
             destr_hyps.
-            Search typ_gtth "cont".
+            (*Search typ_gtth "cont".*)
             eapply Forall_prop with (l:=n) (p:=(s1,x)) in H0;try easy.
             destruct H0;try easy.
             destr_hyps.
@@ -539,7 +539,7 @@ Proof.
             {
                 rename n0 into p, n1 into q, l into gcs'.
                 eapply H9 with (gs:=gs) (p:=p) (q:=q) (gcs:=gcs');try easy.
-                Search ishParts onth.
+                (*Search ishParts onth.*)
                 eapply decidable_helper.ishParts_n with (s:=p0) (s':=q0) (xs:=ghs) (s0:=s1) (n:=n);try easy.
                 eapply continuation_wfgC with (p:=p0) (q:=q0) (xs:=gcs) (s:=s1) (n:=n);try easy.
                 destruct H10;try easy.
@@ -653,12 +653,12 @@ Proof.
     }
 Qed.
 
-Search projectionC Forall. 
+(*Search projectionC Forall. *)
 Lemma proj_implies_subproj : forall g p t, projectionC g p t -> issubProj t g p.
 Proof.
     intros. unfold issubProj. exists t;split;try apply stRefl;try easy.
 Qed.
-Print SList.
+(*Print SList.*)
 
 Lemma proj_cont_implies_proj_parent:forall p s t Tp gcs'' k g_k s4, 
 wfgC (gtt_send s t gcs'' ) ->
@@ -678,7 +678,7 @@ projectionC  (gtt_send s t gcs'') p Tp.
     }
     assert (Hgkpart: isgPartsC p g_k).
     {
-        Search isgPartsC gttstepC.
+        (*Search isgPartsC gttstepC.*)
         unfold projectableA in H0. specialize (H0 p). 
         destr_hyps.
         eapply part_after_step_r with (G:=(gtt_send s t gcs'')) (p:=s) (q:=t) (l:=k) (T:=x);try easy.
@@ -690,7 +690,7 @@ projectionC  (gtt_send s t gcs'') p Tp.
     destr_hyps.
     inversion H8;subst.
     destruct H14;crush.
-    Search isMerge onth.
+    (*Search isMerge onth.*)
     eapply merge_inv_ss with (T:=x) in H9;subst;try easy.
     change (paco3 projection bot3 x2 p x) with (projectionC x2 p x) in H7.
     eapply proj_inj with (t:=x) in H6; subst;try easy. 
@@ -720,12 +720,12 @@ issubProj x G r -> r <> p -> r <> q ->
     gttstepC G G' p q ell' -> issubProj x G' r.
 Proof.
     intros.
-    Search "proj" "cont".
+    (*Search "proj" "cont".*)
     unfold issubProj in *. destr_hyps.
     pose proof H5 as Hstep.
     eapply proj_cont_pq_step in H5;try easy.
     destr_hyps. 
-    Search "typ_after_step_3".
+    (*Search "typ_after_step_3".*)
     eapply typ_after_step_3_helper with (q:=q) (p:=p) (G':=G')
     (l:=ell') (L1:=x1) (L2:=x2) (LS:=x3) (LS':=x4) (LT':=x6) (LT:=x5)
      in H2 ; try easy.
@@ -741,7 +741,7 @@ onth ell' xsp =Some (s1, Tp) ->
 onth ell' xsq =Some (s2, Tq) ->
     gttstepC G G' p q ell' -> (issubProj Tp G' p /\ issubProj Tq G' q).
 Proof.
-    Check projection.typ_after_step_12_helper.
+    (*Check projection.typ_after_step_12_helper.*)
     intros.
     pose proof H6 as Hstep.
     eapply proj_cont_pq_step in H6;try easy. destr_hyps. 
@@ -749,7 +749,7 @@ Proof.
     eapply proj_inj with (t:=x6) in H6;try easy;subst.
     eapply proj_inj with (t:=x5) in H7;try easy;subst.
     rename x into xsp', x0 into xsq',x3 into Tp', x4 into Tq'.
-    Check typ_after_step_3_helper.
+    (*Check typ_after_step_3_helper.*)
     
     eapply projection.typ_after_step_12_helper 
     with (LP:=xsp') (LQ:=xsq') (S:=x1) (S':=x2) (T:=Tp') (T':=Tq') in Hstep;try easy.
@@ -780,7 +780,7 @@ Lemma assoc_inv_find : forall gamma g p Tp, wfgC g -> assoc gamma g -> M.find p 
 Proof.
     intros.
     unfold assoc in H0. specialize (H0 p). destr_hyps.
-    Check decidable_isgPartsC.
+    (*Check decidable_isgPartsC.*)
     apply decidable_isgPartsC with (pt:=p) in H.
     destruct H.
     {
@@ -899,7 +899,7 @@ Proof.
     pose proof H0 as Hproj.
     assert ( p <> q) by (pinversion H1;crush;apply step_mon).   
     specialize (H0 pt);destr_hyps.
-    Search projectionC gttstepC.
+    (*Search projectionC gttstepC.*)
     destruct (Nat.eq_dec p pt);
     destruct (Nat.eq_dec q pt);crush.
     eapply proj_cont_pq_step_full in H1;crush; exists x0; easy.
@@ -980,7 +980,7 @@ Proof.
     destr_hyps. destruct H6;try easy. destr_hyps. inversion H6;subst. clear H6.
     assert(Hsubs: subsort x2 x7).
     {
-        Search subsort onth gtt_send.
+        (*Search subsort onth gtt_send.*)
         eapply canon_rep_s in Hwf;try exact Hprojp;try exact Hprojq;try exact H0;try exact H2;
         destr_hyps.
         eapply sstrans;try exact H13;easy.

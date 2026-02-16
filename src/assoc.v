@@ -11,7 +11,7 @@ Import ListNotations.
 Definition issubProj (t:ltt) (g:gtt) (p:part) := 
     exists tg, projectionC g p tg /\ subtypeC t tg.
 
-Search subtypeC.
+(*Search subtypeC.*)
 
 
 
@@ -80,7 +80,7 @@ Proof.
     apply subtype_recv_inv1 in H. destr_hyps. subst.
     apply subtype_recv_inv in H'. exists x. easy.
 Qed.
-Search wfG.
+(*Search wfG.*)
 Lemma empty_not_wfg : forall p q, ~ wfgC (gtt_send p q []).
 Proof.
     unfold not;intros. apply wfgC_triv in H. destr_hyps. inversion H0.
@@ -351,7 +351,7 @@ Lemma subtype_end_inv2: forall t:ltt, subtypeC ltt_end t -> t= ltt_end.
 Proof.
     intros. pinversion H;crush. apply sub_mon.
 Qed.
-Search projectionC ltt_end.
+(*Search projectionC ltt_end.*)
 Lemma subproj_inv_end: forall g p, wfgC g -> 
     issubProj ltt_end g p -> isgPartsC p g -> False.
 Proof.
@@ -360,7 +360,7 @@ Proof.
     apply pmergeCR with (G:=g) (r:=p);crush.
 Qed. 
 End subproj_inversion.
-Print issubProj.
+(*Print issubProj.*)
 
 Lemma simul_subproj_helper:  forall p q xp xq x0,
 Forall2R
@@ -468,7 +468,7 @@ Qed.
 
 Lemma continuation_wfgC : forall p q xs s gc n , wfgC (gtt_send p q xs) -> onth n xs=Some (s,gc) -> wfgC gc.
 Proof.
-    Search wfgC.
+    (*Search wfgC.*)
     intros.
     pose proof H as Hwfg.
     apply wfgC_triv in Hwfg.
@@ -588,14 +588,14 @@ Proof.
         assert(Hqp: q0 <> p) by  (red;intros;subst;eapply Htyp0;constructor).
         intros;eapply Htyp0;econstructor;try exact H0;try easy.
         eapply continuation_wfgC;try exact Hwfg;try exact H4.
-        Search isgPartsC onth.
+        (*Search isgPartsC onth.*)
         red in Hsubp;destr_hyps;eapply subtype_send_inv1 in H3;destr_hyps;subst.
         pinversion H2;subst;try apply proj_mon.
         exfalso;eapply Htyp0;constructor.
         eapply Forall2_prop_r in H15;try exact H4;destr_hyps.
         destruct H7;try easy;destr_hyps;subst.
         symmetry in H7;inversion H7;subst;clear H7.
-        Search isMerge onth.
+        (*Search isMerge onth.*)
         eapply merge_inv_ss in H16;try exact H8;subst.
         destruct H13;try easy. pinversion H3;try apply proj_mon;try easy.
         eapply subproj_inv_send in Hsubp;
@@ -719,8 +719,8 @@ Proof.
         right.
         destruct p0 as [s0 g].
         exists s0, g.
-        Check Forall_forall.
-        Search In onth.
+        (*Check Forall_forall.*)
+        (*Search In onth.*)
         apply in_some_implies_onth in H7. destruct H7 as [n].
         split;try easy.   
         unfold subproj_cont_cond in H6, H8.

@@ -45,7 +45,7 @@ Proof.
     }
       
     - subst.
-    Search typ_proc substitutionP.
+    (*Search typ_proc substitutionP.*)
     assert(exists Tp', typ_proc [] [] Q Tp').
     {
     eapply inv_proc_rec in Htyp as Htm;try reflexivity. destr_hyps.
@@ -76,7 +76,7 @@ Proof.
     apply H2; try easy. apply tc_mu. easy.
 Qed.
 
-Search typ_proc.
+(*Search typ_proc.*)
 
 Definition all_guarded P := forall n, exists m, guardP n m P.
 
@@ -201,7 +201,7 @@ Proof.
     inversion H1; try easy.
 Qed.
 
-Print typ_sess.
+(*Print typ_sess.*)
 
 Lemma typ_after_step_not_in_label: forall M p q gamma gamma' ell,
     tctx_wf gamma ->

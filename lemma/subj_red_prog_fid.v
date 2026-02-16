@@ -8,7 +8,7 @@ From SST Require Import src.header src.sim src.expr src.process src.local
 src.global src.balanced src.typecheck src.part src.gttreeh src.path_props src.step src.merge src.projection src.session src.lcontext.  
 From SST Require Import lemma.inversion lemma.inversion_expr lemma.completeness lemma.substitution_helper lemma.substitution lemma.decidable_helper lemma.decidable lemma.expr lemma.part lemma.step 
 lemma.projection_helper lemma.projection lemma.multigrafting lemma.subj_red_helpers lemma.soundness lemma.liveness_helpers. 
-Search substitutionP guardP.
+(*Search substitutionP guardP.*)
 
 Lemma active_parts_subset: forall gamma pt p q ell gamma', 
     tctxR gamma (lcomm p q ell) gamma' -> in_not_end pt gamma' -> in_not_end pt gamma.
@@ -21,7 +21,7 @@ Lemma active_parts_subset: forall gamma pt p q ell gamma',
       destruct (Nat.eq_dec pt q);subst.
       eapply tctx_comm_invert in Hred;destr_hyps;red;
       exists (ltt_recv p x4);split;try easy.
-      Search tctxR M.find.
+      (*Search tctxR M.find.*)
       eapply red_relevance with (r:=pt) in Hred;try easy. red;exists x;split;congruence;try easy.
       simpl. red;intros. destruct H1;subst;tauto.
     Qed.
@@ -33,14 +33,14 @@ Proof.
   intros * Hsess Hbeta.
   destruct Hbeta as [l Hbeta].
   generalize dependent gamma.
-  Print betaP.
+  (*Print betaP.*)
   induction Hbeta;intros.
   {
     inversion Hsess;subst. rename H1 into Htwf, H2 into Hins, H3 into Hnodup, H4 into Hfat.
     inversion Hfat;subst. inversion H3;subst. inversion H5;subst. inversion H6;subst.
     clear H3 H4 H5 H6.
     destruct H2 as [Tp [Htp [Htypp Hguardp]]]. destruct H7 as [Tq [Htq [Htypq Hguardq]]].
-    Check inv_proc_recv.
+    (*Check inv_proc_recv.*)
     eapply inv_proc_recv in Htypp as Hrec_inv;try reflexivity.
     eapply inv_proc_send in Htypq as Hsend_inv;try reflexivity.
     destr_hyps.
@@ -134,7 +134,7 @@ Proof.
       exists x4. repeat split;try easy. eapply tc_sub;try exact H4;try easy.
       eapply wfC_send with (p:=p); try exact H10.
       eapply typable_implies_wfC;try exact Htypq.
-      Search guardP.
+      (*Search guardP.*)
       intros.  specialize (Hguardq (S n)) as Hq'. destr_hyps. inversion H3;subst.
       exists x. easy.
     }
@@ -163,14 +163,14 @@ Proof.
   intros * Hsess Hbeta.
   destruct Hbeta as [l Hbeta].
   generalize dependent gamma.
-  Print betaP.
+  (*Print betaP.*)
   induction Hbeta;intros.
   {
     inversion Hsess;subst. rename H1 into Htwf, H2 into Hins, H3 into Hnodup, H4 into Hfat.
     inversion Hfat;subst. inversion H3;subst. inversion H5;subst. inversion H6;subst.
     clear H3 H4 H5 H6.
     destruct H2 as [Tp [Htp [Htypp Hguardp]]]. destruct H7 as [Tq [Htq [Htypq Hguardq]]].
-    Check inv_proc_recv.
+    (*Check inv_proc_recv.*)
     eapply inv_proc_recv in Htypp as Hrec_inv;try reflexivity.
     eapply inv_proc_send in Htypq as Hsend_inv;try reflexivity.
     destr_hyps.
@@ -264,7 +264,7 @@ Proof.
       exists x4. repeat split;try easy. eapply tc_sub;try exact H4;try easy.
       eapply wfC_send with (p:=p); try exact H10.
       eapply typable_implies_wfC;try exact Htypq.
-      Search guardP.
+      (*Search guardP.*)
       intros.  specialize (Hguardq (S n)) as Hq'. destr_hyps. inversion H3;subst.
       exists x. easy.
     }
@@ -292,14 +292,14 @@ Theorem sub_red_strong_labelled : forall M M' lb gamma, typ_sess M gamma -> beta
 Proof.
   intros * Hsess Hbeta.
   generalize dependent gamma.
-  Print betaP.
+  (*Print betaP.*)
   induction Hbeta;intros.
   {
     inversion Hsess;subst. rename H1 into Htwf, H2 into Hins, H3 into Hnodup, H4 into Hfat.
     inversion Hfat;subst. inversion H3;subst. inversion H5;subst. inversion H6;subst.
     clear H3 H4 H5 H6.
     destruct H2 as [Tp [Htp [Htypp Hguardp]]]. destruct H7 as [Tq [Htq [Htypq Hguardq]]].
-    Check inv_proc_recv.
+    (*Check inv_proc_recv.*)
     eapply inv_proc_recv in Htypp as Hrec_inv;try reflexivity.
     eapply inv_proc_send in Htypq as Hsend_inv;try reflexivity.
     destr_hyps.
@@ -393,7 +393,7 @@ Proof.
       exists x4. repeat split;try easy. eapply tc_sub;try exact H4;try easy.
       eapply wfC_send with (p:=p); try exact H10.
       eapply typable_implies_wfC;try exact Htypq.
-      Search guardP.
+      (*Search guardP.*)
       intros.  specialize (Hguardq (S n)) as Hq'. destr_hyps. inversion H3;subst.
       exists x. easy.
     }
@@ -456,9 +456,9 @@ Qed.
 
 Create HintDb procs.
 Hint Constructors unfoldP :procs.
-Search unfoldP.
+(*Search unfoldP.*)
 Hint Resolve unf_cont_r unf_cont_l betaPr_unfold_h betaPr_unfold:procs.
-Print HintDb procs.
+(*Print HintDb procs.*)
 
   
 Theorem prog : forall M G, typ_sess M G -> (exists M', unfoldP M M' /\ (ForallT (fun _ P => P = p_inact) M')) \/ exists M', betaP M M'.
@@ -552,8 +552,8 @@ Proof.
 				eapply subtype_recv_inv in H9. 
 				eapply Forall2R_prop in H9;try exact H16;tac_sanitize.
 				eapply Forall2_prop_l in H10;try exact H12;tac_sanitize.
-				Search unfoldP tauRtc.
-				Check tauRtc_unfold.
+				(*Search unfoldP tauRtc.*)
+				(*Check tauRtc_unfold.*)
 				Hint Resolve  tauRtc_unfold :procs.
 				assert(Hunf'' : unfoldP (((p <-- P) ||| (q <-- Q)) ||| M') (((p <-- p_send q ell e P_c) ||| (q <-- Q)) ||| M'))
 				by 
@@ -665,7 +665,6 @@ Proof.
 	assert(Hpartp :isgPartsC p x7).
 	{
 		red in Hsub1;destr_hyps. pinversion H23;try apply sub_mon;subst.
-		Locate proj_contains_q_implies_part_send.
 		eapply proj_contains_q_implies_part_send in H22;destr_hyps;try easy.
 		eapply assoc_implies_projectable in H19;try easy.	
 	}
@@ -700,7 +699,7 @@ Proof.
 		easy.	
 	}
 	Hint Resolve  tauRtc_unfold unf_cont_l unf_cont unf_cont_r:procs.
-    Check unf_cont_l.
+    (*Check unf_cont_l.*)
             
     assert(Hunf2: unfoldP (((p <-- P) ||| (q <-- Q)) ||| M') (((p <-- p_send q x6 x8 x9) ||| (q <-- p_recv p x5)) ||| M')). eauto  with procs.
     assert(Hunf3: unfoldP M (((p <-- p_send q x6 x8 x9) ||| (q <-- p_recv p x5)) ||| M')). eauto  with procs.
@@ -723,7 +722,7 @@ Proof.
     }
     {
       intros. eapply active_parts_subset in H34;try exact Hstep.
-      Search InT.
+      (*Search InT.*)
       specialize (H9 _  H34) as Hin_no.
 
       unfold M_next. unfold InT. simpl. unfold InT in *. simpl in *. tauto. 
@@ -741,10 +740,10 @@ Proof.
 		econstructor. exists x20.
 		split. unfold gamma'';autorewrite with mmaps;easy.
 		split.
-		Search typ_proc subst_expr_proc.
+		(*Search typ_proc subst_expr_proc.*)
 		assert(typ_expr [] (e_val x14) x18).
 		{
-			Search typ_expr stepE. eapply expr_typ_step in H22;try exact H26;try easy.
+			eapply expr_typ_step in H22;try exact H26;try easy.
 			Create HintDb sc_hints.
 			Hint Constructors typ_expr :sc_hints.
 			eauto with sc_hints.
@@ -777,7 +776,7 @@ Proof.
 			eapply all_guarded_send_cont;try exact H34;try exact H32.
 		}
 		{
-			Search ForallT.
+			(*Search ForallT.*)
 			eapply typ_after_step_not_in_label;try exact Hstep;try easy;
 			red;intros;unfold InT in H34; move H10 at bottom;
 			unfold flattenT in H10; fold flattenT in H10;
