@@ -32,7 +32,7 @@ Proof.
     apply ltth_ind_ref.
 Qed.
 End ltth_ind.
-Print list_max.
+(*Print list_max.*)
 Definition max_option_list (xs: list (option nat)) : nat :=
     list_max (map (fun u=> match u with 
         | None => 0
@@ -103,7 +103,7 @@ Proof.
 Qed.
         
     
-Print ishParts.
+(*Print ishParts.*)
 Inductive ishlParts : part -> ltth -> Prop :=
     | hal_send: forall p xs, ishlParts p (ltth_send p xs)
     | hal_rec: forall p xs, ishlParts p (ltth_recv p xs)
@@ -112,7 +112,7 @@ Inductive ishlParts : part -> ltth -> Prop :=
     | hal_recvr : forall p r n lis s g,  p <> r -> onth n lis= Some (s,g) ->
     ishlParts r g -> ishlParts r (ltth_recv p lis).
 
-Print typ_p_gtth.
+(*Print typ_p_gtth.*)
 Definition typ_p_send_ltth (ls:list (option ltt)) (ctx: ltth) (p:part) (t:ltt) := 
     typ_ltth ctx ls t /\  (ishlParts p ctx -> False) /\
      
@@ -272,7 +272,7 @@ Proof.
     {
         (*simpl in H0.*)
         inversion H;subst.
-        Search list_max .
+        (*Search list_max .*)
         specialize (list_max_ge_0
 (map
 (fun u : option (sort * gtth) =>
@@ -299,7 +299,7 @@ forall gh'',
 
 Lemma gtth_ind_by_height_aux : forall n g, gtth_height g = n -> P g.
 Proof.
-    Check lt_wf_ind.
+    (*Check lt_wf_ind.*)
     induction n as [n IHn] using lt_wf_ind.
     {
         intros.

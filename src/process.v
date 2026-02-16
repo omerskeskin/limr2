@@ -149,6 +149,18 @@ Inductive guardP : fin -> fin -> process -> Prop :=
 Inductive betaPr : relation process := 
   | betaPr_sin : forall P Q, substitutionP 0 0 0 (p_rec P) P Q -> betaPr (p_rec P) Q.
 
+Inductive tau_iteP : relation process :=
+  | tau_tite:  forall  e P Q,
+              stepE e (e_val (vbool true)) ->
+              tau_iteP (p_ite e P Q) P
+  | tau_fite : forall e P Q,
+            stepE e (e_val (vbool false)) ->
+            tau_iteP (p_ite e P Q) Q.
+
+
+Variant tauP : relation process :=
+  | tau_by_unfold : forall P Q, betaPr P Q -> tauP P Q
+  | tau_by_ite : forall P Q, tau_iteP P Q -> tauP P Q.
 End process.
 
 Lemma guardP_cont_recv_n : forall l xs y q, 

@@ -9,39 +9,109 @@ From SST Require Import src.header src.sim src.expr src.process src.local
  src.projection src.session src.lcontext src.wfltt.  
 From SST Require Import lemma.inversion lemma.inversion_expr lemma.substitution_helper lemma.substitution lemma.decidable_helper lemma.decidable lemma.expr lemma.part lemma.step lemma.projection_helper lemma.projection.
 
+Definition tauRtc := clos_refl_trans process tauP.
+
+
+Lemma guardP_break_tau : forall P Tp,
+  typ_proc [] [] P Tp ->
+    (forall n : fin, exists m : fin, guardP n m P) -> 
+    exists Q, tauRtc P Q /\ (Q = p_inact \/  (exists pt lb ex pr, Q = p_send pt lb ex pr) \/ (exists pt llp, Q = p_recv pt llp)).
+Proof.
+  intros * Htyp Hguard.
+  specialize(Hguard 1). destruct Hguard as (m, H).
+  revert H. generalize dependent Tp. revert P.
+  induction m; intros.
+  - inversion H;subst.
+    - exists p_inact. split. constructor 2. tauto.
+    - exists (p_send pt l e g). split. constructor 2. right.  left. exists pt. exists l. exists e. exists g. easy.
+    - exists (p_recv p lis). split. constructor 2. right. right. exists p. exists lis. easy.
+  - inversion H. 
+    - subst. exists p_inact. split. constructor 2. tauto.
+    - subst. exists (p_send pt l e g). split. constructor 2. right. left. exists pt. exists l. exists e. exists g. easy.
+    - subst. exists (p_recv p lis). split. constructor 2. right.  right. exists p. exists lis. easy.
+    - subst. 
+    eapply inv_proc_ite in Htyp;try reflexivity;destr_hyps.
+    eapply expr_eval_b in H6. destruct H6.
+    {
+      eapply IHm in H0;destr_hyps;try easy.
+      exists x1;split;try easy. econstructor 3;try exact H0.
+      econstructor. constructor 2. constructor 1. easy. 
+    }
+    {
+      
+      eapply IHm in H2;destr_hyps;try easy.
+      exists x1;split;try easy. econstructor 3;try exact H2.
+      econstructor. constructor 2. constructor 2. easy. 
+    }
+      
+    - subst.
+    (*Search typ_proc substitutionP.*)
+    assert(exists Tp', typ_proc [] [] Q Tp').
+    {
+    eapply inv_proc_rec in Htyp as Htm;try reflexivity. destr_hyps.
+    eapply subst_proc_varf with (Gs:= []) (Gt:=[]) (T:=x) (T':=x) in H1 as Hsub;try easy. exists x;easy.
+    econstructor;easy.
+    }
+    destr_hyps.
+    specialize(IHm Q _ H0 H3).
+      destruct IHm as (Q1,(Ha,Hb)). exists Q1. split; try easy.
+      econstructor 3;try exact Ha. econstructor 1. econstructor 1. constructor;easy.
+Qed.
+
+
+Lemma typ_proc_after_betaPr : forall P Q Gs Gt T, 
+    multi betaPr P Q ->
+    typ_proc Gs Gt P T -> typ_proc Gs Gt Q T.
+Proof.
+  intros. revert H0. revert T Gt Gs.
+  induction H; intros.
+  - easy.
+  - apply IHmulti. clear IHmulti H0. clear z.
+    inversion H. subst.
+    specialize(inv_proc_rec (p_rec P) P T Gs Gt H1 (erefl (p_rec P))); intros.
+    destruct H2 as (T0,(Ha,Hb)).
+    specialize(subst_proc_varf P (p_rec P) T0 T0 Gs Gt y); intros.
+    specialize(typable_implies_wfC H1); intros.
+    apply tc_sub with (t := T0); try easy.
+    apply H2; try easy. apply tc_mu. easy.
+Qed.
+
+(*Search typ_proc.*)
+
+Definition all_guarded P := forall n, exists m, guardP n m P.
+
+Lemma typ_after_tau : forall P Q T, typ_proc [] [] P T -> tauP P Q -> typ_proc [] [] Q T.
+Proof.
+  intros * Htyp Htau.  inversion Htau;subst. eapply typ_proc_after_betaPr;try exact Htyp;econstructor;try exact H;constructor.
+  inversion H;subst; assert(Hwf :wfC T) by (eapply typable_implies_wfC in Htyp;try easy); 
+eapply inv_proc_ite in Htyp;try reflexivity;destr_hyps. eapply tc_sub;try exact H3;try easy.
+eapply tc_sub;try exact H4;try easy.
+Qed.
+
+Lemma guard_after_tau: forall P Q, all_guarded P -> tauP P Q -> all_guarded Q.
+Proof.
+  intros. inversion H0;subst. inversion H1;subst. red;intros. specialize (H n). destr_hyps.
+
+  inversion H;subst. exists 0;constructor. eapply inj_substP in H2;try exact H4;subst;exists m;easy.
+  
+  red;intros. specialize (H n). destr_hyps. inversion H1;subst.
+  inversion H;subst. exists 0;constructor. exists m;easy.
+  inversion H;subst. exists 0;constructor. exists m;easy.
+Qed.
+
+
+
 Lemma typ_after_unfold : forall M M' G, typ_sess M G -> unfoldP M M' -> typ_sess M' G.
 Proof.
   intros. revert H. revert G. induction H0; intros; try easy.
-  - inversion H0. subst. 
-    inversion H4. subst. clear H4. inversion H7. subst. clear H7. 
-    apply t_sess; try easy. constructor; try easy. constructor; try easy.
-    destruct H5. exists x. split; try easy. destruct H4. split.
-    destruct H5 as (H5, H6).
-    - specialize(inv_proc_rec (p_rec P) P x nil nil H5 (erefl (p_rec P))); intros.
-      destruct H7 as (T,(Ha,Hb)).
-      specialize(subst_proc_varf P (p_rec P) T T nil nil Q Ha H); intros.
-      specialize(typable_implies_wfC H5); intros.
-      apply tc_sub with (t := T); try easy.
-      apply H7. apply tc_mu; try easy.
-      destruct H5.
-      intros. specialize(H6 n). destruct H6.
-      inversion H6.
-      - subst. exists 0. constructor.
-      - subst. 
-        specialize(inj_substP H9 H); intros. subst. exists m. easy.
-  - inversion H0. subst. inversion H4. subst. clear H4. 
-    destruct H6 as (T,(Ha,(Hb,Hc))).
-    constructor; try easy.
-    constructor; try easy.
-    specialize(inv_proc_rec (p_rec P) P T nil nil Hb (erefl (p_rec P))); intros.
-    destruct H4 as (T0,(Hd,He)).
-    specialize(subst_proc_varf P (p_rec P) T0 T0 nil nil Q); intros. exists T. split. easy.
-    split. specialize(typable_implies_wfC Hb); intros.
-    apply tc_sub with (t := T0); try easy. apply H4; try easy.
-    apply tc_mu; try easy.
-    intros. specialize(Hc n). destruct Hc. inversion H5.
-    - subst. exists 0. constructor.
-    - subst. specialize(inj_substP H7 H); intros. subst. exists m. easy.
+  {
+    inversion H0;subst. inversion_clear H4. inversion_clear H5.
+    rename P into P1.   
+    constructor;try easy. econstructor;subst. econstructor. destr_hyps. exists x.
+    repeat split;try easy. eapply typ_after_tau;try exact H;try easy.
+    eapply guard_after_tau;try exact H8;try easy. easy.
+  }
+  
   - apply IHunfoldP2. apply IHunfoldP1. easy.
   - inversion H. subst. inversion H3. subst. clear H3.
     apply t_sess; try easy.
@@ -91,47 +161,23 @@ Proof.
       replace (flattenT M ++ flattenT M' ++ flattenT M'') with ((flattenT M ++ flattenT M') ++ flattenT M'') in *.
       easy.
     - constructor. constructor. easy. constructor. easy. easy. easy.
-    - inversion H;subst. 
-    assert(Htm : typ_sess (p <--M)G).
-    {
-        
-      inversion H3. destr_hyps;subst.
-      eapply typable_implies_wfC in H8 as Hwfc. eapply inv_proc_ite in H8;
-      try reflexivity. destr_hyps. constructor;try easy. exists x0;try easy.
-      constructor. exists x. split;try easy. split;try easy.
-      eapply tc_sub;try exact H4;try easy. intros.
-      specialize (H9 n). destr_hyps. inversion H9;subst. exists 0; try constructor.
-      exists m;easy.
-    }
-    assert(Htn: typ_sess (p <--N)G).
-    {
-        
-      inversion H3. destr_hyps;subst.
-      eapply typable_implies_wfC in H8 as Hwfc. eapply inv_proc_ite in H8;
-      try reflexivity. destr_hyps. constructor;try easy. exists x0;try easy.
-      constructor. exists x. split;try easy. split;try easy.
-      eapply tc_sub;try exact H6;try easy. intros.
-      specialize (H9 n). destr_hyps. inversion H9;subst. exists 0; try constructor.
-      exists m;easy.
-    }  
-    constructor;try easy. constructor. 
-    inversion H3;subst. destr_hyps.
-    exists x. split;try easy. 
-    eapply inv_proc_ite in H6;try reflexivity.
-    specialize (IHunfoldP1 _ Htm).
-    specialize (IHunfoldP2 _ Htn).
-    destr_hyps.
-    inversion IHunfoldP1;subst. inversion H16;destr_hyps. assert(x=x3) by congruence;subst.
-    inversion IHunfoldP2;subst. inversion H25;destr_hyps;subst. assert(x=x3) by congruence;subst.
-    split. constructor;try easy. 
-    Search guardP p_ite.
-    intros.
-    move H7 at bottom. specialize (H7 n). destr_hyps.
-    move H0_ at bottom.
-    Search guardP.
-    intros. specialize (H31 n). specialize (H22 n).
-    Print guardP.
-    constructor. 
+    - inversion H;subst. econstructor;try easy. intros. specialize (H1 _ H4).
+      red in H1. simpl in H1. rewrite app_nil_r in H1. red;easy.
+      assert(flattenT (M ||| s_zero) = flattenT M).
+      {
+        unfold flattenT. rewrite app_nil_r;easy. 
+      }
+      rewrite H4 in H2;easy.
+      inversion H3;subst;easy.       
+    -assert(Hlem :flattenT (M ||| s_zero) = flattenT M).
+      {
+        unfold flattenT. rewrite app_nil_r;easy. 
+      } 
+    inversion H;subst. econstructor;try easy. intros. specialize (H1 _ H4).
+      red in H1. simpl in H1.  red. 
+      
+      1-2:rewrite Hlem;try easy.
+      econstructor;try easy. constructor.
 Qed.
 
 Lemma sub_red_1_helper : forall l x1 xs x4 x5 y,
@@ -155,7 +201,7 @@ Proof.
     inversion H1; try easy.
 Qed.
 
-Print typ_sess.
+(*Print typ_sess.*)
 
 Lemma typ_after_step_not_in_label: forall M p q gamma gamma' ell,
     tctx_wf gamma ->
@@ -176,7 +222,7 @@ Proof.
     intros * Hwf Hstep Hfat Hinq Hinp0. constructor. cbv in Hinq, Hinp0.
     assert(Hnq: n=q -> False ) by (intros;tauto).
     assert(Hnp: n=p0 -> False ) by (intros;tauto).
-    eapply lem_6_10 with (r:=n) in Hstep;
+    eapply red_relevance with (r:=n) in Hstep;
     try solve [red;intros;simpl in H;destruct H;subst;tauto].
     inversion Hfat;subst. destr_hyps. exists x. repeat split;try congruence;try easy. 
   }
@@ -195,52 +241,11 @@ Proof.
 
     red;intros;subst; [eapply Hinq | eapply Hinp0]; eapply in_or_app;tauto.
   }
+  {
+    intros. constructor. 
+  }
 Qed.
 
-Lemma typ_after_step_3_helper_s: forall M p q G G' l L1 L2,
-    wfgC G ->
-    wfgC G' ->
-    projectionC G p (ltt_send q L1) -> 
-    projectionC G q (ltt_recv p L2) -> 
-    ForallT
-  (fun (u : part) (P : process) =>
-   exists T : ltt,
-     projectionC G u T /\ typ_proc nil nil P T /\ (forall n : fin, exists m : fin, guardP n m P)) M ->
-    gttstepC G G' p q l ->
-    ~ InT q M ->
-    ~ InT p M ->
-    ForallT
-  (fun (u : part) (P : process) =>
-   exists T : ltt,
-     projectionC G' u T /\ typ_proc nil nil P T /\ (forall n : fin, exists m : fin, guardP n m P)) M.
-Proof.
-  intro M. induction M; intros; try easy.
-  - unfold InT in *. simpl in H5. simpl in H6.
-    specialize(Classical_Prop.not_or_and (n = q) False H5); intros. destruct H7.
-    specialize(Classical_Prop.not_or_and (n = p0) False H6); intros. destruct H9.
-    clear H5 H6 H8 H10.
-    constructor.
-    inversion H3. subst. destruct H6 as [T' H6]. destruct H6.
-    specialize(projection_step_label G G' p0 q l L1 L2 H H1 H2 H4); intros.
-    destruct H8. destruct H8. destruct H8. destruct H8. destruct H8.
-    Check projection_step_label.
-    specialize(typ_after_step_3_helper G G' p0 q n l L1 L2 x x1 x0 x2 T'); intros.
-    assert(exists T'0 : ltt, projectionC G' n T'0 /\ T' = T'0).
-    apply H11; try easy.
-    clear H11. destruct H12. exists x3. split; try easy. destruct H11. rename x3 into Tl. subst. easy. 
-  - inversion H3. subst.
-    specialize(noin_cat_and q (flattenT M1) (flattenT M2) H5); intros.
-    specialize(noin_cat_and p (flattenT M1) (flattenT M2) H6); intros.
-    specialize(Classical_Prop.not_or_and (In q (flattenT M1)) (In q (flattenT M2)) H7); intros.
-    specialize(Classical_Prop.not_or_and (In p (flattenT M1)) (In p (flattenT M2)) H8); intros.
-    destruct H11. destruct H12.
-    unfold InT in *.
-    specialize(IHM1 p q G G' l L1 L2 H H0 H1 H2).
-    specialize(IHM2 p q G G' l L1 L2 H H0 H1 H2).
-    constructor; try easy.
-    apply IHM1; easy.
-    apply IHM2; easy.
-Qed.
 
 Lemma sub_red_helper : forall l xs x1 y,
     onth l xs = Some y ->
@@ -318,106 +323,81 @@ Proof.
     - specialize(IHM2 G pt H1 H4). apply IHM2; try easy.
 Qed.
 
-Lemma pc_par5 : forall M M' M'', unfoldP (M ||| (M' ||| M'')) ((M ||| M') ||| M'').
-Proof.
-  intros.
-  apply pc_trans with (M' := (M' ||| M'') ||| M). constructor.
-  apply pc_trans with (M' := (M' ||| (M'' ||| M))). constructor.
-  apply pc_trans with (M' := (M'' ||| M) ||| M'). constructor.
-  apply pc_trans with (M' := M'' ||| (M ||| M')). constructor. constructor. 
-Qed.
 
-Lemma unf_cont_l : forall M1 M1' M2,
-  unfoldP M1 M1' -> 
-  unfoldP (M1 ||| M2) (M1' ||| M2).
-Proof.
-  intros. revert M2.
-  induction H; intros.
-  - {
-      apply pc_trans with (M' := (p <-- p_rec P) ||| (M ||| M2)). apply pc_par2.
-      apply pc_trans with (M' := (p <-- Q) ||| (M ||| M2)). constructor. easy.
-      apply pc_par5. 
-      
-    }
-  - constructor. easy.
-  - apply pc_refl.
-  - apply pc_trans with (M' := (M' ||| M2)). apply IHunfoldP1. apply IHunfoldP2.
-  - constructor.
-  - constructor.
-  - {
-      apply pc_trans with (M' := (M ||| M') ||| (M'' ||| M2)). constructor.
-      apply pc_trans with (M' := (M' ||| M) ||| (M'' ||| M2)). constructor.
-      apply pc_par5.
-    }
-  - {
-      apply pc_trans with (M' := (((M ||| M') ||| M'') ||| (M''' ||| M2))). constructor.
-      apply pc_trans with (M' := ((M ||| (M' ||| M'')) ||| (M''' ||| M2))). constructor.
-      apply pc_par5.
-    }
-Qed.
 
-Lemma unf_cont_r : forall M1 M2 M2', 
-    unfoldP M2 M2' -> 
-    unfoldP (M1 ||| M2) (M1 ||| M2').
-Proof.
-  intros.
-  apply pc_trans with (M' := M2 ||| M1). constructor.
-  apply pc_trans with (M' := M2' ||| M1). apply unf_cont_l. easy.
-  constructor.
-Qed.
 
-Lemma unf_cont : forall M1 M1' M2 M2',
-    unfoldP M1 M1' -> unfoldP M2 M2' -> 
-    unfoldP (M1 ||| M2) (M1' ||| M2').
-Proof.
-  intros.
-  apply pc_trans with (M' := (M1 ||| M2')). apply unf_cont_r. easy.
-  apply unf_cont_l. easy.
-Qed.
+Create HintDb procs.
+Hint Constructors unfoldP tauP betaPr :procs.
+Hint Resolve pc_par5 :procs.
+
 
 Lemma move_forward_h : forall M,
     forall p : part,
     InT p M ->
-    (exists (P : process) (M' : session), unfoldP M ((p <-- P) ||| M')) \/
-    (exists P : process, unfoldP M (p <-- P)).
+    (exists (P : process) (M' : session), unfoldP M ((p <-- P) ||| M')).
 Proof.
   induction M; intros.
   - rename H into H2. unfold InT in H2. simpl in H2. destruct H2; try easy.
-    subst. right. exists p. constructor.
+    subst.  exists p. exists s_zero. constructor.
   - rename H into H2. unfold InT in *. simpl in *.
     specialize(in_or (flattenT M1) (flattenT M2) p H2); intros.
     destruct H.
     - specialize(IHM1 p H). 
       destruct IHM1.
-      - destruct H0 as (P,(M',Ha)).
-        left. exists P. exists (M' ||| M2).
-        apply pc_trans with (M' := ((p <-- P) ||| M') ||| M2). apply unf_cont_l. easy. 
+      - destruct H0 as (M',Ha).
+        exists x. exists (M' ||| M2).
+        apply pc_trans with (M' := ((p <-- x) ||| M') ||| M2). apply unf_cont_l. easy. 
         constructor.
-      - destruct H0 as (P,Ha).
-        left. exists P. exists M2. apply unf_cont_l. easy.
-    - specialize(IHM2 p H). clear IHM1 H2.
+      - specialize(IHM2 p H). clear IHM1 H2.
       destruct IHM2.
-      - destruct H0 as (P,(M',Ha)).
-        left. exists P. exists (M1 ||| M').
-        apply pc_trans with (M' := M1 ||| ((p <-- P) ||| M')). apply unf_cont_r. easy.
-        apply pc_trans with (M' := (M1 ||| (p <-- P)) ||| M'). apply pc_par5.
-        apply pc_trans with (M' := ((p <-- P) ||| M1) ||| M'). constructor. constructor.
-      - destruct H0 as (P,Ha).
-        left. exists P. exists M1.
-        apply pc_trans with (M' := M1 ||| (p <-- P)). apply unf_cont_r. easy.
-        constructor.
+      - destruct H0 as (M',Ha).
+         exists x. exists (M1 ||| M'). 
+        apply pc_trans with (M' := M1 ||| ((p <-- x) ||| M')). apply unf_cont_r. easy.
+        apply pc_trans with (M' := (M1 ||| (p <-- x)) ||| M'). apply pc_par5.
+        apply pc_trans with (M' := ((p <-- x) ||| M1) ||| M'). constructor. constructor.
+  - inversion H. 
 Qed.
 
 Lemma move_forward : forall p M G, 
     typ_sess M G -> 
     in_not_end p G -> 
-    (exists P M', unfoldP M (p <-- P ||| M')) \/ (exists P, unfoldP M (p <-- P)).
+    (exists P M', unfoldP M (p <-- P ||| M')).
 Proof.
   intros. inversion H. subst. clear H1 H3 H4 H.
   specialize(H2 p H0). clear H0.
   revert H2. revert p. 
   apply move_forward_h.
 Qed.
+
+Lemma move_forward_h_scong : forall M,
+    forall p : part,
+    InT p M ->
+    (exists (P : process) (M' : session), scong M ((p <-- P) ||| M')).
+Proof.
+  induction M;intros.
+  assert(p0=n) by(
+    red in H;simpl in H;destruct H;try easy).
+  subst.
+  exists p, s_zero. eauto with brocs.
+  red in H;simpl in H. eapply in_app_or in H. destruct H;
+  [assert(InT p M1) by easy | assert (InT p M2) by easy].
+  eapply IHM1 in H0. destr_hyps. exists x, (M2 |||x0). eauto 6 with brocs.
+  eapply IHM2 in H0. destr_hyps. exists x, (M1 |||x0). eauto 7 with brocs.
+  inversion H. 
+Qed.
+
+Lemma move_forward_scong : forall p M G, 
+    typ_sess M G -> 
+    in_not_end p G -> 
+    (exists P M', scong M (p <-- P ||| M')).
+Proof.
+  intros. inversion H. subst. clear H1 H3 H4 H.
+  specialize(H2 p H0). clear H0.
+  revert H2. revert p. 
+  apply move_forward_h_scong.
+Qed.
+
+
 
 Lemma part_after_unf : forall M M' p,
     unfoldP M M' -> 
@@ -439,14 +419,23 @@ Proof.
   - unfold InT in *. simpl in *.
     specialize(app_assoc (flattenT M) (flattenT M') (flattenT M'')); intros.
     replace (flattenT M ++ flattenT M' ++ flattenT M'') with ((flattenT M ++ flattenT M') ++ flattenT M'') in *. easy.
+  - red in H0. simpl flattenT in H0. rewrite app_nil_r in H0. red;easy.
+  - red. simpl flattenT. rewrite app_nil_r. red in H0;easy.
 Qed.
+
+Lemma tauRtc_unfold : forall p P Q, tauRtc P Q -> unfoldP (p <-- P) (p <-- Q).
+Proof.
+  intros. induction H; try solve [eauto with procs].
+Qed.
+
+Hint Resolve tauRtc_unfold :procs.
 
 Lemma canonical_glob_nt : forall M p q xsp xsq gamma,
     p <> q ->
     typ_sess M gamma ->
     M.find p gamma = Some (ltt_send q xsp) ->
     M.find q gamma = Some (ltt_recv p xsq) ->
-    (exists M' P Q, unfoldP M ((p <-- P) ||| (q <-- Q) ||| M')) \/ (exists P Q, unfoldP M ((p <-- P) ||| (q <-- Q))).
+    (exists M' P Q, unfoldP M ((p <-- P) ||| (q <-- Q) ||| M')).
 Proof.
   intros * Hneq Hsess Hfindp Hfindq.
   inversion Hsess. subst.
@@ -455,27 +444,19 @@ Proof.
   [exists (ltt_send q xsp) | exists (ltt_recv p xsq)];split;try easy).
   destruct H3 as [Hinp Hinq].
   specialize(move_forward_h M p Hinp) as Hmf.
-  destruct Hmf.
-  - destruct H3 as (P,(M',Ha)). 
+  - destruct Hmf as (P,(M',Ha)). 
   specialize(part_after_unf M ((p <-- P) ||| M') q Ha Hinq); intros.
     unfold InT in *.
     inversion H3;subst;try easy. 
     simpl in H4.
     specialize(move_forward_h M' q); intros.
     specialize(H5 H4).
-    destruct H5.
-    - destruct H5 as (P1,(M'',Hb)). left.
+    
+    - destruct H5 as (P1,(M'',Hb)).
       exists M''. exists P. exists P1.
       apply pc_trans with (M' := ((p <-- P) ||| M')); try easy.
       apply pc_trans with (M' := ((p <-- P) ||| ((q <-- P1) ||| M''))). apply unf_cont_r. easy.
       apply pc_par5.
-    - destruct H5 as (P1,Hb).
-      right. exists P. exists P1. 
-      apply pc_trans with (M' := ((p <-- P) ||| M')); try easy.
-      apply unf_cont_r. easy.
-  - destruct H3 as (P,H6).
-    specialize(part_after_unf M (p <-- P) q H6 Hinq); intros.
-    inversion H3; try easy.
 Qed.
 
 Definition is_end_tctx (gamma :tctx) := forall pt x, M.find pt gamma = Some x -> x=ltt_end. 
@@ -544,7 +525,9 @@ Proof.
       }
       destruct H as (M1,(Hd,He)). exists M1. split; try easy.
       apply pc_trans with (M' := (n <-- Q)); try easy.
-      constructor. easy.
+      
+      assert (tauP (p_rec g) Q). constructor. easy.
+      eauto with procs.
     }
     {
       inversion H3. subst. clear H3.
@@ -554,24 +537,55 @@ Proof.
       split. apply unf_cont; try easy.
       constructor; try easy.
     }
+    {
+      exists s_zero;split. eauto with procs. constructor. 
+    }
 Qed.
 
-Lemma typ_proc_after_betaPr : forall P Q Gs Gt T, 
-    multi betaPr P Q ->
-    typ_proc Gs Gt P T -> typ_proc Gs Gt Q T.
+Lemma typ_after_tauRtc : forall (P Q : process) (T : ltt),
+typ_proc [] [] P T ->
+tauRtc P Q -> typ_proc [] [] Q T.
 Proof.
-  intros. revert H0. revert T Gt Gs.
-  induction H; intros.
-  - easy.
-  - apply IHmulti. clear IHmulti H0. clear z.
-    inversion H. subst.
-    specialize(inv_proc_rec (p_rec P) P T Gs Gt H1 (erefl (p_rec P))); intros.
-    destruct H2 as (T0,(Ha,Hb)).
-    specialize(subst_proc_varf P (p_rec P) T0 T0 Gs Gt y); intros.
-    specialize(typable_implies_wfC H1); intros.
-    apply tc_sub with (t := T0); try easy.
-    apply H2; try easy. apply tc_mu. easy.
+  intros. induction H0;try eauto with procs.
+  eapply typ_after_tau;try exact H0;easy.
 Qed.
+
+
+Lemma canonical_glob_n_strong : forall M gamma,
+    is_end_tctx gamma ->
+    typ_sess M gamma -> 
+    exists M', unfoldP M M' /\ ForallT (fun _ P => P = p_inact) M'.
+Proof.
+  intros * Hend H.
+  inversion H. subst.
+  clear H H1 H2.
+  revert H3.
+  induction M; intros.
+  {
+    inversion_clear H3;subst;destr_hyps. eapply guardP_break_tau in H3;destr_hyps;try exact H2.
+    destruct H5;subst. exists ( n<-- p_inact). split;eauto with procs. econstructor;easy.
+
+    destruct H5;destr_hyps;subst; eapply typ_after_tauRtc in H2;try exact H3.
+    eapply inv_proc_send in H2;try reflexivity;destr_hyps.
+    red in Hend. specialize (Hend _ _ H);subst. pinversion H6;subst;apply sub_mon. 
+
+    eapply inv_proc_recv in H2;try reflexivity;destr_hyps.
+    red in Hend. specialize (Hend _ _ H);subst. pinversion H5;subst;apply sub_mon.
+  }
+    {
+      inversion H3. subst. clear H3.
+      specialize(IHM1 H2). specialize(IHM2 H4). clear H2 H4.
+      destruct IHM1 as (M1',(Ha,Hb)).
+      destruct IHM2 as (M2',(Hc,Hd)). exists (M1' ||| M2'). 
+      split. apply unf_cont; try easy.
+      constructor; try easy.
+    }
+    {
+      exists s_zero;split. eauto with procs. constructor. 
+    }
+Qed.
+
+
 
 Lemma betaPr_unfold_h : forall P Q1 Q Q2 p q,
           multi betaPr P Q1 -> 
@@ -582,10 +596,10 @@ Proof.
   apply pc_trans with (M' := (p <-- Q1) ||| (q <-- Q)).
   - apply unf_cont_l. clear H0. clear Q Q2. 
     induction H; intros. constructor. apply pc_trans with (M' := (p <-- y)); try easy.
-    clear IHmulti H0. inversion H. subst. constructor. easy.
+    clear IHmulti H0. inversion H. subst. assert(tauP (p_rec P) y) by (constructor 1;try easy). eauto with procs.
   - apply unf_cont_r. clear H. clear P Q1.
     induction H0; intros. constructor. apply pc_trans with (M' := (q <-- y)); try easy.
-    clear IHmulti H0. inversion H. subst. constructor. easy.
+    clear IHmulti H0. inversion H. subst. assert(tauP (p_rec P) y) by (constructor 1;try easy). eauto with procs.
 Qed.
 
 Lemma betaPr_unfold : forall P Q1 Q Q2 p q M',

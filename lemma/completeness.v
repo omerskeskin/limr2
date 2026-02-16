@@ -39,7 +39,7 @@ Proof.
     unfold M.Equal in H; specialize (H p); exists x
     | eapply Hap1 in H0 ];crush.
 Qed.
-Check Proper.
+(*Check Proper.*)
 
 
 
@@ -211,7 +211,7 @@ Lemma part_after_step_redux : forall g g' p q ell r, wfgC g -> projectableA g ->
 -> isgPartsC r g.
 Proof.
     intros.
-    Search isgPartsC gttstepC.
+    (*Search isgPartsC gttstepC.*)
     pose proof H1 as Hstep. eapply proj_cont_pq_step in Hstep;try easy.
     destr_hyps.
     eapply part_after_step with (G':=g') (q:=p) (p:=q) (l:=ell) (LP:=x) (LQ:=x0);try easy.
@@ -326,8 +326,8 @@ Proof.
         right.
         destruct p0 as [s0 g].
         exists s0, g.
-        Check Forall_forall.
-        Search In onth.
+        (*Check Forall_forall.*)
+        (*Search In onth.*)
         apply in_some_implies_onth in H7. destruct H7 as [n].
         split;try easy.   
         unfold subproj_cont_cond in H6, H8.
@@ -367,7 +367,7 @@ Lemma local_step_implies_global_step: forall g gamma gamma' p q ell,
 Proof.
     intros * Hwfg Hproj Hwflt Hassoc Hred.
     destr_hyps.
-    eapply lem_6_11c_tctx_comm_invert in Hred.
+    eapply tctx_comm_invert in Hred.
     
     destruct Hred as [s [s' [Hred1 Hred2]]].
     destr_hyps.
@@ -402,6 +402,8 @@ Proof.
         all:easy.
     }
     destr_hyps.
+    (*Check projection_step_label_s.*)
+    (*Check typ_after_step_step.*)
     eapply (projection_step_label_s) with (l:=ell) (LP:=x2) (ST:=(x,x0)) in H as Hpp;try easy.
     destr_hyps.
     eapply typ_after_step_step with (L1:=x2) (L2:=x1) (S:=x) (T:=x0) (S':=x3) (T':=x4);try easy.
@@ -414,10 +416,9 @@ exists g', partial_assoc gamma' g' /\ gttstepC g g' p q ell.
 Proof.
     intros * Hassoc Hwfg Hproj Hwfltt Hred.
     pose proof Hred as Hredinv.
-    eapply lem_6_11c_tctx_comm_invert in Hredinv.
+    eapply tctx_comm_invert in Hredinv.
     destr_hyps.
     rename x into s, x0 into s', x1 into xsp, x2 into Tp, x3 into xsq, x4 into Tq.
-    Search gttstepC projectionC ltt_send ltt_recv.
     assert (exists g', gttstepC g g' p q ell).
     {
         eapply local_step_implies_global_step with (g:=g) (gamma:=gamma) (gamma':=gamma');easy.
@@ -442,7 +443,7 @@ Proof.
         [
         specialize (Hassoc p _ H)|
         specialize (Hassoc q _ H0)];try easy).
-    eapply lem_6_10 with (r:=p0) in Hred as Hrelv;[| crush].
+    eapply red_relevance with (r:=p0) in Hred as Hrelv;[| crush].
     specialize (Hassoc p0 _ H7) as Hassocp0. rewrite H7 in Hrelv. rewrite H6 in Hrelv. inversion Hrelv;subst.
     clear Hrelv. 
     eapply subproj_after_step_r with (x:=Tp0') (r:=p0)in Hpstep;easy.

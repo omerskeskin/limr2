@@ -13,7 +13,6 @@ Import ListNotations.
 
 Search tctxR M.find.
 
-Locate no_step_from_end.
 Definition head_proj_is_recv p q:=(
     fun (pt:global_path) => match pt with 
         | cocons (hd,l) tl => exists xs, 
@@ -369,7 +368,7 @@ Proof.
             {
                 repeat split;try easy. intros. eapply Htyp0. econstructor;try exact H1;try easy.   
             }
-            Search gtth_eq.
+            (*Search gtth_eq.*)
             
             assert (typ_p_gtth gs' gx' r x2) by (repeat split;easy).
             eapply typ_p_gtth_unique in H0;try exact H2.
@@ -485,7 +484,7 @@ List.Forall2 (fun u v => (u = None /\ v = None) \/
 P (gtth_send p q xs) s t ell (gtth_send p q ys).
   
 Hypothesis P_eq: forall a b b' c s t ell, gtth_eq a b -> gtth_eq b' c -> P b s t ell b' -> P a s t ell c.
-Check stepH_cont.
+(*Check stepH_cont.*)
 Fixpoint gttstepH_ind_ref p q ell G G' (Hstep : gttstepH  G p q ell G') {struct Hstep} : P G p q ell G'.
   Proof.
     refine (match Hstep with
@@ -505,7 +504,6 @@ Fixpoint gttstepH_ind_ref p q ell G G' (Hstep : gttstepH  G p q ell G') {struct 
     {
         eapply P_eq;try exact Heq1;try exact Heq2. eapply gttstepH_ind_ref;try exact g.
     }
-    Guarded.
   Qed.
 
 End gttstepH_ind_ref.
@@ -721,9 +719,9 @@ Proof.
     }
 Qed.
 
-Print live_path_inner_global.
+(*Print live_path_inner_global.*)
 
-Print fair_path_inner_global.
+(*Print fair_path_inner_global.*)
 
 Lemma matching_proj_enables_step : forall g p q xp xq, wfgC g ->
 projectionC g p (ltt_send q xp)  ->
@@ -739,7 +737,7 @@ Proof.
     {
         eapply projection_implies_wf;try exact Hprojq;try easy.   
     }
-    eapply lem_6_16_simul_subproj with (p:=p) (q:=q) (xp:=xp) (xq:=xq) in Hwfg as Hsim;try easy.
+    eapply simul_subproj with (p:=p) (q:=q) (xp:=xp) (xq:=xq) in Hwfg as Hsim;try easy.
     eapply wfltt_slist_send in Hwflp. eapply slist_implies_some in Hwflp. destr_hyps.
     eapply Forall2R_prop in Hsim;try exact H;tac_sanitize.
     eapply typ_after_step_step in Hprojp as Htypstep;try exact Hprojp;try exact Hprojq;try exact H;try exact H2;try easy.
@@ -883,7 +881,7 @@ Definition head_proj_eventually_takes_step p (xs : global_path) :=
     | _ => True end.
 *)
 
-Print headComm_global.
+(*Print headComm_global.*)
 
 Definition head_proj_eventually_takes_step p (xs : global_path) := 
     match xs with 
@@ -1089,7 +1087,7 @@ Proof.
     constructor. easy.
 Qed.
 
-Search ishParts onth.
+(*Search ishParts onth.*)
 
 
 
@@ -3102,7 +3100,7 @@ Proof.
     {
         eapply always_suffix in Hwfgp';try exact H2.
         fold wfg_global_path in Hwfgp'.
-        Search wfg_global_path.
+        (*Search wfg_global_path.*)
         split;try solve [
             apply wfg_global_path_head in Hwfgp';easy|
             apply projable_global_path_head in Hwfgp';easy].
@@ -3138,7 +3136,7 @@ Proof.
         [red;eapply always_suffix;try exact H2;try easy | split;tauto].
         simpl in Hloc_step.
         specialize (Hloc_step _ H3) as [Hsend Hrec].
-        Print headComm_global.
+        (*Print headComm_global.*)
         eapply Hrec with (lcs:=x);try easy.
     }
 Qed.

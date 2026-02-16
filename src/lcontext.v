@@ -1,7 +1,7 @@
 (* From mathcomp Require Import ssreflect.seq all_ssreflect. *)
 From Paco Require Import paco pacotac.
 From SST Require Import src.expr src.header src.local CpdtTactics.
-Require Import List String Coq.Arith.PeanoNat Morphisms Relations Setoid.
+Require Import List Coq.Arith.PeanoNat Morphisms Relations Setoid.
 Require Import Coq.Program.Equality.
 Import ListNotations.
 
@@ -25,14 +25,19 @@ Module MF := MMaps.Facts.Properties Nat M.
 
 Definition tctx: Type := M.t ltt.
 
-Definition both (z: nat) (o:option ltt) (o':option ltt) :=
+Definition both {A:Type} (z: nat) (o:option A) (o':option A) :=
  match o,o' with 
    | Some _, None   => o
    | None, Some _   => o'
    | _,_            => None
  end.
 
-Definition disj_merge (g1 g2:tctx) (H:MF.Disjoint g1 g2) : tctx := 
+Ltac destr_hyps := repeat (match goal with 
+          | [ H: exists _,_|- _] => destruct H 
+          | [H: _ /\ _ |-_] => destruct H
+          end).
+
+Definition disj_merge {A:Type} (g1 g2:M.t A) (H:MF.Disjoint g1 g2)  := 
   M.merge both g1 g2.  
 
 
@@ -81,6 +86,10 @@ Qed.
 Create HintDb mmaps. 
 Hint Rewrite ( @M.add_spec1 ) ( @M.add_spec2) ( @M.remove_spec1)
     ( @M.remove_spec2) ( @M.empty_spec) using easy : mmaps.
+
+Create HintDb mmaps_more. 
+Hint Rewrite ( @M.add_spec1 ) ( @M.add_spec2) ( @M.remove_spec1)
+    ( @M.remove_spec2) ( @M.empty_spec) (@MF.merge_spec1mn) (@MF.add_in_iff) using easy : mmaps_more.
 (*superseded by spc_merge_find*)
 Lemma spc_merge_spec1: forall (g g': tctx) x (Hdisj: MF.Disjoint g g'),  M.In x g\/ M.In x g' -> (M.In x (disj_merge g g' Hdisj)).
 Proof.
@@ -118,7 +127,7 @@ Proof.
   {
     specialize (M.merge_spec1 both (@or_intror (M.In x g) (M.In x g') H)) as H_spc.
     destruct H_spc. destruct H0. subst.
-    Check MF.in_find.
+    (*Check MF.in_find.*)
     apply MF.in_find.
     unfold disj_merge.
     (*prove: both x (M.find x g) (M.find x g') <>=None*)
@@ -146,11 +155,11 @@ Proof.
   }
 Qed.
 
-Lemma spc_merge_find1: forall (g1 g2:tctx) p H_disj x, M.find p g1 = Some x ->
+Lemma spc_merge_find1 {A:Type}: forall (g1 g2:M.t A) p H_disj x, M.find p g1 = Some x ->
   M.find p (disj_merge g1 g2 H_disj)=Some x.
 Proof.
   intros.
-  Search M.merge M.find.
+  (*Search M.merge M.find.*)
   unfold disj_merge.
   rewrite MF.merge_spec1mn; try easy.
   unfold MF.Disjoint in H_disj.
@@ -162,11 +171,11 @@ Proof.
   apply MF.in_find in H_2. exfalso. exact (H_disj (conj H H_2)). 
 Qed.
 
-Lemma spc_merge_find2: forall (g1 g2:tctx) p H_disj x, M.find p g2 = Some x ->
+Lemma spc_merge_find2 {A:Type}: forall (g1 g2:M.t A) p H_disj x, M.find p g2 = Some x ->
   M.find p (disj_merge g1 g2 H_disj)=Some x.
 Proof.
   intros.
-  Search M.merge M.find.
+  (*Search M.merge M.find.*)
   unfold disj_merge.
   rewrite MF.merge_spec1mn; try easy.
   unfold MF.Disjoint in H_disj.
@@ -178,19 +187,19 @@ Proof.
   apply MF.in_find in H_2. exfalso. exact (H_disj (conj H_2 H)). 
 Qed.
 
-Lemma spc_merge_find3 : forall (g1 g2:tctx) p H_disj x, 
+Lemma spc_merge_find3 {A:Type}: forall (g1 g2:M.t A) p H_disj x, 
   M.find p (disj_merge g1 g2 H_disj)=Some x ->
   (M.find p g1=Some x /\ M.find p g2=None) \/ 
   (M.find p g2=Some x /\ M.find p g1=None).
 Proof.
   intros.
-  Search M.merge M.find.
+  (*Search M.merge M.find.*)
   unfold disj_merge in H.
   rewrite  MF.merge_spec1mn in H; destruct (M.find p g1);
   destruct (M.find p g2); crush.
 Qed.
 
-Lemma spc_merge_nfind : forall g1 g2 H p, M.find p (disj_merge g1 g2 H) = None ->
+Lemma spc_merge_nfind {A:Type}: forall  (g1 : M.t A) g2 H p, M.find p (disj_merge g1 g2 H) = None ->
   M.find p g1=None /\ M.find p g2=None.
 Proof.
   intros.  unfold disj_merge in H0. split;
@@ -200,16 +209,16 @@ Proof.
   apply opt_lem2 in H_pg2; apply MF.in_find in H_pg2; specialize (H p); crush. 
 Qed.
 
-Lemma empty_disjoint : forall (g:tctx), MF.Disjoint g M.empty.
+Lemma empty_disjoint {A:Type}: forall (g:M.t A), MF.Disjoint g M.empty.
 Proof.
   intros.
   unfold MF.Disjoint. unfold not. intros.
   destruct H. 
-  Search M.In M.empty.
+  (*Search M.In M.empty.*)
   apply MF.empty_in_iff in H0. assumption.
 Qed.
 
-Lemma spc_merge_nfind2 : forall g1 g2 H p,
+Lemma spc_merge_nfind2 {A:Type}: forall (g1 : M.t A) g2 H p,
   M.find p g1=None /\ M.find p g2=None-> M.find p (disj_merge g1 g2 H) = None.
 Proof.
   intros.  unfold disj_merge in H0. destruct H0. unfold disj_merge. 
@@ -236,7 +245,8 @@ Ltac tac_double_find_disjoint := match goal
     H3: MF.Disjoint ?g1 ?g2 
     |- _] => exfalso;apply (double_find_disjoint g1 g2 y _ _ H3 H1 H2) end.
 
-Lemma disj_merge_sym : forall g1 g2 H, M.Equal (disj_merge g1 g2 H) (disj_merge g2 g1 (MF.Disjoint_sym H)). 
+Lemma disj_merge_sym {A:Type}: forall (g1 : M.t A) g2 H, 
+M.Equal (disj_merge g1 g2 H) (disj_merge g2 g1 (MF.Disjoint_sym H)). 
 Proof.
   unfold M.Equal. intros.
   destruct (M.find y g1) eqn:H_yg1;destruct(M.find y g2) eqn:H_yg2;
@@ -251,12 +261,12 @@ Qed.
 Lemma disj_merge_unitr: forall (g:tctx), M.Equal g (disj_merge g M.empty (empty_disjoint g)).
 Proof.
   intros. unfold M.Equal. intros. unfold disj_merge.
-  Check MF.merge_spec1mn.
+  (*Check MF.merge_spec1mn.*)
   rewrite MF.merge_spec1mn.
   unfold M.find at 3.
   simpl. unfold both. 
   destruct (M.find y g);reflexivity.
-  Check Proper.
+  (*Check Proper.*)
   unfold Proper.
   unfold "==>".
   intros. subst. reflexivity. intros. unfold both. simpl. reflexivity. 
@@ -271,179 +281,42 @@ Proof.
   specialize (disj_merge_unitr g). intros. crush.  
 Qed.
 
-Lemma dom_preservation_6_9: forall g l g', tctxR g l g' -> M.Eqdom g g'.
+Lemma M_in_equal : forall (m m' : tctx), M.Equal m m' -> forall x, M.In x m <-> M.In x m'.
 Proof.
-  intros.
-  split.
-  {
-    induction H.
-    {
-      intros.
-      apply MF.add_in_iff in H1.
-      destruct H1.
-      {
-        subst.
-        apply MF.add_in_iff. left. reflexivity.
-      }
-      {
-        apply MF.empty_in_iff in H1. easy.
-      }
-    }
-    {
+  intros;split;intros;rewrite MF.in_find in *; eapply opt_lem1 in H0;destr_hyps;eapply opt_lem2;
+  unfold M.Equal in *; [rewrite H in H0 | rewrite <- H in H0]; exact H0.
+Qed.
 
-      intros.
-      apply MF.add_in_iff in H1.
-      destruct H1.
-      {
-        subst.
-        apply MF.add_in_iff. left. reflexivity.
-      }
-      {
-        apply MF.empty_in_iff in H1. easy.
-      }
-    }
-    {
-      intros.
-      apply M.merge_spec2 in H5.
-      destruct H5.
-      {
-        apply  IHtctxR1 in H5.
-        apply spc_merge_spec1.
-        left. easy.
-      }
-      {
-        apply  IHtctxR2 in H5.
-        apply spc_merge_spec1.
-        right. easy.
-      }
-    }
-    {
-      intros.
-      rewrite MF.add_in_iff in H1.
-      rewrite MF.add_in_iff.
-      destruct H1.
-      {
-        left. easy.
-      }
-      {
-        right. apply  IHtctxR. easy.
-      }
-    }
-    {
-      intros.
-      unfold M.Equal in H0.
-      specialize (H0 y).
-      destruct(M.find y g1) eqn:H_mfind.
-      {
-        apply eq_sym in H0.
-        apply (opt_lem2 _ (M.find y g1') _) in H0.
-        apply MF.in_find in H0.
-        apply IHtctxR in H0.
-        unfold M.equal in H1.
-        specialize (H1 y).
-        apply MF.in_find in H0.
-        apply opt_lem1 in H0.
-        destruct H0.
-        rewrite H0 in H1.
-        apply opt_lem2 in H1.
-        apply MF.in_find in H1.
-        assumption.
-      }
-      {
-        apply MF.not_in_find in H_mfind.
-        exfalso. apply H_mfind in H2. assumption.
-      }
-    }
+Lemma dom_preservation_6_9 : forall g l g', tctxR g l g' -> M.Eqdom g g'.
+Proof.  
+  intros;split;induction H;intros; 
+  autorewrite with mmaps_more in *;try tauto.
+  {
+    eapply M.merge_spec2 in H5;destruct H5;try easy;
+    [eapply IHtctxR1 in H5| eapply IHtctxR2 in H5]; eapply spc_merge_spec1; tauto.
   }
   {
-    induction H.
-    {
-      intros.
-      apply MF.add_in_iff in H1.
-      destruct H1.
-      {
-        subst.
-        apply MF.add_in_iff. left. reflexivity.
-      }
-      {
-        apply MF.empty_in_iff in H1. easy.
-      }
-    }
-    {
-
-      intros.
-      apply MF.add_in_iff in H1.
-      destruct H1.
-      {
-        subst.
-        apply MF.add_in_iff. left. reflexivity.
-      }
-      {
-        apply MF.empty_in_iff in H1. easy.
-      }
-    }
-    {
-      intros.
-      apply M.merge_spec2 in H5.
-      destruct H5.
-      {
-        apply  IHtctxR1 in H5.
-        apply spc_merge_spec1.
-        left. easy.
-      }
-      {
-        apply  IHtctxR2 in H5.
-        apply spc_merge_spec1.
-        right. easy.
-      }
-    }
-    {
-      intros.
-      rewrite MF.add_in_iff in H1.
-      rewrite MF.add_in_iff.
-      destruct H1.
-      {
-        left. easy.
-      }
-      {
-        right. apply  IHtctxR. easy.
-      }
-    }
-    {
-      intros.
-      unfold M.Equal in H1.
-      specialize (H1 y).
-      destruct(M.find y g2) eqn:H_mfind.
-      {
-        apply eq_sym in H1.
-        apply (opt_lem2 _ (M.find y g2') _) in H1.
-        apply MF.in_find in H1.
-        apply IHtctxR in H1.
-        specialize (H0 y).
-        apply MF.in_find in H1.
-        apply opt_lem1 in H1.
-        destruct H1.
-        rewrite H1 in H0.
-        apply opt_lem2 in H0.
-        apply MF.in_find in H0.
-        assumption.
-      }
-      {
-        apply MF.not_in_find in H_mfind.
-        exfalso. apply H_mfind in H2. assumption.
-      }
-    }
+    eapply M_in_equal;try exact H1. eapply IHtctxR. eapply MF.Equal_equiv in H0.
+    eapply M_in_equal;try exact H0;easy.
   }
-Qed. 
+  {
+    eapply spc_merge_spec1;
+    eapply M.merge_spec2 in H5;destruct H5;try tauto.
+  }
+  {
+    eapply M_in_equal; try exact H0. eapply IHtctxR. eapply MF.Equal_equiv in H1.
+    eapply M_in_equal;try exact H0;easy.
+  }
+Qed.
+
 
 Ltac red_inv_destruct H := 
   destruct H as [H_comm  H'']; destruct H'' as [H_rec H_send].
 
-Lemma lem_6_11a_tctx_send_invert : forall g g' p q s ell, 
+Lemma tctx_send_invert : forall g g' p q s ell, 
   (tctxR g (lsend p q (Some s) ell) g' ->
   exists xs Tp', M.find p g = Some (ltt_send q xs) /\ 
-  onth ell xs=Some (s, Tp') /\ M.find p g' = (Some Tp'))
-  .
+  onth ell xs=Some (s, Tp') /\ M.find p g' = (Some Tp')).
 Proof.
   intros.
   dependent induction H; 
@@ -461,7 +334,7 @@ Proof.
   unfold M.Equal in *. crush.
 Qed.
 
-Lemma lem_6_11b_tctx_recv_invert : forall g g' p q s ell, 
+Lemma tctx_recv_invert : forall g g' p q s ell, 
   (tctxR g (lrecv p q (Some s) ell) g' ->
   exists xs Tp', M.find p g = Some (ltt_recv q xs) /\ 
   onth ell xs=Some (s, Tp') /\ M.find p g' = (Some Tp')).
@@ -482,13 +355,10 @@ Proof.
   unfold M.Equal in *. crush.
 Qed.
 
-Ltac destr_hyps := repeat (match goal with 
-          | [ H: exists _,_|- _] => destruct H 
-          | [H: _ /\ _ |-_] => destruct H
-          end).
 
 
-Lemma lem_6_11c_tctx_comm_invert: forall g g' p q ell, 
+
+Lemma tctx_comm_invert: forall g g' p q ell, 
   tctxR g (lcomm p q ell) g' ->exists s s',
   (exists xsp Tp', M.find p g = Some (ltt_send q xsp) /\ 
   onth ell xsp=Some (s, Tp') /\ M.find p g' = (Some Tp')) /\
@@ -499,8 +369,8 @@ Proof.
   intros.
   dependent induction H.
   {
-    apply lem_6_11a_tctx_send_invert in H0.
-    apply lem_6_11b_tctx_recv_invert in H3.
+    apply tctx_send_invert in H0.
+    apply tctx_recv_invert in H3.
     destr_hyps.
     exists s, s'.
     split.
@@ -565,11 +435,7 @@ Proof.
   intros.
   unfold M.Equal. intros; destruct (Nat.eq_dec x y);
   destruct (M.find y g1);destruct (M.find y g1);subst;
-  try rewrite M.add_spec1;try rewrite M.add_spec2; crush; 
-  unfold disj_merge;rewrite MF.merge_spec1mn; 
-  try rewrite M.add_spec1;try rewrite M.add_spec2;
-  crush; rewrite MF.merge_spec1mn ; 
-  try rewrite M.add_spec1;try rewrite M.add_spec2; crush.
+  unfold disj_merge;autorewrite with mmaps_more;crush.
 Qed.
 
 Instance EqMEQ {A: Type} : Equivalence (@M.Equal A).
@@ -604,7 +470,7 @@ Lemma disj_weakening : forall (g1 g2:tctx) x e, MF.Disjoint g1 (M.add x e g2) ->
 Proof.
   intros.
   unfold MF.Disjoint in *. intros. specialize (H k).
-  Search M.In M.add.
+  (*Search M.In M.add.*)
   rewrite MF.add_in_iff in H. crush.
 Qed.
 
@@ -687,13 +553,13 @@ Proof.
       unfold MF.Add in H1.
       unfold disj_merge.
       setoid_rewrite H1.
-      fold disj_merge.
+      fold ( @disj_merge (M.t ltt)).
       change (M.merge both g1 g2_1) with (disj_merge g1 g2_1 Hd).
       change (M.merge both g1 (M.add x e g2_1)) with 
       (disj_merge g1 (M.add x e g2_1) Hd'').
       apply singleton_merge; try rewrite MF.not_in_find in H0; crush.
       destruct (M.find x g1) eqn:H_yg1; try easy.
-      Search M.Equal M.find.
+      (*Search M.Equal M.find.*)
       setoid_rewrite H1 in Hdisj_1.
       unfold MF.Disjoint in Hd''. specialize (Hd'' x).
       rewrite MF.add_in_iff in Hd''.
@@ -710,7 +576,7 @@ Proof.
      change (M.merge both g1' g2_1) with (disj_merge g1' g2_1 Hd').
      change (M.merge both g1' (M.add x e g2_1)) 
      with (disj_merge g1' (M.add x e g2_1) Hd''' ).
-     Check singleton_merge.
+     (*Check singleton_merge.*)
      apply singleton_merge; crush.
      rewrite H1 in Hdisj_2.
      destruct (M.find x g1') eqn:Hxg1; crush.
@@ -779,12 +645,12 @@ Proof.
   {
    unfold MF.Disjoint.
    intros.
-   Search M.remove M.In.
+   (*Search M.remove M.In.*)
    destruct (Nat.eq_dec p k); crush. apply not_in_remove in H3; easy.
    destruct (M.find k (M.add p ct M.empty)) eqn:Hy1.
-   Search M.add M.find.
+   (*Search M.add M.find.*)
    apply MF.add_neq_o with (m:=M.empty) (e:=ct) in n0.
-   Search M.find M.empty.
+   (*Search M.find M.empty.*)
    rewrite M.empty_spec in n0. crush.
    rewrite MF.in_find in H4. crush.
   }
@@ -819,9 +685,9 @@ Proof.
    intros.
    destruct (Nat.eq_dec p k); crush. apply not_in_remove in H3; easy.
    destruct (M.find k (M.add p (ltt_send q xs) M.empty)) eqn:Hy1.
-   Search M.add M.find.
+   (*Search M.add M.find.*)
    apply MF.add_neq_o with (m:=M.empty) (e:=(ltt_send q xs)) in n0.
-   Search M.find M.empty.
+   (*Search M.find M.empty.*)
    rewrite M.empty_spec in n0. crush.
    rewrite MF.in_find in H4. crush.
   }
@@ -829,7 +695,7 @@ Proof.
   assert(He2: M.Equal g 
   (disj_merge (M.remove p g) (M.add p (ltt_send q xs) M.empty) Hd2)).
   {
-    Check singleton_merge.
+    (*Check singleton_merge.*)
     unfold M.Equal.
     intros.
     unfold disj_merge.
@@ -867,12 +733,9 @@ Proof.
   {
    unfold MF.Disjoint.
    intros.
-   Search M.remove M.In.
    destruct (Nat.eq_dec p k); crush. apply not_in_remove in H3; easy.
    destruct (M.find k (M.add p ct M.empty)) eqn:Hy1.
-   Search M.add M.find.
    apply MF.add_neq_o with (m:=M.empty) (e:=ct) in n0.
-   Search M.find M.empty.
    rewrite M.empty_spec in n0. crush.
    rewrite MF.in_find in H4. crush.
   }
@@ -890,16 +753,8 @@ Proof.
      rewrite M.add_spec1.
      1-3:crush. 
     }
-    
-    destruct (M.find y g) eqn:H_yg1;
-    rewrite M.add_spec2;
-    try rewrite MF.remove_neq_o;
-    unfold disj_merge;
-    try rewrite MF.merge_spec1mn;
-    try rewrite MF.remove_neq_o;
-    try rewrite M.add_spec2;
-    try rewrite M.empty_spec;
-    crush.
+    Hint Rewrite MF.remove_neq_o :mmaps_more.
+    destruct (M.find y g) eqn:H_yg1;try unfold disj_merge;autorewrite with mmaps_more;crush.
   }
   assert (Hd2:MF.Disjoint (M.remove p g) (M.add p (ltt_recv q xs) M.empty)).
   {
@@ -907,9 +762,8 @@ Proof.
    intros.
    destruct (Nat.eq_dec p k); crush. apply not_in_remove in H3; easy.
    destruct (M.find k (M.add p (ltt_recv q xs) M.empty)) eqn:Hy1.
-   Search M.add M.find.
    apply MF.add_neq_o with (m:=M.empty) (e:=(ltt_recv q xs)) in n0.
-   Search M.find M.empty.
+   
    rewrite M.empty_spec in n0. crush.
    rewrite MF.in_find in H4. crush.
   }
@@ -917,15 +771,14 @@ Proof.
   assert(He2: M.Equal g 
   (disj_merge (M.remove p g) (M.add p (ltt_recv q xs) M.empty) Hd2)).
   {
-    Check singleton_merge.
+    (*Check singleton_merge.*)
     unfold M.Equal.
     intros.
     unfold disj_merge.
     destruct(Nat.eq_dec y p); rewrite MF.merge_spec1mn;crush.
-    rewrite M.remove_spec1;
-    rewrite M.add_spec1;crush.
-    rewrite M.add_spec2; try rewrite M.empty_spec; try rewrite M.remove_spec2; crush.
-    destruct (M.find y g) eqn:Hyg; crush.
+    Hint Rewrite (@M.remove_spec1) :mmaps_more. 
+    autorewrite with mmaps_more;crush.
+    autorewrite with mmaps_more;try easy;destruct (M.find y g);simpl;easy. 
   }
   
   unfold m_update.
@@ -957,7 +810,7 @@ Proof.
      rewrite  <- MF.not_in_find in H2; try easy.
      rewrite  <- MF.not_in_find in H3; try easy.
      rewrite MF.in_find in H6. apply opt_lem1 in H6. destr_hyps.
-     Check M.add_spec2.
+     (*Check M.add_spec2.*)
      rewrite M.add_spec2 in H5;try easy.
      rewrite M.add_spec2 in H5;try easy.
     }
@@ -967,18 +820,16 @@ Proof.
     {
      unfold M.Equal. intros.
      unfold disj_merge. rewrite MF.merge_spec1mn;crush.
-     destruct (Nat.eq_dec p y); destruct (Nat.eq_dec q y);crush.
-     + rewrite M.add_spec1. rewrite M.add_spec1. easy.
-     + rewrite M.add_spec2. rewrite M.add_spec1. rewrite M.add_spec2.
-     rewrite M.add_spec1. 1-3: try easy.
-     + repeat rewrite M.add_spec2;try easy. rewrite M.empty_spec. 
+     destruct (Nat.eq_dec p y); destruct (Nat.eq_dec q y);subst;
+     autorewrite with mmaps_more;simpl;try easy;crush.
+      
      destruct (M.find y gamma') eqn:Hyg;crush.   
     }
     Ltac Hdeq t1 t2 H_eq Hd1:= setoid_rewrite (H_eq t1 t2 (Hd1 t1 t2)).
     Hdeq (ltt_send q xp) (ltt_recv p xq) H_eq Hd1.
     Hdeq Tp_k Tq_k H_eq Hd1.
     apply tctxR_weakening.
-    assert(Heq1: forall Ttp Ttq Hdd, M.Equal (M.add p Ttp
+    assert(Heq1: forall (Ttp :ltt) Ttq Hdd, M.Equal (M.add p Ttp
     (M.add q Ttq M.empty)) (disj_merge (M.add p Ttp M.empty) (M.add q Ttq M.empty) Hdd)).
     {
      intros.
@@ -1033,7 +884,7 @@ Proof.
   rewrite M.remove_spec2;try rewrite M.remove_spec1;crush.
 Qed.
 
-Lemma lem_6_10 : forall r g l g' , tctxR g l g' ->
+Lemma red_relevance : forall r g l g' , tctxR g l g' ->
      ~ ispSubjl r l ->
      M.find r g = M.find r g'.
 Proof.
@@ -1083,17 +934,17 @@ Proof.
   apply invert in H; destr_hyps; 
   try rewrite M.add_spec1 in *; crush |
 
-  apply lem_6_10 with (r:=y) in H0,H; try rewrite M.add_spec2 in H0; 
+  apply red_relevance with (r:=y) in H0,H; try rewrite M.add_spec2 in H0; 
   try rewrite M.empty_spec in H;
   try rewrite M.add_spec2; try rewrite M.empty_spec; crush].
   
   destruct l;rename n into p, n0 into q, n1 into n;
   unfold M.Equal;subst;intros; try (destruct o).  
-  send_rec_solve H H0 p y lem_6_11b_tctx_recv_invert.
+  send_rec_solve H H0 p y tctx_recv_invert.
   apply transition_sort_some_recv in H;crush.
-  send_rec_solve H H0 p y lem_6_11a_tctx_send_invert.
+  send_rec_solve H H0 p y tctx_send_invert.
   apply transition_sort_some_send in H;crush.
   destruct (Nat.eq_dec p y);destruct (Nat.eq_dec q y);subst.
-  1-3: apply lem_6_11c_tctx_comm_invert in H,H0; crush.
-  apply lem_6_10 with (r:=y) in H0,H;crush. 
+  1-3: apply tctx_comm_invert in H,H0; crush.
+  apply red_relevance with (r:=y) in H0,H;crush. 
 Qed.

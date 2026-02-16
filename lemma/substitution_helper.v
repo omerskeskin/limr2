@@ -697,7 +697,7 @@ Proof.
         constructor.
         apply onth_smore with (S := S); try easy.
         apply natb_to_propf. easy.
-        Search((S ?a <= S ?b)%coq_nat).
+        (*Search((S ?a <= S ?b)%coq_nat).*)
         specialize(le_S_n (length Gsl) n H5); intros. 
         apply coq_nat_to_nat_le. easy.
   - simpl in *.

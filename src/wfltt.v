@@ -57,7 +57,7 @@ Lemma tctx_wf_after_red_send: forall p q ell s gamma gamma', tctx_wf gamma ->
 tctxR gamma (lsend p q (Some s) ell) gamma' -> tctx_wf gamma'.
 Proof.
     intros* Hwf Hred.
-        eapply lem_6_11a_tctx_send_invert in Hred as Hrt. destr_hyps.
+        eapply tctx_send_invert in Hred as Hrt. destr_hyps.
         red. intros. destruct (Nat.eq_dec p0 p);subst.
         {
          
@@ -66,7 +66,7 @@ Proof.
         eapply wfltt_onth_wfltt_send with (p:=q) in H0;try easy.
         }
         {
-            eapply lem_6_10 with (r:= p0) in Hred.
+            eapply red_relevance with (r:= p0) in Hred.
             rewrite H2 in Hred.
             specialize (Hwf p0 _ Hred). easy.
             crush.
@@ -78,7 +78,7 @@ Lemma tctx_wf_after_red_recv: forall p q ell s gamma gamma', tctx_wf gamma ->
 tctxR gamma (lrecv p q (Some s) ell) gamma' -> tctx_wf gamma'.
 Proof.
     intros* Hwf Hred.
-        eapply lem_6_11b_tctx_recv_invert in Hred as Hrt. destr_hyps.
+        eapply tctx_recv_invert in Hred as Hrt. destr_hyps.
         red. intros. destruct (Nat.eq_dec p0 p);subst.
         {
          
@@ -87,7 +87,7 @@ Proof.
         eapply wfltt_onth_wfltt_recv with (p:=q) in H0;try easy.
         }
         {
-            eapply lem_6_10 with (r:= p0) in Hred.
+            eapply red_relevance with (r:= p0) in Hred.
             rewrite H2 in Hred.
             specialize (Hwf p0 _ Hred). easy.
             crush.
@@ -98,7 +98,7 @@ Lemma tctx_wf_after_red_comm: forall p q ell gamma gamma', tctx_wf gamma ->
 tctxR gamma (lcomm p q ell) gamma' -> tctx_wf gamma'.
 Proof.
     intros* Hwf Hred.
-    eapply lem_6_11c_tctx_comm_invert in Hred as Hrt. destr_hyps.
+    eapply tctx_comm_invert in Hred as Hrt. destr_hyps.
     red. intros. destruct (Nat.eq_dec p0 p);destruct (Nat.eq_dec p0 q);crush.
     {
         rewrite H6 in H5; inversion H5;subst.
@@ -110,7 +110,7 @@ Proof.
        
     }
     {
-        eapply lem_6_10 with (r:=p0) in Hred.
+        eapply red_relevance with (r:=p0) in Hred.
         rewrite H6 in Hred. specialize (Hwf p0 _ Hred). easy. crush.
     }
 Qed.

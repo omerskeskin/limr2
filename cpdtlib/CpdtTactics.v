@@ -33,6 +33,7 @@ Require Import Eqdep List Lia.
 
 Set Implicit Arguments.
 
+Ltac Tauto.intuition_solver ::= auto with *.
 
 (** A version of [injection] that does some standard simplifications afterward: clear the hypothesis in question, bring the new facts above the double line, and attempt substitution for known variables. *)
 Ltac inject H := injection H; clear H; intros; try subst.

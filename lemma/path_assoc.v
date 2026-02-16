@@ -78,7 +78,7 @@ Definition tctxREN_send p q g := exists n s, (tctxRE (lsend p q s n) g).
 
 Definition tctxREN_recv p q g := exists n s, (tctxRE (lrecv p q s n) g).
 
-Print alwaysG.
+(*Print alwaysG.*)
 
 Definition wfg_global_path := alwaysCG (to_path_prop (fun a=> wfgC a /\ projectableA a) True).
 Definition wf_local_path := alwaysCG (to_path_prop tctx_wf True).
@@ -127,7 +127,7 @@ Proof.
     {
         intros. red in H. destruct xs as [ | [t l]];try easy.
         destruct l;try tauto;destruct l;try tauto.
-        destruct (Nat.eq_dec p n);destruct (Nat.eq_dec q n0);try tauto;subst;clear H.
+        destr_hyps;subst.
         pinversion Hpassoc;try apply path_assoc_mon;subst. constructor.  simpl. tauto.
     }
     {
@@ -216,7 +216,7 @@ Lemma local_send_enabled_global_send_enabled : forall g p q s n gamma, wfgC g ->
 Proof.
     intros * Hwfg Hwf Hassoc Hre.
     destruct Hre as [t' Hre].
-    eapply lem_6_11a_tctx_send_invert in Hre. destr_hyps. 
+    eapply tctx_send_invert in Hre. destr_hyps. 
     
     eapply assoc_inv_find in H as Hinvf;try exact Hassoc;try easy.
     red in Hinvf. destr_hyps. eapply subtype_send_inv1 in H3 as Hst. destr_hyps;subst. 
@@ -231,7 +231,7 @@ Lemma local_recv_enabled_global_recv_enabled : forall g p q s n gamma, wfgC g ->
 Proof.
     intros * Hwfg Hwf Hassoc Hre.
     destruct Hre as [t' Hre].
-    eapply lem_6_11b_tctx_recv_invert in Hre. destr_hyps. 
+    eapply tctx_recv_invert in Hre. destr_hyps. 
     
     eapply assoc_inv_find in H as Hinvf;try exact Hassoc;try easy.
     red in Hinvf. destr_hyps. eapply subtype_recv_inv1 in H3 as Hst. destr_hyps;subst.
@@ -357,6 +357,7 @@ Proof.
     tauto.
 Qed.
 
+(*Check eq_refl.*)
 
 CoFixpoint conj_path : forall t g l  xs, wfgC g -> tctx_wf t -> assoc t g ->
     local_valid_pathC (cocons (t, l) xs) ->

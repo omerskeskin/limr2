@@ -11,7 +11,7 @@ Import ListNotations.
 Definition issubProj (t:ltt) (g:gtt) (p:part) := 
     exists tg, projectionC g p tg /\ subtypeC t tg.
 
-Search subtypeC.
+(*Search subtypeC.*)
 
 
 
@@ -80,7 +80,7 @@ Proof.
     apply subtype_recv_inv1 in H. destr_hyps. subst.
     apply subtype_recv_inv in H'. exists x. easy.
 Qed.
-Search wfG.
+(*Search wfG.*)
 Lemma empty_not_wfg : forall p q, ~ wfgC (gtt_send p q []).
 Proof.
     unfold not;intros. apply wfgC_triv in H. destr_hyps. inversion H0.
@@ -351,7 +351,7 @@ Lemma subtype_end_inv2: forall t:ltt, subtypeC ltt_end t -> t= ltt_end.
 Proof.
     intros. pinversion H;crush. apply sub_mon.
 Qed.
-Search projectionC ltt_end.
+(*Search projectionC ltt_end.*)
 Lemma subproj_inv_end: forall g p, wfgC g -> 
     issubProj ltt_end g p -> isgPartsC p g -> False.
 Proof.
@@ -360,7 +360,7 @@ Proof.
     apply pmergeCR with (G:=g) (r:=p);crush.
 Qed. 
 End subproj_inversion.
-Print issubProj.
+(*Print issubProj.*)
 
 Lemma simul_subproj_helper:  forall p q xp xq x0,
 Forall2R
@@ -466,38 +466,9 @@ Proof.
     intros. inversion H. apply typ_gtth_inv in H0. easy.
 Qed.
 
-Lemma multigrafting_lemma1: forall p q xp xq G gs s t ghs, wfgC G -> 
-SList xp -> SList xq ->
-issubProj (ltt_send q xp) G p ->
-issubProj (ltt_recv p xq) G q ->
-typ_p_gtth gs (gtth_send s t ghs) p G ->
-s <> p /\ t <> q.
-Proof.
-    intros.
-    inversion H4.
-    destr_hyps.
-    assert (Hleft:s <> p).
-    {
-        
-        destruct (Nat.eq_dec s p). subst. exfalso. apply H6.
-        constructor. easy.
-    }
-    split. easy.
-    {
-        destruct (Nat.eq_dec t q);try easy.
-        subst.
-        apply subproj_inv_recv in H3;
-        apply subproj_inv_send in H2;try easy.
-        destruct H2;destruct H3;crush;
-        apply typ_p_gtth_inv in H4; destr_hyps; 
-        [inversion H2 |
-         inversion H4];crush.
-    }
-Qed.
-
 Lemma continuation_wfgC : forall p q xs s gc n , wfgC (gtt_send p q xs) -> onth n xs=Some (s,gc) -> wfgC gc.
 Proof.
-    Search wfgC.
+    (*Search wfgC.*)
     intros.
     pose proof H as Hwfg.
     apply wfgC_triv in Hwfg.
@@ -509,9 +480,71 @@ Lemma same_rec_send_not_wfg: forall p xs, ~ wfgC (gtt_send p p xs).
 Proof.
     unfold not. intros. apply wfgC_triv in H. easy.
 Qed.
-Lemma lem_6_16_simul_subproj: forall G p, wfgC G -> isgPartsC p G ->
-  forall q xp xq,
-    wfgC G -> 
+
+Section Forall2_forall.
+
+Variables (A B: Type).
+Variable P : option A -> option B -> Prop. 
+Lemma Forall2_forall: 
+forall  (xs: list (option A)) (ys: list (option B)), 
+Datatypes.length xs =Datatypes.length ys -> (forall k, P (onth k xs) (onth k ys)) -> 
+Forall2 P xs ys.
+Proof.
+    induction xs.
+    {
+        intros.
+        simpl in H.
+        apply eq_sym in H.
+        rewrite length_zero_iff_nil in H. subst. easy.       
+    }
+    {
+
+        destruct ys as [| y].
+        {
+            intros. simpl in H. discriminate H.      
+        }
+        {
+            intros. simpl in H. inversion H. constructor.
+            specialize (H0 0). simpl in H0. easy.
+            eapply IHxs;try easy.
+            intros.
+            specialize (H0 (S k)).
+            simpl in H0. easy.
+        }
+    }
+Qed.
+Lemma Forall2R_Forall : forall  (xs: list (option A)) (ys: list (option B)), 
+Datatypes.length xs <= Datatypes.length ys -> (forall k, k < Datatypes.length xs -> P (onth k xs) (onth k ys)) -> 
+Forall2R P xs ys.
+Proof.
+    induction xs.
+    intros. constructor.
+
+    intros.
+    destruct ys as [ | y].
+    {
+        simpl in H. inversion H.   
+    }
+    {
+        simpl in H. 
+        constructor.
+        specialize (H0 0). crush.
+        eapply IHxs.
+        apply le_S_n;easy.
+        intros. specialize (H0 (S k)). simpl in H0.
+        apply H0.
+        apply le_n_S. easy.
+    }
+Qed.
+End Forall2_forall.
+
+Lemma Forall2R_length {A:Type} {B:Type}: forall (P:A -> B-> Prop) xs ys, Forall2R P xs ys -> Datatypes.length xs <= Datatypes.length ys.
+Proof.
+    intros;
+    induction H;crush.
+Qed.
+
+Lemma simul_subproj: forall G p q xp xq, wfgC G -> isgPartsC p G ->
     issubProj (ltt_send q xp) G p ->
     issubProj (ltt_recv p xq) G q ->
     SList xp -> SList xq ->
@@ -521,71 +554,67 @@ Lemma lem_6_16_simul_subproj: forall G p, wfgC G -> isgPartsC p G ->
     /\ subsort s s' 
     ) xp xq.
 Proof.
-    intros G p Hwfog Hispart.
-    eapply wfg_proof_princip2 with (g:=G) (p:=p).
+    intros * Hwfg Hisparts Hsubp Hsubq Hsxp Hsxq. 
+    eapply balanced_to_tree in Hisparts as Htyp;try easy.
+    destruct  Htyp as [ctx [gs [?Htyp [?Htyp [?Htyp _]]]]].
+    generalize dependent G.
+    generalize dependent gs.
+    generalize dependent ctx.
+    induction ctx using gtth_ind_ref.
     {
-        generalize dependent p.
-     induction ctx using gtth_ind_ref.
-     {
-      clear Hwfog.
-      clear Hispart.
-      clear G.
-      intros.
-      inversion H;subst.
-      inversion H5;subst.
-      destr_hyps.
-      eapply Forall_prop with (p:=g) (l:=n) in H7; try assumption.
-      
-      destruct H7. try easy.
-      destruct H7. destruct H7.
-      destruct H7; [ | destruct H7]; inversion H7;subst;
-      apply subproj_inv_send in H1;apply subproj_inv_recv in H2;
-      destruct H1;destruct H2; crush;
-      [
-      eapply simul_subproj_helper with (p:=p) (q:=q) (x0:=x1) |
-
-      inversion H10;inversion H2;subst;
-      apply same_rec_send_not_wfg in H0] ;crush.
-     }
-     {
-      intros.
-      assert(exists n ss gg, onth n xs=Some (ss,gg)). 
-      {
-       inversion H0. inversion H6. apply slist_implies_some in H13. subst.
-       destr_hyps.
-       destruct x0. exists x,s, g. easy.  
-      }
-        
-      destr_hyps. 
-      rename x0 into s, x1 into gch.
-      pose proof H0 as Hgraft.
-      apply multigrafting_lemma1 with (xp:=xp) (xq:=xq) (q:=q0) in H0;try easy.
-      pose proof Hgraft as Hgraft'.
-      apply typ_p_gtth_inv in Hgraft. destr_hyps. subst.
-      eapply Forall_prop with (l:=x) (p:= (s,gch)) in H;try easy.
-      destruct H; try easy.
-      destr_hyps. 
-      inversion H;subst. rename x1 into s, x2 into gch.
-      rename x0 into gcs.
-      eapply typ_p_gtth_cont2 with (n:=x) (s:=s) (gch:=gch) in Hgraft';try assumption.
-      destruct Hgraft' as [gc']. destr_hyps.
-      eapply H7 with (q:=q0) (g:=gc') (gs:=gs);try easy.
-      eapply continuation_wfgC with (gc:=gc') (n:=x) (s:=s)  in H1;try easy.
-      all:apply subproj_inv_send in H2;apply subproj_inv_recv in H3;try easy;
-      destruct H2;destruct H3;crush; unfold issubProj; destr_hyps;
-      inversion H11;inversion H13;subst;
-      rename H14 into Hsubprojsend, H17 into Hsubprojrecv,x5 into gcs;
-      unfold subproj_cont_cond in *.
-      1: eapply Forall_prop with (l:=x) (p:=(s,gc')) in Hsubprojsend.
-      3: eapply Forall_prop with (l:=x) (p:=(s,gc')) in Hsubprojrecv. 
-      all:(crush;try easy).
-     }
+        intros. inversion Htyp;subst.
+        eapply Forall_prop in Htyp1;try exact H1;destruct Htyp1;try easy.
+        destr_hyps.
+        destruct H;[|destruct H];inversion H;subst;
+            eapply subproj_inv_send in Hsubp;eapply subproj_inv_recv in Hsubq;try easy;
+            destruct Hsubq;destruct Hsubp;destr_hyps;subst;inversion H0;inversion H2;subst;try tauto;
+            unfold recv_cond, send_cond in *;
+            eapply simul_subproj_helper;try exact H4;try exact H3.
     }
-    all:easy.
-Qed.
+    {
+        intros.
+        inversion Htyp;subst.
+        assert(exists n ss gg, onth n xs=Some (ss,gg)). 
+        {
+            eapply  slist_implies_some in H5;destr_hyps.
+            destruct x0. exists x, s,g;easy.  
+        }
+        destr_hyps.
+        eapply Forall_prop in H;try exact H0;destruct H;try easy;destr_hyps;subst.
+        eapply Forall2_prop_r in H6;try exact H0;destr_hyps.
+        destruct H3;try easy. destr_hyps;subst;inversion H3;subst;clear H3.
+        eapply H1 with (G:=x7) in Htyp1 as Hiuse;try easy;inversion H;subst.
+        assert(Hpp: p0 <> p) by  (red;intros;subst;eapply Htyp0;constructor).
+        assert(Hqp: q0 <> p) by  (red;intros;subst;eapply Htyp0;constructor).
+        intros;eapply Htyp0;econstructor;try exact H0;try easy.
+        eapply continuation_wfgC;try exact Hwfg;try exact H4.
+        (*Search isgPartsC onth.*)
+        red in Hsubp;destr_hyps;eapply subtype_send_inv1 in H3;destr_hyps;subst.
+        pinversion H2;subst;try apply proj_mon.
+        exfalso;eapply Htyp0;constructor.
+        eapply Forall2_prop_r in H15;try exact H4;destr_hyps.
+        destruct H7;try easy;destr_hyps;subst.
+        symmetry in H7;inversion H7;subst;clear H7.
+        (*Search isMerge onth.*)
+        eapply merge_inv_ss in H16;try exact H8;subst.
+        destruct H13;try easy. pinversion H3;try apply proj_mon;try easy.
+        eapply subproj_inv_send in Hsubp;
+        destruct Hsubp;destr_hyps;subst;try easy; inversion H2;subst;
+        try solve [exfalso;eapply Htyp0;constructor];
+        eapply Forall_prop in H8;try exact H4;destruct H8;
+        try easy;destr_hyps;subst;inversion H8;subst;easy.
 
-Check subproj_inv_recv.
-Check assoc.
+        
+        eapply subproj_inv_recv in Hsubq;
+        destruct Hsubq;destr_hyps;subst;try easy; inversion H2;subst;
+        try solve [exfalso;eapply Htyp0;constructor];
+        eapply Forall_prop in H8;try exact H4;destruct H8;
+        try easy;destr_hyps;subst;inversion H8;subst;easy.
+        easy.
+      }
+Qed.
+    
+
 Lemma assoc_inv_recv: forall p q xs gamma G,
 wfgC G ->
 SList xs ->
@@ -645,62 +674,6 @@ Ltac tac_tctx_wf_to_slist xp Htctx_wf Hfindp q := assert (SList xp) by (red in H
     ]
         ).
 
-Section Forall2_forall.
-
-Variables (A B: Type).
-Variable P : option A -> option B -> Prop. 
-Lemma Forall2_forall: 
-forall  (xs: list (option A)) (ys: list (option B)), 
-Datatypes.length xs =Datatypes.length ys -> (forall k, P (onth k xs) (onth k ys)) -> 
-Forall2 P xs ys.
-Proof.
-    induction xs.
-    {
-        intros. Search Datatypes.length 0.
-        simpl in H.
-        apply eq_sym in H.
-        rewrite length_zero_iff_nil in H. subst. easy.       
-    }
-    {
-
-        destruct ys as [| y].
-        {
-            intros. simpl in H. discriminate H.      
-        }
-        {
-            intros. simpl in H. inversion H. constructor.
-            specialize (H0 0). simpl in H0. easy.
-            eapply IHxs;try easy.
-            intros.
-            specialize (H0 (S k)).
-            simpl in H0. easy.
-        }
-    }
-Qed.
-Lemma Forall2_Forall : forall  (xs: list (option A)) (ys: list (option B)), 
-Datatypes.length xs <= Datatypes.length ys -> (forall k, k < Datatypes.length xs -> P (onth k xs) (onth k ys)) -> 
-Forall2R P xs ys.
-Proof.
-    induction xs.
-    intros. constructor.
-
-    intros.
-    destruct ys as [ | y].
-    {
-        simpl in H. inversion H.   
-    }
-    {
-        simpl in H. 
-        constructor.
-        specialize (H0 0). crush.
-        eapply IHxs.
-        apply le_S_n;easy.
-        intros. specialize (H0 (S k)). simpl in H0.
-        apply H0.
-        apply le_n_S. easy.
-    }
-Qed.
-End Forall2_forall.
 
 Lemma assoc_simul_inv: 
     forall gamma g p q xp xq, 
@@ -712,8 +685,7 @@ Lemma assoc_simul_inv:
     (
         exists xg, g=gtt_send p q xg /\
         send_cond xp xg p  /\
-        recv_cond
-        xq xg q
+        recv_cond xq xg q
     )
     \/
     (
@@ -747,8 +719,8 @@ Proof.
         right.
         destruct p0 as [s0 g].
         exists s0, g.
-        Check Forall_forall.
-        Search In onth.
+        (*Check Forall_forall.*)
+        (*Search In onth.*)
         apply in_some_implies_onth in H7. destruct H7 as [n].
         split;try easy.   
         unfold subproj_cont_cond in H6, H8.
