@@ -1,50 +1,6 @@
 
--R . SST
+-R . live_mpst
 -arg "-w -parsing"
-src/sim.v
-src/header.v
-src/expr.v
-src/process.v
-src/local.v
-src/global.v
-src/gttreeh.v
-src/part.v 
-src/balanced.v
-src/typecheck.v 
-src/step.v
-src/merge.v
-src/projection.v
-src/session.v
-src/lcontext.v
-src/path_props.v
-src/assoc.v
-src/wfltt.v
-src/ltth.v
-lemma/inversion.v
-lemma/inversion_expr.v
-lemma/substitution_helper.v
-lemma/substitution.v
-lemma/decidable_helper.v
-lemma/decidable.v
-lemma/expr.v
-lemma/part.v
-lemma/step.v
-lemma/safety.v
-lemma/projection_helper.v
-lemma/projection.v
-lemma/subj_red_prog_fid.v
-lemma/subj_red_helpers.v
-lemma/soundness.v
-lemma/path_assoc.v
-lemma/multigrafting.v
-lemma/completeness.v
-lemma/liveness_helpers.v
-lemma/liveness.v
-lemma/live_proc.v
-lemma/fairness_feasible.v
-cpdtlib/CpdtTactics.v
-cpdtlib/DepList.v
-cpdtlib/MoreSpecif.v
-examples/ex_sess_red.v
-examples/ex_type_semantics.v
-examples/ex_typing.v
+cpdtlib
+STBase
+STLive
