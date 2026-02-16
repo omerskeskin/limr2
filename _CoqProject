@@ -44,3 +44,6 @@ lemma/fairness_feasible.v
 cpdtlib/CpdtTactics.v
 cpdtlib/DepList.v
 cpdtlib/MoreSpecif.v
+examples/ex_sess_red.v
+examples/ex_type_semantics.v
+examples/ex_typing.v

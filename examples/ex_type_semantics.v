@@ -522,3 +522,29 @@ Proof.
      
         constructor 2;constructor;simpl;easy.
 Qed.
+
+Definition gamma_b := M.add prt_p (ltt_send prt_q [Some(sint,ltt_end)])
+    (M.add prt_q (ltt_recv prt_p [Some(snat, ltt_end)]) M.empty).
+Lemma gamma_b_not_safe: safeC gamma_b -> False.
+Proof.
+    intros. pinversion H;subst. red in H0. specialize (H0 prt_p prt_q sint snat 0 0).
+    assert(Hr1: tctxRE (lsend prt_p prt_q (Some sint) 0) gamma_b).
+    {
+        evar (cc:tctx). exists cc.
+        eapply simple_red_send;unfold gamma_b in *;autorewrite with mmaps;try reflexivity;
+        try easy.   
+    }
+    assert(Hr2: tctxRE (lrecv prt_q prt_p (Some snat) 0) gamma_b).
+    {
+        evar (cc:tctx). exists cc.
+        eapply simple_red_recv;unfold gamma_b in *;autorewrite with mmaps;try reflexivity;
+        try easy.
+    }
+    specialize (H0 Hr1 Hr2).
+    red in H0;destr_hyps.
+    eapply tctx_comm_invert in H0;destr_hyps;unfold gamma_b in *;autorewrite with mmaps in *;
+    inversion H0;subst;inversion H2;subst;simpl in *;inversion H6;inversion H4;subst;
+    inversion H3.
+    eapply safe_monotone.
+Qed.
+
