@@ -1,5 +1,5 @@
 
-# Source Code
+## Source Code
 
 **Title of the Submitted Paper:** Formally Verified Liveness with Multiparty Session Types in Rocq
 
@@ -9,7 +9,8 @@
 
 ---
 
-### Table (File - Description):
+## Table (File - Description):
+
 The folder STBase contains files from the recent formalisation of session types that we base this work on (https://github.com/Apiros3/smpst-sr-smer/tree/main/src).
 cpdtlib contains some automation tactics from Adam Chlipala's Certified Programming with Dependent Types book (http://adam.chlipala.net/cpdt/).
 The contents of the files in the STLive folder are listed below.
