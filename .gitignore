@@ -19,6 +19,7 @@
 *.v.d
 *.Zone.Identifier
 *.vio
+*.conf
 *.vo
 *.vok
 *.vos
