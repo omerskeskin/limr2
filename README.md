@@ -7,6 +7,27 @@
 
 ## Installation Instructions
 
+1. **opam** – Package manager for OCaml  
+   Install by following the instructions [here](https://opam.ocaml.org/doc/1.1/Quick_Install.html).
+2. **coqc 20.1** – Coq compiler  
+    - Run in the terminal: `opam pin add coq 8.20.1`
+3. **opam dependencies** – The project depends on paco, mmaps and ssreflect
+    - Run in the terminal:
+    ```bash
+    opam repo add coq-released https://coq.inria.fr/opam/released 
+    opam install coq-paco coq-mmaps coq-mathcomp-ssreflect
+
+---
+
+## Shell Instructions
+
+1. Fetch the code from [here](https://anonymous.4open.science/r/smpst-sr-smer-4563/README.md).
+2. Open a terminal.
+3. Navigate to the directory containing the code using the `cd` command.
+4. Run: `eval $(opam env)` to update the shell environment for Coq.
+5. Run: `coq_makefile -f _CoqProject -o Makefile` to generate the Makefile.
+6. Run: `make` to compile the library (this may take some time). A successful compilation indicates that all results hold.
+
 ---
 
 ## Table (File - Description):
