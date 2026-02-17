@@ -45,13 +45,14 @@ The contents of the files in the STLive folder are listed below.
 | 4 | `src/session.v` | Definition of multiparty sessions |
 | 5 | `src/wfltt.v` | Definition of well-formed local type trees | 
 | 6 | `lemma/completeness.v` | Proof of completeness of association |
-| 7 | `lemma/liveness_helpers.v` | Some helpers for the proof of liveness by association | 
-| 8 | `lemma/multigrafting.v` | Some lemmas on the comparison of graftings of different participants |
-| 9 | `lemma/path_assoc.v` | Some lemmas about the extension of association on to paths | 
-| 10 | `lemma/safety.v` | Proof of safety by association |
-| 11 | `lemma/soundness.v` | Proof of soundness by association |
-| 12 | `lemma/subj_red_helpers.v` | Some helper lemmas for the proofs on properties of sessions (NB this file is based on the one from the ) |
-| 13 | `lemma/subj_red_prog_fid.v` | Proofs of subject reduction, deadlock-freedom and session fidelity for typed sessions|
-| 14 | `lemma/fairness_feasible.v` | Proof of the existence of a fair session reduction path as used in the proof of liveness of typed sessions |
-| 14 | `lemma/live_proc.v` | Proof that typed sessions are live |
+| 7 | `lemma/ltth.v` | Some lemmas on the grafting of local types (NB this is mostly from an earlier flawed proof attempt at liveness, most of the lemmas here are not actually used in the final proof) | 
+| 8 | `lemma/liveness_helpers.v` | Some helpers for the proof of liveness by association | 
+| 9 | `lemma/multigrafting.v` | Some lemmas on the comparison of graftings of different participants |
+| 10 | `lemma/path_assoc.v` | Some lemmas about the extension of association on to paths | 
+| 11 | `lemma/safety.v` | Proof of safety by association |
+| 12 | `lemma/soundness.v` | Proof of soundness by association |
+| 13 | `lemma/subj_red_helpers.v` | Some helper lemmas for the proofs on properties of sessions (NB this file is based on the one from the ) |
+| 14 | `lemma/subj_red_prog_fid.v` | Proofs of subject reduction, deadlock-freedom and session fidelity for typed sessions|
+| 15 | `lemma/fairness_feasible.v` | Proof of the existence of a fair session reduction path as used in the proof of liveness of typed sessions |
+| 16 | `lemma/live_proc.v` | Proof that typed sessions are live |
 ---
