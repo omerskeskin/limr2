@@ -1,4 +1,4 @@
-From mathcomp Require Import ssreflect.seq all_ssreflect.
+From mathcomp Require Import all_boot.
 Require Import List String Coq.Arith.PeanoNat Relations ZArith Datatypes Setoid Morphisms Coq.Logic.Decidable Coq.Program.Basics Coq.Init.Datatypes Coq.Logic.Classical_Prop.
 Import ListNotations. 
 Open Scope list_scope.
@@ -46,8 +46,8 @@ Proof.
   - clear H. induction ctxG; intros; try easy. constructor; try easy. right. right. easy. easy.
   - subst. constructor.
   - inversion H.
-    - subst. specialize(IHctxG0 nil ctxG0). constructor.
-    - subst. clear H.
+    + subst. specialize(IHctxG0 nil ctxG0). constructor.
+    + subst. clear H.
       specialize(IHctxG0 xb xc H6). constructor; try easy.
       clear H6 IHctxG0.
       destruct H3. destruct H as (Ha,(Hb,Hc)). subst. left. easy.
@@ -69,8 +69,8 @@ Proof.
   induction ctxG0; intros.
   inversion H. subst. constructor. constructor.
   - inversion H.
-    - subst. constructor. right. easy. specialize(IHctxG0 nil ctxG0). apply IHctxG0. constructor.
-    - subst. clear H.
+    + subst. constructor. right. easy. specialize(IHctxG0 nil ctxG0). apply IHctxG0. constructor.
+    + subst. clear H.
       specialize(IHctxG0 xb xc H6). constructor; try easy.
       clear H6 IHctxG0.
       destruct H3. destruct H as (Ha,(Hb,Hc)). subst. left. easy.

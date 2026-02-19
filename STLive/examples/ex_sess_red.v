@@ -1,4 +1,4 @@
-From mathcomp Require Import ssreflect.seq.
+(* From mathcomp Require Import all_boot. *)
 Require Import List String Coq.Arith.PeanoNat Coq.Program.Equality Relations ZArith Datatypes Setoid Morphisms Coq.Logic.Decidable Coq.Program.Basics Coq.Init.Datatypes Coq.Logic.Classical_Prop.
 Import ListNotations. 
 Open Scope list_scope.
@@ -65,7 +65,8 @@ Proof.
   induction k;intros.
   destruct xs;simpl;try easy.
   destruct xs. eapply onth_nil.
-  simpl. eapply IHk. simpl in H. lia.
+  simpl. eapply IHk. simpl in H.
+ lia.
 Qed.
 
 Definition P_s_cont := (p_recv pt_a

@@ -1,4 +1,4 @@
-From mathcomp Require Import ssreflect.seq all_ssreflect.
+From mathcomp Require Import all_boot.
 Require Import List String Coq.Arith.PeanoNat Relations ZArith Datatypes Setoid Morphisms Coq.Logic.Decidable Coq.Program.Basics Coq.Init.Datatypes Coq.Logic.Classical_Prop.
 Import ListNotations. 
 Open Scope list_scope.
@@ -127,14 +127,14 @@ Proof.
     destruct H2. destruct H2. destruct H3. destruct H4. 
     apply tc_sub with (t := (ltt_recv pt x)); try easy. constructor.
     specialize(Forall2_length H4); intros.
-    specialize(map_length (fun u : option process =>
+    specialize(length_map (fun u : option process =>
            match u with
            | Some p' => Some (incr_free l k.+1 X m p')
            | None => None
            end) llp); intros.
     specialize(eq_trans (esym H6) H7); intros. clear H6 H7.
     apply eq_trans with (y := length llp); try easy. 
-    apply map_length; try easy.
+    apply length_map; try easy.
     apply SList_map2 with (f := (incr_free l k.+1 X.+1 m)); try easy.
     specialize(SList_map (incr_free l k.+1 X m) llp H5); intros. easy.
     apply slideT_helper; try easy.
@@ -344,13 +344,13 @@ Proof.
     apply tc_sub with (t := (ltt_recv pt x)); try easy. 
     constructor.
     specialize(Forall2_length H4); intros. 
-    specialize(map_length (fun u : option process =>
+    specialize(length_map (fun u : option process =>
            match u with
            | Some p' => Some (incr_free l k.+1 X m p')
            | None => None
            end) llp); intros. 
     specialize(eq_trans (esym H6) H7); intros.
-    apply eq_trans with (y := length llp); try easy. apply map_length. clear H2.
+    apply eq_trans with (y := length llp); try easy. apply length_map. clear H2.
     apply SList_map2; try easy.
     specialize(SList_map (incr_free l k.+1 X m) llp H5); intros; try easy.
     apply slideS_helper; try easy.
@@ -868,7 +868,7 @@ Proof.
     apply tc_sub with (t := ltt_recv pt x); intros; try easy. 
     constructor; try easy.
     apply eq_trans with (y := length llp); try easy.
-    apply map_length; try easy. 
+    apply length_map; try easy. 
     apply SList_map_subst_expr_var; try easy.
     apply _subst_expr_var_helper_recv with (S := S); try easy.
     specialize(typable_implies_wfC H0); try easy.

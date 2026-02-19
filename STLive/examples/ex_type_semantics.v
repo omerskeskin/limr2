@@ -1,4 +1,4 @@
-From mathcomp Require Import ssreflect.seq all_ssreflect.
+From mathcomp Require Import all_boot.
 From Paco Require Import paco pacotac.
 From live_mpst.STBase Require Import src.expr src.header src.local.
 From live_mpst.STLive Require Import src.lcontext src.path_props.

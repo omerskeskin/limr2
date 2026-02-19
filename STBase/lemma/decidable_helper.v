@@ -1,4 +1,4 @@
-From mathcomp Require Import ssreflect.seq all_ssreflect.
+From mathcomp Require Import all_boot.
 Require Import List String Coq.Arith.PeanoNat Relations ZArith Datatypes Setoid Morphisms Coq.Logic.Decidable Coq.Program.Basics Coq.Init.Datatypes Coq.Logic.Classical_Prop.
 Import ListNotations. 
 Open Scope list_scope.
@@ -841,8 +841,8 @@ Proof.
      (noneLis (Datatypes.length ctxJ) ++ extendLis n (Some G))%SEQ).
       {
        clear H1 H0 H. clear g1 p. induction ctxJ; intros; try easy.
-       simpl in *. replace (extendLis (Datatypes.length ctxJ + n)%Nrec (Some G))%SEQ with
-          ((noneLis (Datatypes.length ctxJ) ++ extendLis n (Some G))%SEQ). easy. 
+       simpl in *. replace (extendLis (Datatypes.length ctxJ + n) (Some G))%SEQ with
+          ((noneLis (Datatypes.length ctxJ) ++ extendLis n (Some G))%SEQ). f_equal. easy. 
       }
       rename H2 into Ht.
     split.
