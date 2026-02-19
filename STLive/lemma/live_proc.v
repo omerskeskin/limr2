@@ -1062,7 +1062,7 @@ Proof.
     eapply move_forward_h in Hinp;destr_hyps.
     assert (tauRtc P x).
     {
-        assert(unfoldP ((p <-- P) ||| M') ((p <-- x) ||| x0)) by eauto with procs.
+        assert(unfoldP ((p <-- P) ||| M') ((p <-- x) ||| x0)) by (eapply pc_trans;try exact Hunf;  eauto with procs).
         eapply unfoldP_to_unfoldB in H0 as Hb.
         eapply unfoldB_p_unique in Hb. easy.
         inversion Htyp. red;easy.   
@@ -1157,12 +1157,7 @@ Proof.
     eauto with procs.
     exists (((q <-- subst_expr_proc x18 (e_val x11) 0 0))
     ||| x7).
-    assert(Hz1: unfoldP 
-    (((q <-- subst_expr_proc x18 (e_val x11) 0 0) ||| (p <-- P')) ||| x7)
-    (((p <-- P') ||| (q <-- subst_expr_proc x18 (e_val x11) 0 0))  ||| x7)).
-    eauto with procs.
-    eapply scong_to_unfoldP;try easy.
-    eauto with brocs.
+    assert(Hz1: unfoldP (((q <-- subst_expr_proc x18 (e_val x11) 0 0) ||| (p <-- P')) ||| x7) (((p <-- P') ||| (q <-- subst_expr_proc x18 (e_val x11) 0 0))  ||| x7)) by eauto with procs. eapply scong_to_unfoldP;try easy. eauto with brocs.
 Qed.
 
 Theorem sess_fidelity_strong_recv : forall M gamma M' llp p q ell  gamma', 

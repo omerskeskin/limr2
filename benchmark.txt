@@ -1,89 +1,89 @@
 hardware: Intel i7 processor, 32GB memory, Windows 11 machine running WSL2
 ------------------------------
 COQC STBase/src/header.v
-STBase/src/header.vo (real: 2.16, user: 1.42, sys: 0.73, mem: 552788 ko)
+STBase/src/header.vo (real: 1.59, user: 1.20, sys: 0.39, mem: 552708 ko)
 COQC STBase/src/expr.v
-STBase/src/expr.vo (real: 1.38, user: 0.97, sys: 0.39, mem: 546564 ko)
+STBase/src/expr.vo (real: 1.14, user: 0.91, sys: 0.23, mem: 546956 ko)
 COQC STBase/src/process.v
-STBase/src/process.vo (real: 2.95, user: 2.70, sys: 0.24, mem: 551420 ko)
+STBase/src/process.vo (real: 2.98, user: 2.71, sys: 0.27, mem: 551232 ko)
 COQC STBase/src/local.v
-STBase/src/local.vo (real: 6.83, user: 6.45, sys: 0.37, mem: 572636 ko)
+STBase/src/local.vo (real: 6.82, user: 6.51, sys: 0.30, mem: 572592 ko)
 COQC STBase/src/global.v
-STBase/src/global.vo (real: 3.49, user: 3.23, sys: 0.26, mem: 551912 ko)
+STBase/src/global.vo (real: 3.39, user: 3.19, sys: 0.20, mem: 551684 ko)
 COQC STBase/src/gttreeh.v
-STBase/src/gttreeh.vo (real: 1.27, user: 0.99, sys: 0.27, mem: 546700 ko)
+STBase/src/gttreeh.vo (real: 1.12, user: 0.87, sys: 0.25, mem: 546532 ko)
 COQC STBase/src/part.v
-STBase/src/part.vo (real: 1.21, user: 0.95, sys: 0.25, mem: 546720 ko)
+STBase/src/part.vo (real: 1.05, user: 0.86, sys: 0.19, mem: 546840 ko)
 COQC STBase/src/balanced.v
-STBase/src/balanced.vo (real: 4.53, user: 4.13, sys: 0.39, mem: 553772 ko)
+STBase/src/balanced.vo (real: 3.93, user: 3.68, sys: 0.25, mem: 553756 ko)
 COQC STBase/src/typecheck.v
-STBase/src/typecheck.vo (real: 3.06, user: 2.83, sys: 0.22, mem: 554272 ko)
+STBase/src/typecheck.vo (real: 3.05, user: 2.83, sys: 0.22, mem: 554300 ko)
 COQC STBase/lemma/inversion.v
-STBase/lemma/inversion.vo (real: 1.66, user: 1.45, sys: 0.21, mem: 551784 ko)
+STBase/lemma/inversion.vo (real: 1.62, user: 1.37, sys: 0.24, mem: 551572 ko)
 COQC STBase/lemma/inversion_expr.v
-STBase/lemma/inversion_expr.vo (real: 1.61, user: 1.41, sys: 0.19, mem: 552792 ko)
+STBase/lemma/inversion_expr.vo (real: 1.72, user: 1.51, sys: 0.21, mem: 552912 ko)
 COQC STBase/lemma/substitution_helper.v
-STBase/lemma/substitution_helper.vo (real: 8.06, user: 7.69, sys: 0.36, mem: 586740 ko)
+STBase/lemma/substitution_helper.vo (real: 8.04, user: 7.80, sys: 0.23, mem: 586996 ko)
 COQC STBase/lemma/substitution.v
-STBase/lemma/substitution.vo (real: 3.83, user: 3.60, sys: 0.22, mem: 557568 ko)
+STBase/lemma/substitution.vo (real: 3.68, user: 3.46, sys: 0.22, mem: 557396 ko)
 COQC STBase/lemma/decidable_helper.v
-STBase/lemma/decidable_helper.vo (real: 10.01, user: 9.78, sys: 0.22, mem: 616176 ko)
+STBase/lemma/decidable_helper.vo (real: 11.30, user: 11.03, sys: 0.26, mem: 616368 ko)
 COQC STBase/lemma/decidable.v
 No object of basename proj_inj
-STBase/lemma/decidable.vo (real: 3.73, user: 3.47, sys: 0.25, mem: 554568 ko)
+STBase/lemma/decidable.vo (real: 3.92, user: 3.60, sys: 0.32, mem: 554736 ko)
 COQC STBase/lemma/expr.v
-STBase/lemma/expr.vo (real: 2.14, user: 1.95, sys: 0.19, mem: 553936 ko)
+STBase/lemma/expr.vo (real: 2.22, user: 2.06, sys: 0.16, mem: 554116 ko)
 COQC STBase/lemma/part.v
-STBase/lemma/part.vo (real: 1.63, user: 1.42, sys: 0.21, mem: 553280 ko)
+STBase/lemma/part.vo (real: 1.81, user: 1.57, sys: 0.23, mem: 553220 ko)
 COQC STBase/src/step.v
-STBase/src/step.vo (real: 1.22, user: 1.00, sys: 0.21, mem: 547124 ko)
+STBase/src/step.vo (real: 1.37, user: 1.06, sys: 0.31, mem: 547160 ko)
 COQC STBase/src/merge.v
-STBase/src/merge.vo (real: 2.50, user: 2.18, sys: 0.31, mem: 553052 ko)
+STBase/src/merge.vo (real: 2.42, user: 2.21, sys: 0.21, mem: 553080 ko)
 COQC STBase/src/projection.v
-STBase/src/projection.vo (real: 1.06, user: 0.80, sys: 0.26, mem: 547056 ko)
+STBase/src/projection.vo (real: 1.07, user: 0.85, sys: 0.21, mem: 547056 ko)
 COQC STBase/lemma/step.v
-STBase/lemma/step.vo (real: 5.33, user: 5.09, sys: 0.23, mem: 564304 ko)
+STBase/lemma/step.vo (real: 5.29, user: 5.04, sys: 0.24, mem: 564328 ko)
 COQC STBase/lemma/projection_helper.v
-STBase/lemma/projection_helper.vo (real: 25.29, user: 24.88, sys: 0.40, mem: 744120 ko)
+STBase/lemma/projection_helper.vo (real: 24.69, user: 24.35, sys: 0.33, mem: 744188 ko)
 COQC STBase/lemma/projection.v
-STBase/lemma/projection.vo (real: 28.05, user: 27.60, sys: 0.42, mem: 761916 ko)
+STBase/lemma/projection.vo (real: 27.11, user: 26.77, sys: 0.34, mem: 762016 ko)
 COQC STLive/src/lcontext.v
-STLive/src/lcontext.vo (real: 31.40, user: 30.99, sys: 0.40, mem: 648048 ko)
+STLive/src/lcontext.vo (real: 32.18, user: 31.90, sys: 0.27, mem: 648080 ko)
 COQC STLive/src/wfltt.v
-STLive/src/wfltt.vo (real: 4.80, user: 4.57, sys: 0.22, mem: 592652 ko)
+STLive/src/wfltt.vo (real: 4.16, user: 3.88, sys: 0.27, mem: 592752 ko)
 COQC STLive/src/assoc.v
-STLive/src/assoc.vo (real: 24.36, user: 24.04, sys: 0.31, mem: 654420 ko)
+STLive/src/assoc.vo (real: 23.65, user: 23.31, sys: 0.34, mem: 654508 ko)
 COQC STLive/src/session.v
-STLive/src/session.vo (real: 3.33, user: 3.07, sys: 0.25, mem: 607300 ko)
+STLive/src/session.vo (real: 3.04, user: 2.83, sys: 0.21, mem: 607296 ko)
 COQC STLive/lemma/subj_red_helpers.v
-STLive/lemma/subj_red_helpers.vo (real: 27.12, user: 26.82, sys: 0.28, mem: 619184 ko)
+STLive/lemma/subj_red_helpers.vo (real: 26.70, user: 26.46, sys: 0.23, mem: 619420 ko)
 COQC STLive/src/path_props.v
-STLive/src/path_props.vo (real: 1.20, user: 0.98, sys: 0.22, mem: 597308 ko)
+STLive/src/path_props.vo (real: 1.04, user: 0.83, sys: 0.21, mem: 597560 ko)
 COQC STLive/lemma/soundness.v
-STLive/lemma/soundness.vo (real: 18.88, user: 18.60, sys: 0.28, mem: 644864 ko)
+STLive/lemma/soundness.vo (real: 18.16, user: 17.88, sys: 0.27, mem: 644952 ko)
 COQC STLive/lemma/completeness.v
-STLive/lemma/completeness.vo (real: 12.80, user: 12.50, sys: 0.30, mem: 606304 ko)
+STLive/lemma/completeness.vo (real: 13.63, user: 13.36, sys: 0.27, mem: 606340 ko)
 COQC STLive/src/ltth.v
-STLive/src/ltth.vo (real: 2.38, user: 2.09, sys: 0.29, mem: 602424 ko)
+STLive/src/ltth.vo (real: 1.93, user: 1.71, sys: 0.22, mem: 602256 ko)
 COQC STLive/lemma/liveness_helpers.v
-STLive/lemma/liveness_helpers.vo (real: 98.35, user: 97.55, sys: 0.79, mem: 811244 ko)
+STLive/lemma/liveness_helpers.vo (real: 44.68, user: 44.24, sys: 0.42, mem: 762992 ko)
 COQC STLive/lemma/multigrafting.v
-STLive/lemma/multigrafting.vo (real: 26.06, user: 25.55, sys: 0.43, mem: 695220 ko)
+STLive/lemma/multigrafting.vo (real: 16.22, user: 15.96, sys: 0.26, mem: 695464 ko)
 COQC STLive/lemma/subj_red_prog_fid.v
-STLive/lemma/subj_red_prog_fid.vo (real: 23.28, user: 22.85, sys: 0.41, mem: 696888 ko)
+STLive/lemma/subj_red_prog_fid.vo (real: 22.69, user: 22.45, sys: 0.24, mem: 697160 ko)
 COQC STLive/lemma/path_assoc.v
-STLive/lemma/path_assoc.vo (real: 5.08, user: 4.76, sys: 0.32, mem: 615100 ko)
+STLive/lemma/path_assoc.vo (real: 3.99, user: 3.76, sys: 0.23, mem: 615292 ko)
 COQC STLive/lemma/liveness.v
-STLive/lemma/liveness.vo (real: 40.98, user: 40.58, sys: 0.39, mem: 756376 ko)
+STLive/lemma/liveness.vo (real: 32.61, user: 32.25, sys: 0.36, mem: 756604 ko)
 COQC STLive/lemma/safety.v
-STLive/lemma/safety.vo (real: 1.61, user: 1.35, sys: 0.26, mem: 600848 ko)
+STLive/lemma/safety.vo (real: 1.50, user: 1.26, sys: 0.23, mem: 600736 ko)
 COQC STLive/lemma/live_proc.v
-STLive/lemma/live_proc.vo (real: 87.19, user: 86.70, sys: 0.45, mem: 771828 ko)
+STLive/lemma/live_proc.vo (real: 39.46, user: 39.12, sys: 0.33, mem: 743144 ko)
 COQC STLive/lemma/fairness_feasible.v
-STLive/lemma/fairness_feasible.vo (real: 3.50, user: 3.25, sys: 0.24, mem: 621744 ko)
+STLive/lemma/fairness_feasible.vo (real: 4.14, user: 3.85, sys: 0.29, mem: 621376 ko)
 COQC STLive/examples/ex_sess_red.v
-STLive/examples/ex_sess_red.vo (real: 3.09, user: 2.86, sys: 0.23, mem: 618260 ko)
+STLive/examples/ex_sess_red.vo (real: 3.07, user: 2.83, sys: 0.24, mem: 618248 ko)
 COQC STLive/examples/ex_type_semantics.v
-STLive/examples/ex_type_semantics.vo (real: 12.19, user: 11.81, sys: 0.37, mem: 666208 ko)
+STLive/examples/ex_type_semantics.vo (real: 8.20, user: 7.93, sys: 0.26, mem: 666080 ko)
 COQC STLive/examples/ex_typing.v
-STLive/examples/ex_typing.vo (real: 7.04, user: 6.71, sys: 0.32, mem: 641172 ko)
+STLive/examples/ex_typing.vo (real: 5.73, user: 5.43, sys: 0.29, mem: 641084 ko)
