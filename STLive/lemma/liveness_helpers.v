@@ -805,7 +805,7 @@ Proof.
             eapply decidable_helper.typh_with_less;try exact Hsubs;easy.   
         }
         {
-            pinversion Hprojp;try apply proj_mon;try.
+            pinversion Hprojp;try apply proj_mon;subst;try easy.
             eapply Forall2_prop_r in H22;[|exact H11].
             destr_hyps.
             destruct H14;try easy. destr_hyps;subst.
