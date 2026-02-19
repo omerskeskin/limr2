@@ -31,7 +31,6 @@
 ---
 
 ## Table (File - Description):
----
 
 The folder STBase contains files from the recent formalisation of session types that we base this work on (https://github.com/Apiros3/smpst-sr-smer/tree/main/src).
 cpdtlib contains some automation tactics from Adam Chlipala's Certified Programming with Dependent Types book (http://adam.chlipala.net/cpdt/).
