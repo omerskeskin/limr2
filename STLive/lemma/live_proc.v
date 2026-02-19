@@ -1157,7 +1157,12 @@ Proof.
     eauto with procs.
     exists (((q <-- subst_expr_proc x18 (e_val x11) 0 0))
     ||| x7).
+    assert(Hz1: unfoldP 
+    (((q <-- subst_expr_proc x18 (e_val x11) 0 0) ||| (p <-- P')) ||| x7)
+    (((p <-- P') ||| (q <-- subst_expr_proc x18 (e_val x11) 0 0))  ||| x7)).
     eauto with procs.
+    eapply scong_to_unfoldP;try easy.
+    eauto with brocs.
 Qed.
 
 Theorem sess_fidelity_strong_recv : forall M gamma M' llp p q ell  gamma', 
