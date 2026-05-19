@@ -2201,7 +2201,8 @@ Proof.
     eapply typable_sess_live. red. exists gamma. eapply TypM. 
   }
   red in Hlive.
-  assert(Hbr: betaRtc M M) by constructor.
+  assert(Hbr: arrow_jux M M)
+  by (exists M; split;try solve [constructor 2]). 
   eapply Hlive in Hbr.
   destruct Hbr as [Hbr1 Hbr2].
   specialize (Hbr2 2 1  [Some (p_send 0 0 (e_succ (e_var 0)) p_inact)]).
@@ -2212,7 +2213,7 @@ p_recv 0
 Some (p_send 2 0 (e_val (vnat 2)) p_inact)]))).
   clear Hlive Hbr1.
   assert(H20: 2 <> 1) by lia.
-  assert(Hunf: unfoldP M
+  assert(Hunf: scong M
     ((2 <-- p_recv 1 [Some (p_send 0 0 (e_succ (e_var 0)) p_inact)])
     ||| ((0 <-- p_send 1 0 (e_val (vnat 50)) (p_recv 2
     [Some p_inact]))
@@ -2222,7 +2223,7 @@ Some (p_send 2 0 (e_val (vnat 2)) p_inact)]))).
     Some (p_send 2 0 (e_val (vnat 2)) p_inact)])))).
   {
     cbv.
-    eauto with procs.
+    eauto with brocs.
   }
   specialize (Hbr2 H20 Hunf).
   destr_hyps.

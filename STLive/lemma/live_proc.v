@@ -156,7 +156,7 @@ Proof.
             rewrite (coseq_eq (get_typ_path _ _ _ _ _ _   )). simpl.
             unfold eq_rect_r;simpl.   
             set (gnext' := gamma_by_betaP M gamma n n0 n1 x (Some (lcomm n2 n3 n4))
-(cocons (x0, l') xs) Htyp Hvalid).
+    (cocons (x0, l') xs) Htyp Hvalid).
             destruct gnext'. destr_hyps. pfold.
             assert (Hfold: exists x2 w0 t1 , 
 			((get_typ_path x x1 (Some (lcomm n2 n3 n4)) (cocons (x0, l') xs) t p))
@@ -180,7 +180,7 @@ Proof.
         unfold eq_rect_r. simpl.
         
         set (gnext' := gamma_by_betaP M gamma n n0 n1 x None xs0 Htyp
-Hvalid).
+    Hvalid).
         destruct gnext';destr_hyps.
         
 
@@ -258,15 +258,42 @@ Proof.
     easy.
 Qed.
 
+Definition arrow_jux M M' := exists M'', betaRtc M M'' /\ unfoldP M'' M'.
 
-Definition live_sess Mp := forall M, betaRtc Mp M -> 
-(forall p q ell e P' M', p <>q -> unfoldP M ( (p <-- p_send q ell e P') ||| M') -> exists M'',
+Definition arrow_union M M' := betaRtc M M' \/ unfoldP M M'.
+
+Lemma arrow_jux_is_union : forall M M', arrow_jux M M' <-> arrow_union M M'.
+Proof.
+    split;intros;destruct H;destr_hyps. 
+    {
+        induction H;subst;try solve [right;easy]. left. econstructor 1. inversion H. 
+        exists x0. econstructor 2;try exact H1;try easy;try econstructor.
+        
+        specialize (IHclos_refl_trans2 H0). destruct IHclos_refl_trans2.
+        econstructor 1.
+        econstructor 3;try exact H;try easy.
+        specialize (IHclos_refl_trans1 H2). 
+        destruct (IHclos_refl_trans1). easy.
+        econstructor 2. easy.
+    }
+    {
+        exists M'. split;try easy. constructor.   
+    }
+    {
+        exists M;split;try easy. econstructor 2.   
+    }
+Qed.  
+
+
+Definition live_sess Mp := forall M, arrow_jux Mp M -> 
+(forall p q ell e P' M', p <>q -> 
+scong M ( (p <-- p_send q ell e P') ||| M') -> exists M'',
 betaRtc M ((p <-- P')|||M''))
 /\
-(forall p  q llp M', p <>q -> unfoldP M ( (p <-- p_recv q llp) ||| M') -> 
+(forall p  q llp M', p <>q -> 
+scong M ( (p <-- p_recv q llp) ||| M') -> 
     exists M'' P' e k,
-    onth k llp = Some P' /\
-     
+    onth k llp = Some P' /\     
     betaRtc M ((p <-- subst_expr_proc P' e 0 0)|||M'')).
 
 Lemma path_to_betaRtc : forall xs M M' (lb:option label), coseq_head xs = Some (M,lb) -> 
@@ -1675,16 +1702,28 @@ Proof.
 	{
 		intros * Hpq H0.
 		specialize (Ax_fairness ((p <-- p_send q ell e P') ||| M')). red in Ax_fairness.
+        rewrite arrow_jux_is_union in H.
         assert(Htypr : typable ((p <-- p_send q ell e P') ||| M')).
         {
-            red. eapply sub_red_Rtc in H;
-            try exact Hsess;destr_hyps. eapply typ_after_unfold in H0;try exact H. exists x;easy.   
+            red. 
+            destruct H;
+            [eapply sub_red_Rtc in H;
+            try exact Hsess;destr_hyps; eapply typ_after_scong in H0;
+            try exact H;exists x;easy
+            | eapply typ_after_unfold in H;try exact Hsess;
+            eapply typ_after_scong in H0;try exact H; exists gamma;easy].
         }
         specialize (Ax_fairness Htypr). destr_hyps.
 		destruct x0;try easy. destruct p0;try easy. simpl in H1;inversion H1;subst;clear H1.
-		eapply sub_red_Rtc in Hsess;try exact H.
+        assert(Hsess2 : exists gamma' : tctx, typ_sess M0 gamma').
+        {
+            destruct H. eapply sub_red_Rtc in Hsess;try exact H;try easy.
+            eapply typ_after_unfold in H;try exact Hsess. exists gamma. easy.       
+        }
+        clear Hsess;rename Hsess2 into Hsess.
 		destruct Hsess as [gamma' Hsess].
-		eapply typ_path_exists in H2 as Htypp;try exact Hsess. destr_hyps.
+        eapply typ_after_scong in H0 as Hsess';try exact Hsess.
+		eapply typ_path_exists in H2 as Htypp;try exact Hsess'. destr_hyps.
 		assert(Hlive: liveCtx gamma').
 		{
             inversion Hsess;destr_hyps.
@@ -1695,7 +1734,7 @@ Proof.
         {
             eapply Hlive. constructor 2.   
         }
-            destruct x1;try easy. destruct p0. simpl in H5;inversion H5;subst;clear H5.
+        destruct x1;try easy. destruct p0. simpl in H5;inversion H5;subst;clear H5.
 
         assert(Hev_local_trans: eventually (headComm p q) (cocons (gamma', x) x1)).
         {
@@ -1706,7 +1745,7 @@ Proof.
             assert(exists s  xsp Tp', M.find p gamma' = Some (ltt_send q xsp) 
             /\ onth ell xsp = Some (s,Tp')).
             {
-                eapply typ_after_unfold in H0;try exact Hsess. inversion H0;subst. inversion_clear H10.
+                eapply typ_after_scong in H0;try exact Hsess. inversion H0;subst. inversion_clear H10.
                 inversion_clear H11. destr_hyps.  
                 eapply inv_proc_send in H13;try reflexivity. destr_hyps. 
                 pose proof H17 as Hsub.
@@ -1734,6 +1773,11 @@ Proof.
         rewrite eventually_P_iff_P_suffix in Hlpr; destr_hyps;
         rewrite eventually_P_iff_P_suffix; exists x2; split;try easy; exists ell'; easy].
         eapply until_suf in Hunt.
+        assert(Hscong_to_unf: unfoldP M0 ((p <-- p_send q ell e P') ||| M')).
+        {
+            eapply scong_to_unfoldP. inversion Hsess';try easy.
+            econstructor 5. easy.   
+        }
         destruct Hunt.
         {
             destr_hyps. clear H5. rename H6 into H5. destruct x;try easy. destruct l;try easy. simpl in H5;destr_hyps;subst.
@@ -1814,20 +1858,31 @@ Proof.
         }
         easy.
         simpl. exists M';eauto with brocs.
-        eapply typ_after_unfold in Hsess;try exact H0. easy.
     }
     {
 		intros * Hpq H0.
-		specialize (Ax_fairness ((p <-- p_recv q llp) ||| M')). red in Ax_fairness. 
+		specialize (Ax_fairness ((p <-- p_recv q llp) ||| M')). red in Ax_fairness.
+        rewrite arrow_jux_is_union in H. 
         assert(Htypr : typable ((p <-- p_recv q llp) ||| M')).
         {
-            red. eapply sub_red_Rtc in H;
-            try exact Hsess;destr_hyps. eapply typ_after_unfold in H0;try exact H. exists x;easy.   
+            red. 
+            destruct H;
+            [eapply sub_red_Rtc in H;
+            try exact Hsess;destr_hyps; eapply typ_after_scong in H0;
+            try exact H;exists x;easy
+            | eapply typ_after_unfold in H;try exact Hsess;
+            eapply typ_after_scong in H0;try exact H; exists gamma;easy].
         }
         specialize (Ax_fairness Htypr). destr_hyps.
         destruct x0;try easy. destruct p0;try easy. simpl in H1;inversion H1;subst;clear H1.
-		eapply sub_red_Rtc in Hsess;try exact H.
+		assert(Hsess2 : exists gamma' : tctx, typ_sess M0 gamma').
+        {
+            destruct H. eapply sub_red_Rtc in Hsess;try exact H;try easy.
+            eapply typ_after_unfold in H;try exact Hsess. exists gamma. easy.       
+        }
+        clear Hsess;rename Hsess2 into Hsess.
 		destruct Hsess as [gamma' Hsess].
+        eapply typ_after_scong in H0 as Hsess';try exact Hsess.
 		eapply typ_path_exists in H2 as Htypp;try exact Hsess. destr_hyps.
 		assert(Hlive: liveCtx gamma').
 		{
@@ -1840,6 +1895,11 @@ Proof.
             eapply Hlive. constructor 2.   
         }
             destruct x1;try easy. destruct p0. simpl in H5;inversion H5;subst;clear H5.
+        assert(Hscong_to_unf: unfoldP M0 ((p <-- p_recv q llp) ||| M')).
+        {
+            eapply scong_to_unfoldP. inversion Hsess';try easy.
+            econstructor 5. easy.   
+        }
 
         assert(Hev_local_trans: eventually (headComm q p) (cocons (gamma', x) x1)
         ).
@@ -1852,7 +1912,7 @@ Proof.
             M.find p gamma' = Some (ltt_recv q xsp) 
             /\ onth ell xsp = Some (s,Tp')).
             {
-                eapply typ_after_unfold in H0;try exact Hsess. inversion H0;subst. inversion_clear H10.
+                eapply typ_after_scong in H0;try exact Hsess. inversion H0;subst. inversion_clear H10.
                 inversion_clear H11. destr_hyps.  
                 eapply inv_proc_recv in H13;try reflexivity. destr_hyps.
                  
@@ -1964,6 +2024,6 @@ Proof.
         }
         easy.
         simpl. exists M';eauto with brocs.
-        eapply typ_after_unfold in Hsess;try exact H0. easy.
+        easy.
     }
 Qed.
