@@ -2,7 +2,8 @@
 ## Source Code
 
 **Title of the Paper:** Formally Verified Liveness with Multiparty Session Types in Rocq
-**Authors:** Omer Keskin, Nobuko Yoshida and Rob van Glabbeek
+
+Authors: Omer Keskin, Nobuko Yoshida and Rob van Glabbeek
 
 ---
 
